@@ -2,6 +2,8 @@ const STORAGE_KEY = 'arcSidebarModel';
 const BINDINGS_KEY = 'arcSidebarBindings';
 const GROUP_MAP_KEY = 'arcSidebarNativeGroups';
 const TAB_ID_NONE = -1;
+const FAVORITES_GROUP_ID = '__favorites__';
+const FAVORITES_GROUP = { id: FAVORITES_GROUP_ID, title: 'Favorites', color: 'grey' };
 const GROUP_COLORS = ['blue', 'red', 'yellow', 'green', 'pink', 'purple', 'cyan', 'orange', 'grey'];
 
 const nativePanelWindows = new Map();
@@ -46,6 +48,12 @@ function buildSpaceIndex(model) {
   });
 
   return itemToSpace;
+}
+
+function buildFavoriteIds(model) {
+  return new Set((model?.favorites || [])
+    .filter(item => item?.type === 'tab' && item.id)
+    .map(item => item.id));
 }
 
 async function getSessionGroupMap() {
@@ -135,18 +143,21 @@ async function syncNativeGroupsNow() {
     const model = local[STORAGE_KEY];
     const bindings = session[BINDINGS_KEY] || {};
     const itemToSpace = buildSpaceIndex(model);
+    const favoriteIds = buildFavoriteIds(model);
     const tabsById = new Map(tabs.filter(tab => tab.id != null).map(tab => [tab.id, tab]));
     const desiredByWindowAndSpace = new Map();
-    const boundTabsWithoutSpace = [];
+    const ungroupedBoundTabs = [];
 
     for (const [itemId, tabId] of Object.entries(bindings)) {
       const numericTabId = Number(tabId);
       const tab = tabsById.get(numericTabId);
       if (!tab) continue;
 
-      const space = itemToSpace.get(itemId);
+      let space = itemToSpace.get(itemId);
+      if (!space && favoriteIds.has(itemId)) space = FAVORITES_GROUP;
+
       if (!space) {
-        boundTabsWithoutSpace.push(tab);
+        ungroupedBoundTabs.push(tab);
         continue;
       }
 
@@ -161,9 +172,7 @@ async function syncNativeGroupsNow() {
       desiredByWindowAndSpace.get(key).tabIds.push(numericTabId);
     }
 
-    // Pure Favorites stay ungrouped. If an item also exists inside a Space,
-    // buildSpaceIndex() maps it to that Space and it is grouped there instead.
-    const ungroupIds = boundTabsWithoutSpace
+    const ungroupIds = ungroupedBoundTabs
       .filter(tab => tab.groupId != null && tab.groupId !== TAB_ID_NONE)
       .map(tab => tab.id)
       .filter(id => id != null);
@@ -180,7 +189,6 @@ async function syncNativeGroupsNow() {
       }
     }
 
-    // Drop dead group-map entries so restart/window churn does not accumulate junk.
     const liveKeys = new Set(desiredByWindowAndSpace.keys());
     for (const key of Object.keys(groupMap)) {
       if (!liveKeys.has(key)) delete groupMap[key];
