@@ -31,14 +31,12 @@ async function setSidePanelBehavior() {
 function buildSpaceIndex(model) {
   const itemToSpace = new Map();
   const spaces = model?.spaces || [];
-
   const walk = (nodes, space) => {
     for (const node of nodes || []) {
       if (node?.type === 'tab' && node.id) itemToSpace.set(node.id, space);
       if (node?.type === 'folder') walk(node.children || [], space);
     }
   };
-
   spaces.forEach((space, index) => {
     walk(space.children || [], {
       id: space.id,
@@ -46,7 +44,6 @@ function buildSpaceIndex(model) {
       color: GROUP_COLORS[index % GROUP_COLORS.length]
     });
   });
-
   return itemToSpace;
 }
 
@@ -69,7 +66,7 @@ function mapKey(windowId, spaceId) {
   return `${windowId}:${spaceId}`;
 }
 
-async function validGroup(groupId, windowId, title) {
+async function getValidGroup(groupId, windowId, title) {
   if (groupId == null || groupId === TAB_ID_NONE) return null;
   try {
     const group = await chrome.tabGroups.get(groupId);
@@ -81,16 +78,12 @@ async function validGroup(groupId, windowId, title) {
   }
 }
 
-async function findReusableGroup(windowId, title, preferredTabIds) {
-  for (const tabId of preferredTabIds) {
-    try {
-      const tab = await chrome.tabs.get(tabId);
-      if (tab.groupId == null || tab.groupId === TAB_ID_NONE) continue;
-      const group = await validGroup(tab.groupId, windowId, title);
-      if (group) return group;
-    } catch {}
+async function findReusableGroup(windowId, title, preferredTabs) {
+  for (const tab of preferredTabs) {
+    if (tab.groupId == null || tab.groupId === TAB_ID_NONE) continue;
+    const group = await getValidGroup(tab.groupId, windowId, title);
+    if (group) return group;
   }
-
   try {
     const groups = await chrome.tabGroups.query({ windowId });
     return groups.find(group => (group.title || '') === title) || null;
@@ -99,13 +92,13 @@ async function findReusableGroup(windowId, title, preferredTabIds) {
   }
 }
 
-async function ensureGroupForSpace(windowId, space, tabIds, groupMap) {
+async function ensureGroupForSpace(windowId, space, tabs, groupMap) {
   const key = mapKey(windowId, space.id);
-  let group = await validGroup(groupMap[key], windowId, space.title);
+  let group = await getValidGroup(groupMap[key], windowId, space.title);
+  if (!group) group = await findReusableGroup(windowId, space.title, tabs);
 
-  if (!group) {
-    group = await findReusableGroup(windowId, space.title, tabIds);
-  }
+  const tabIds = tabs.map(tab => tab.id).filter(id => id != null);
+  if (!tabIds.length) return null;
 
   if (!group) {
     const groupId = await chrome.tabs.group({ tabIds });
@@ -114,11 +107,20 @@ async function ensureGroupForSpace(windowId, space, tabIds, groupMap) {
       color: space.color
     });
   } else {
-    await chrome.tabGroups.update(group.id, {
-      title: space.title,
-      color: space.color
-    });
-    await chrome.tabs.group({ tabIds, groupId: group.id });
+    if (group.title !== space.title || group.color !== space.color) {
+      group = await chrome.tabGroups.update(group.id, {
+        title: space.title,
+        color: space.color
+      });
+    }
+
+    const missingTabIds = tabs
+      .filter(tab => tab.groupId !== group.id)
+      .map(tab => tab.id)
+      .filter(id => id != null);
+    if (missingTabIds.length) {
+      await chrome.tabs.group({ tabIds: missingTabIds, groupId: group.id });
+    }
   }
 
   groupMap[key] = group.id;
@@ -145,12 +147,11 @@ async function syncNativeGroupsNow() {
     const itemToSpace = buildSpaceIndex(model);
     const favoriteIds = buildFavoriteIds(model);
     const tabsById = new Map(tabs.filter(tab => tab.id != null).map(tab => [tab.id, tab]));
-    const desiredByWindowAndSpace = new Map();
+    const desired = new Map();
     const ungroupedBoundTabs = [];
 
-    for (const [itemId, tabId] of Object.entries(bindings)) {
-      const numericTabId = Number(tabId);
-      const tab = tabsById.get(numericTabId);
+    for (const [itemId, rawTabId] of Object.entries(bindings)) {
+      const tab = tabsById.get(Number(rawTabId));
       if (!tab) continue;
 
       let space = itemToSpace.get(itemId);
@@ -162,14 +163,8 @@ async function syncNativeGroupsNow() {
       }
 
       const key = mapKey(tab.windowId, space.id);
-      if (!desiredByWindowAndSpace.has(key)) {
-        desiredByWindowAndSpace.set(key, {
-          windowId: tab.windowId,
-          space,
-          tabIds: []
-        });
-      }
-      desiredByWindowAndSpace.get(key).tabIds.push(numericTabId);
+      if (!desired.has(key)) desired.set(key, { windowId: tab.windowId, space, tabs: [] });
+      desired.get(key).tabs.push(tab);
     }
 
     const ungroupIds = ungroupedBoundTabs
@@ -180,20 +175,23 @@ async function syncNativeGroupsNow() {
       try { await chrome.tabs.ungroup(ungroupIds); } catch {}
     }
 
-    for (const entry of desiredByWindowAndSpace.values()) {
-      if (!entry.tabIds.length) continue;
+    for (const entry of desired.values()) {
       try {
-        await ensureGroupForSpace(entry.windowId, entry.space, entry.tabIds, groupMap);
+        await ensureGroupForSpace(entry.windowId, entry.space, entry.tabs, groupMap);
       } catch (error) {
         console.warn('Arc Sidebar: native tab group sync failed', error);
       }
     }
 
-    const liveKeys = new Set(desiredByWindowAndSpace.keys());
+    const liveKeys = new Set(desired.keys());
+    let mapChanged = false;
     for (const key of Object.keys(groupMap)) {
-      if (!liveKeys.has(key)) delete groupMap[key];
+      if (!liveKeys.has(key)) {
+        delete groupMap[key];
+        mapChanged = true;
+      }
     }
-    await saveSessionGroupMap(groupMap);
+    if (mapChanged || desired.size) await saveSessionGroupMap(groupMap);
   } finally {
     groupSyncRunning = false;
     if (groupSyncPending) {
@@ -238,7 +236,6 @@ chrome.runtime.onConnect.addListener(port => {
   if (port.name !== 'arc-native-sidepanel') return;
 
   let windowId = null;
-
   port.onMessage.addListener(async message => {
     if (message?.windowId == null || windowId != null) return;
     windowId = message.windowId;
