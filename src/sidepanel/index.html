@@ -34,7 +34,10 @@
     <section id="pinnedSection">
       <div class="section-heading-row">
         <div class="section-title">Pinned</div>
-        <button id="addPinned" class="section-add-button" type="button" title="Add pinned link" aria-label="Add pinned link">+</button>
+        <div class="section-actions">
+          <button id="addFolder" class="section-add-button folder-add-button" type="button" title="Add folder" aria-label="Add folder">▱</button>
+          <button id="addPinned" class="section-add-button" type="button" title="Add pinned link" aria-label="Add pinned link">+</button>
+        </div>
       </div>
       <div id="pinned"></div>
     </section>
@@ -54,6 +57,7 @@
 
   <script type="module" src="index.js"></script>
   <script type="module" src="manage.js"></script>
+  <script type="module" src="folder-manage.js"></script>
   <script type="module" src="space-dnd.js"></script>
 </body>
 </html>
