@@ -1,9 +1,9 @@
 {
   "manifest_version": 3,
   "name": "Arc Sidebar for Chrome",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Arc-like Spaces, folders and persistent pinned tabs in Chrome's side panel.",
-  "permissions": ["tabs", "storage", "sidePanel", "favicon"],
+  "permissions": ["tabs", "storage", "sidePanel", "favicon", "sessions"],
   "host_permissions": ["http://*/*", "https://*/*"],
   "background": {
     "service_worker": "src/background/service-worker.js",
