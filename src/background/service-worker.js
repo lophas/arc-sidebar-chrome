@@ -1,6 +1,7 @@
 const STORAGE_KEY = 'arcSidebarModel';
 const BINDINGS_KEY = 'arcSidebarBindings';
 const GROUP_MAP_KEY = 'arcSidebarNativeGroups';
+const SYNC_ENABLED_KEY = 'arcSidebarSyncEnabled';
 const SYNC_META_KEY = 'arcSidebarSyncMeta';
 const SYNC_CHUNK_PREFIX = 'arcSidebarSyncChunk:';
 const SYNC_SCHEMA_VERSION = 1;
@@ -43,6 +44,11 @@ function chunkKey(index) {
   return `${SYNC_CHUNK_PREFIX}${index}`;
 }
 
+async function isSidebarSyncEnabled() {
+  const stored = await chrome.storage.sync.get(SYNC_ENABLED_KEY);
+  return stored[SYNC_ENABLED_KEY] === true;
+}
+
 async function readSyncedModel() {
   const data = await chrome.storage.sync.get(null);
   const meta = data[SYNC_META_KEY];
@@ -67,14 +73,14 @@ async function readSyncedModel() {
 }
 
 async function writeSyncedModel(model) {
-  if (!model) return;
+  if (!model) return { ok: false, reason: 'no-model' };
 
   const encoded = encodeBase64Utf8(JSON.stringify(model));
   const chunks = [];
   for (let offset = 0; offset < encoded.length; offset += SYNC_CHUNK_SIZE) {
     chunks.push(encoded.slice(offset, offset + SYNC_CHUNK_SIZE));
   }
-  if (!chunks.length) return;
+  if (!chunks.length) return { ok: false, reason: 'empty-model' };
 
   const existing = await chrome.storage.sync.get(null);
   const values = {};
@@ -91,7 +97,7 @@ async function writeSyncedModel(model) {
     await chrome.storage.sync.set(values);
   } catch (error) {
     console.warn('Arc Sidebar: Chrome Sync write failed; local data is unchanged', error);
-    return;
+    return { ok: false, reason: error?.message || 'sync-write-failed' };
   }
 
   const staleKeys = Object.keys(existing).filter(key => {
@@ -102,23 +108,29 @@ async function writeSyncedModel(model) {
   if (staleKeys.length) {
     try { await chrome.storage.sync.remove(staleKeys); } catch {}
   }
+
+  return { ok: true, direction: 'push', updatedAt: values[SYNC_META_KEY].updatedAt };
 }
 
 async function applySyncedModel() {
   const synced = await readSyncedModel();
-  if (!synced?.model) return false;
+  if (!synced?.model) return { ok: false, reason: 'no-remote-model' };
 
   const local = await chrome.storage.local.get(STORAGE_KEY);
   const syncedJson = modelJson(synced.model);
-  if (modelJson(local[STORAGE_KEY]) === syncedJson) return true;
+  if (modelJson(local[STORAGE_KEY]) === syncedJson) {
+    return { ok: true, direction: 'none', updatedAt: synced.meta.updatedAt || null };
+  }
 
   suppressLocalModelJson = syncedJson;
   await chrome.storage.local.set({ [STORAGE_KEY]: synced.model });
-  return true;
+  return { ok: true, direction: 'pull', updatedAt: synced.meta.updatedAt || null };
 }
 
 async function reconcileSidebarSync() {
   try {
+    if (!await isSidebarSyncEnabled()) return { ok: false, reason: 'disabled' };
+
     const [local, synced] = await Promise.all([
       chrome.storage.local.get(STORAGE_KEY),
       readSyncedModel()
@@ -129,13 +141,16 @@ async function reconcileSidebarSync() {
       if (modelJson(local[STORAGE_KEY]) !== syncedJson) {
         suppressLocalModelJson = syncedJson;
         await chrome.storage.local.set({ [STORAGE_KEY]: synced.model });
+        return { ok: true, direction: 'pull', updatedAt: synced.meta.updatedAt || null };
       }
-      return;
+      return { ok: true, direction: 'none', updatedAt: synced.meta.updatedAt || null };
     }
 
-    if (local[STORAGE_KEY]) await writeSyncedModel(local[STORAGE_KEY]);
+    if (local[STORAGE_KEY]) return writeSyncedModel(local[STORAGE_KEY]);
+    return { ok: true, direction: 'none', updatedAt: null };
   } catch (error) {
     console.warn('Arc Sidebar: Chrome Sync reconciliation failed', error);
+    return { ok: false, reason: error?.message || 'sync-reconcile-failed' };
   }
 }
 
@@ -144,6 +159,7 @@ function queueModelSyncPush(delay = 350) {
   modelSyncPushTimer = setTimeout(async () => {
     modelSyncPushTimer = null;
     try {
+      if (!await isSidebarSyncEnabled()) return;
       const local = await chrome.storage.local.get(STORAGE_KEY);
       if (local[STORAGE_KEY]) await writeSyncedModel(local[STORAGE_KEY]);
     } catch (error) {
@@ -154,16 +170,19 @@ function queueModelSyncPush(delay = 350) {
 
 function queueModelSyncPull(delay = 250) {
   if (modelSyncPullTimer) clearTimeout(modelSyncPullTimer);
-  modelSyncPullTimer = setTimeout(() => {
+  modelSyncPullTimer = setTimeout(async () => {
     modelSyncPullTimer = null;
-    applySyncedModel().catch(error => {
+    try {
+      if (!await isSidebarSyncEnabled()) return;
+      await applySyncedModel();
+    } catch (error) {
       console.warn('Arc Sidebar: Chrome Sync pull failed', error);
-    });
+    }
   }, delay);
 }
 
-function isSidebarSyncChange(changes) {
-  return Object.keys(changes || {}).some(key => key === SYNC_META_KEY || key.startsWith(SYNC_CHUNK_PREFIX));
+function isSidebarSyncDataChange(changes) {
+  return Boolean(changes?.[SYNC_META_KEY]);
 }
 
 async function broadcastNativePanelState(windowId, open) {
@@ -391,8 +410,18 @@ chrome.storage.onChanged.addListener((changes, area) => {
     }
   }
 
-  if (area === 'sync' && isSidebarSyncChange(changes)) {
-    queueModelSyncPull();
+  if (area === 'sync') {
+    if (changes[SYNC_ENABLED_KEY]) {
+      if (changes[SYNC_ENABLED_KEY].newValue === true) {
+        reconcileSidebarSync().catch(error => console.warn('Arc Sidebar: enabling Chrome Sync failed', error));
+      } else {
+        if (modelSyncPushTimer) clearTimeout(modelSyncPushTimer);
+        if (modelSyncPullTimer) clearTimeout(modelSyncPullTimer);
+        modelSyncPushTimer = null;
+        modelSyncPullTimer = null;
+      }
+    }
+    if (isSidebarSyncDataChange(changes)) queueModelSyncPull();
   }
 });
 
@@ -427,7 +456,16 @@ chrome.runtime.onConnect.addListener(port => {
 });
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message?.type !== 'arc-native-sidepanel-is-open') return;
-  const windowId = sender.tab?.windowId;
-  sendResponse({ open: windowId != null && (nativePanelWindows.get(windowId) || 0) > 0 });
+  if (message?.type === 'arc-native-sidepanel-is-open') {
+    const windowId = sender.tab?.windowId;
+    sendResponse({ open: windowId != null && (nativePanelWindows.get(windowId) || 0) > 0 });
+    return;
+  }
+
+  if (message?.type === 'arc-sidebar-sync-now') {
+    reconcileSidebarSync()
+      .then(result => sendResponse(result))
+      .catch(error => sendResponse({ ok: false, reason: error?.message || 'sync-failed' }));
+    return true;
+  }
 });
