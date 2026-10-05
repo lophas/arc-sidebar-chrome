@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Arc Sidebar settings</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="page">
+    <h1>Arc Sidebar for Chrome</h1>
+    <p class="lead">Import and manage the persistent sidebar data used by the extension.</p>
+
+    <section class="card">
+      <h2>Arc import</h2>
+      <p>Select Arc's <code>StorableSidebar.json</code>. Import replaces the current sidebar model.</p>
+      <label class="button">
+        Import StorableSidebar.json
+        <input id="arcFile" type="file" accept="application/json,.json" hidden>
+      </label>
+      <div id="status" class="status"></div>
+    </section>
+
+    <section class="card">
+      <h2>Current data</h2>
+      <div id="stats" class="stats">No data imported.</div>
+      <div id="importedAt" class="muted"></div>
+    </section>
+  </main>
+
+  <script type="module" src="index.js"></script>
+</body>
+</html>
