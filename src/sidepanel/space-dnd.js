@@ -35,8 +35,7 @@ function matchesSearch(node, q) {
   if (!q) return true;
   const haystack = `${node.title || ''} ${node.url || ''}`.toLowerCase();
   if (haystack.includes(q)) return true;
-  if (node.type === 'folder') return (node.children || []).some(child => matchesSearch(child, q));
-  return false;
+  return node.type === 'folder' && (node.children || []).some(child => matchesSearch(child, q));
 }
 
 function visibleFolders(nodes, q, out = []) {
@@ -77,20 +76,18 @@ function clearHoverTimer() {
 async function switchToSpace(spaceId) {
   if (!spaceId || spaceId === OPEN_TABS_SPACE_ID) return;
   const stored = await chrome.storage.local.get(STATE_KEY);
-  const state = {
-    currentSpaceId: spaceId,
-    collapsedFolders: {},
-    ...(stored[STATE_KEY] || {})
-  };
-  if (state.currentSpaceId === spaceId) return;
-  state.currentSpaceId = spaceId;
-  await chrome.storage.local.set({ [STATE_KEY]: state });
+  const current = stored[STATE_KEY] || { currentSpaceId: null, collapsedFolders: {} };
+  if (current.currentSpaceId === spaceId) return;
 
-  // index.js owns rendering. Clicking the already-decorated Space button lets
-  // it update its in-memory state and redraw without moving the dragged item.
-  const button = [...spacesEl.querySelectorAll('.space-button')]
-    .find(candidate => candidate.dataset.spaceDropId === spaceId);
-  button?.click();
+  const button = spacesEl?.querySelector(`.space-button[data-space-id="${CSS.escape(spaceId)}"]`);
+  if (button) {
+    button.click();
+    return;
+  }
+
+  await chrome.storage.local.set({
+    [STATE_KEY]: { ...current, currentSpaceId: spaceId }
+  });
 }
 
 function scheduleHoverSwitch(spaceId) {
@@ -122,13 +119,8 @@ async function movePinnedToSpaceRoot(itemId, targetSpaceId) {
   targetSpace.children.push(moved);
   recalcStats(model);
 
-  const state = {
-    currentSpaceId: targetSpace.id,
-    collapsedFolders: {},
-    ...(stored[STATE_KEY] || {})
-  };
-  state.currentSpaceId = targetSpace.id;
-
+  const state = { ...(stored[STATE_KEY] || {}), currentSpaceId: targetSpace.id };
+  state.collapsedFolders ||= {};
   await chrome.storage.local.set({
     [STORAGE_KEY]: model,
     [STATE_KEY]: state
@@ -146,7 +138,7 @@ async function crossSpaceDrop(itemId, targetNodeId = null, after = false, target
   const source = findSourceSpace(model, itemId);
   const targetSpace = model.spaces.find(space => space.id === state.currentSpaceId);
   if (!source || !targetSpace || source.location.node.type !== 'tab') return false;
-  if (source.space.id === targetSpace.id) return false; // manage.js handles same-Space drops.
+  if (source.space.id === targetSpace.id) return false;
 
   let targetParent = null;
   let targetIndex = null;
@@ -157,8 +149,7 @@ async function crossSpaceDrop(itemId, targetNodeId = null, after = false, target
     targetParent = target.parent;
     targetIndex = target.index + (after ? 1 : 0);
   } else if (targetFolderId) {
-    const folderLocation = findNodeLocation(targetSpace.children || [], targetFolderId);
-    const folder = folderLocation?.node;
+    const folder = findNodeLocation(targetSpace.children || [], targetFolderId)?.node;
     if (!folder || folder.type !== 'folder') return false;
     folder.children ||= [];
     targetParent = folder.children;
@@ -181,26 +172,23 @@ async function crossSpaceDrop(itemId, targetNodeId = null, after = false, target
 
 async function decorateSpaceDropTargets() {
   if (!spacesEl) return;
-
   const stored = await chrome.storage.local.get(STORAGE_KEY);
   const model = stored[STORAGE_KEY];
   if (!model?.spaces?.length) return;
 
-  const buttons = [...spacesEl.querySelectorAll('.space-button')];
-
-  model.spaces.forEach((space, index) => {
-    const button = buttons[index];
-    if (!button) return;
-    if (button.dataset.spaceDropManaged === '1') return;
+  const spacesById = new Map(model.spaces.map(space => [space.id, space]));
+  for (const button of spacesEl.querySelectorAll('.space-button[data-space-id]')) {
+    const spaceId = button.dataset.spaceId;
+    if (!spacesById.has(spaceId) || button.dataset.spaceDropManaged === '1') continue;
 
     button.dataset.spaceDropManaged = '1';
-    button.dataset.spaceDropId = space.id;
+    button.dataset.spaceDropId = spaceId;
 
     button.addEventListener('dragenter', event => {
       if (!event.dataTransfer?.types?.includes('text/plain')) return;
       event.preventDefault();
       button.classList.add('space-drop-target');
-      scheduleHoverSwitch(space.id);
+      scheduleHoverSwitch(spaceId);
     });
 
     button.addEventListener('dragover', event => {
@@ -208,13 +196,13 @@ async function decorateSpaceDropTargets() {
       event.preventDefault();
       event.dataTransfer.dropEffect = 'move';
       button.classList.add('space-drop-target');
-      scheduleHoverSwitch(space.id);
+      scheduleHoverSwitch(spaceId);
     });
 
     button.addEventListener('dragleave', event => {
       if (!button.contains(event.relatedTarget)) {
         button.classList.remove('space-drop-target');
-        if (hoverSpaceId === space.id) clearHoverTimer();
+        if (hoverSpaceId === spaceId) clearHoverTimer();
       }
     });
 
@@ -223,10 +211,9 @@ async function decorateSpaceDropTargets() {
       event.stopPropagation();
       clearHoverTimer();
       button.classList.remove('space-drop-target');
-      const itemId = event.dataTransfer.getData('text/plain');
-      await movePinnedToSpaceRoot(itemId, space.id);
+      await movePinnedToSpaceRoot(event.dataTransfer.getData('text/plain'), spaceId);
     });
-  });
+  }
 }
 
 async function decorateFolderIds() {
@@ -246,9 +233,6 @@ async function decorateFolderIds() {
   });
 }
 
-// Capture cross-Space drops before manage.js sees them. This is what allows
-// hover-switching to another Space and then dropping directly between its links
-// or into one of its folders, all within one continuous drag gesture.
 document.addEventListener('drop', async event => {
   const itemId = event.dataTransfer?.getData('text/plain');
   if (!itemId) return;
@@ -277,21 +261,17 @@ document.addEventListener('drop', async event => {
     return;
   }
 
-  const root = event.target.closest?.('#pinnedSection .section-title');
-  if (root) {
+  if (event.target.closest?.('#pinnedSection .section-title')) {
     event.preventDefault();
     event.stopImmediatePropagation();
     await crossSpaceDrop(itemId, null, false, null, true);
   }
 }, true);
 
-const observer = new MutationObserver(() => {
-  queueMicrotask(decorateSpaceDropTargets);
-  queueMicrotask(decorateFolderIds);
-});
+function decorateDnD() {
+  decorateSpaceDropTargets();
+  decorateFolderIds();
+}
 
-if (spacesEl) observer.observe(spacesEl, { childList: true });
-if (pinnedEl) observer.observe(pinnedEl, { childList: true, subtree: true });
-
-decorateSpaceDropTargets();
-decorateFolderIds();
+window.addEventListener('arc-sidebar-rendered', () => queueMicrotask(decorateDnD));
+decorateDnD();
