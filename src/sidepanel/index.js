@@ -1,5 +1,6 @@
 const STORAGE_KEY = 'arcSidebarModel';
 const STATE_KEY = 'arcSidebarState';
+const BINDINGS_KEY = 'arcSidebarBindings';
 const OPEN_TABS_SPACE_ID = '__open_tabs__';
 
 const els = {
@@ -19,7 +20,9 @@ const els = {
 
 let model = null;
 let state = { currentSpaceId: null, collapsedFolders: {} };
+let bindings = {};
 let openTabs = [];
+let allTabs = [];
 
 function pairArray(arr = []) {
   const out = new Map();
@@ -139,16 +142,6 @@ function parseArcSidebar(json) {
   };
 }
 
-function normalizedUrl(url) {
-  try {
-    const u = new URL(url);
-    u.hash = '';
-    return u.href.replace(/\/$/, '');
-  } catch {
-    return url || '';
-  }
-}
-
 function domainFor(url) {
   try { return new URL(url).hostname.replace(/^www\./, ''); }
   catch { return ''; }
@@ -167,43 +160,127 @@ async function saveState() {
   await chrome.storage.local.set({ [STATE_KEY]: state });
 }
 
+async function saveBindings() {
+  await chrome.storage.session.set({ [BINDINGS_KEY]: bindings });
+}
+
+function collectSavedItemIds() {
+  const ids = new Set();
+  for (const item of model?.favorites || []) {
+    if (item?.type === 'tab' && item.id) ids.add(item.id);
+  }
+
+  const walk = nodes => {
+    for (const node of nodes || []) {
+      if (node.type === 'tab' && node.id) ids.add(node.id);
+      if (node.type === 'folder') walk(node.children || []);
+    }
+  };
+  for (const space of model?.spaces || []) walk(space.children || []);
+  return ids;
+}
+
 async function loadData() {
   const stored = await chrome.storage.local.get([STORAGE_KEY, STATE_KEY]);
+  const session = await chrome.storage.session.get(BINDINGS_KEY);
   model = stored[STORAGE_KEY] || null;
   state = { currentSpaceId: null, collapsedFolders: {}, ...(stored[STATE_KEY] || {}) };
+  bindings = session[BINDINGS_KEY] || {};
+
   const validSpace = state.currentSpaceId === OPEN_TABS_SPACE_ID || model?.spaces?.some(s => s.id === state.currentSpaceId);
   if (model?.spaces?.length && !validSpace) {
     state.currentSpaceId = model.spaces[0].id;
   }
 }
 
+async function validateBindings() {
+  const savedIds = collectSavedItemIds();
+  const liveIds = new Set(allTabs.map(tab => tab.id).filter(id => id != null));
+  let changed = false;
+
+  for (const [itemId, tabId] of Object.entries(bindings)) {
+    if (!savedIds.has(itemId) || !liveIds.has(tabId)) {
+      delete bindings[itemId];
+      changed = true;
+    }
+  }
+
+  if (changed) await saveBindings();
+}
+
+function boundTabFor(itemId) {
+  const tabId = bindings[itemId];
+  if (tabId == null) return null;
+  return allTabs.find(tab => tab.id === tabId) || null;
+}
+
 async function refreshOpenTabs() {
-  openTabs = await chrome.tabs.query({ currentWindow: true });
+  [openTabs, allTabs] = await Promise.all([
+    chrome.tabs.query({ currentWindow: true }),
+    chrome.tabs.query({})
+  ]);
+  await validateBindings();
   render();
 }
 
 async function focusOrOpen(saved) {
-  const wanted = normalizedUrl(saved.url);
-  let match = openTabs.find(tab => normalizedUrl(tab.url) === wanted);
+  if (!saved?.id || !saved?.url) return;
 
-  if (!match) {
-    try {
-      const target = new URL(saved.url);
-      match = openTabs.find(tab => {
-        try {
-          const current = new URL(tab.url);
-          return current.origin === target.origin && current.pathname === target.pathname;
-        } catch { return false; }
-      });
-    } catch {}
+  const existing = boundTabFor(saved.id);
+  if (existing?.id != null) {
+    await chrome.tabs.update(existing.id, { active: true });
+    if (existing.windowId != null) await chrome.windows.update(existing.windowId, { focused: true });
+    return;
   }
 
-  if (match?.id != null) {
-    await chrome.tabs.update(match.id, { active: true });
-    if (match.windowId != null) await chrome.windows.update(match.windowId, { focused: true });
-  } else {
-    await chrome.tabs.create({ url: saved.url, active: true });
+  if (bindings[saved.id] != null) {
+    delete bindings[saved.id];
+    await saveBindings();
   }
+
+  const created = await chrome.tabs.create({ url: saved.url, active: true });
+  if (created?.id != null) {
+    bindings[saved.id] = created.id;
+    await saveBindings();
+  }
+  await refreshOpenTabs();
+}
+
+async function resetSavedTab(saved) {
+  if (!saved?.id) return;
+  const tabId = bindings[saved.id];
+  if (tabId == null) return;
+
+  delete bindings[saved.id];
+  await saveBindings();
+
+  try {
+    await chrome.tabs.remove(tabId);
+  } catch {}
+
+  await refreshOpenTabs();
+}
+
+async function removeBindingsForTab(tabId) {
+  let changed = false;
+  for (const [itemId, boundTabId] of Object.entries(bindings)) {
+    if (boundTabId === tabId) {
+      delete bindings[itemId];
+      changed = true;
+    }
+  }
+  if (changed) await saveBindings();
+}
+
+async function replaceBoundTab(removedTabId, addedTabId) {
+  let changed = false;
+  for (const [itemId, boundTabId] of Object.entries(bindings)) {
+    if (boundTabId === removedTabId) {
+      bindings[itemId] = addedTabId;
+      changed = true;
+    }
+  }
+  if (changed) await saveBindings();
 }
 
 function currentSpace() {
@@ -219,14 +296,16 @@ function matchesSearch(node, q) {
   return false;
 }
 
-function createTabRow(item, { live = false, active = false } = {}) {
+function createTabRow(item, { live = false, active = false, boundTab = null } = {}) {
   const row = document.createElement('div');
-  row.className = `row${active ? ' active' : ''}`;
+  row.className = `row${active ? ' active' : ''}${boundTab ? ' has-binding' : ''}`;
   row.title = item.url || item.title || '';
 
   const favicon = document.createElement('img');
   favicon.className = 'favicon';
-  favicon.src = live && item.favIconUrl ? item.favIconUrl : faviconFor(item.url);
+  favicon.src = live && item.favIconUrl
+    ? item.favIconUrl
+    : boundTab?.favIconUrl || faviconFor(item.url);
   favicon.alt = '';
   favicon.addEventListener('error', () => {
     const fallback = document.createElement('span');
@@ -260,6 +339,20 @@ function createTabRow(item, { live = false, active = false } = {}) {
       if (item.id != null) await chrome.tabs.update(item.id, { active: true });
     });
   } else {
+    if (boundTab) {
+      const reset = document.createElement('button');
+      reset.className = 'reset-pinned';
+      reset.type = 'button';
+      reset.textContent = '−';
+      reset.title = 'Close and reset to saved URL';
+      reset.setAttribute('aria-label', `Reset ${item.title || 'pinned tab'}`);
+      reset.addEventListener('click', async event => {
+        event.preventDefault();
+        event.stopPropagation();
+        await resetSavedTab(item);
+      });
+      row.append(reset);
+    }
     row.addEventListener('click', () => focusOrOpen(item));
   }
 
@@ -269,8 +362,8 @@ function createTabRow(item, { live = false, active = false } = {}) {
 function renderNode(node, q) {
   if (!matchesSearch(node, q)) return null;
   if (node.type === 'tab') {
-    const active = openTabs.some(tab => normalizedUrl(tab.url) === normalizedUrl(node.url) && tab.active);
-    return createTabRow(node, { active });
+    const boundTab = boundTabFor(node.id);
+    return createTabRow(node, { active: Boolean(boundTab?.active), boundTab });
   }
 
   if (node.type === 'folder') {
@@ -319,8 +412,9 @@ function renderFavorites() {
     tile.className = 'favorite-tile';
     tile.title = item.title || item.url;
 
-    const matchingTab = openTabs.find(tab => normalizedUrl(tab.url) === normalizedUrl(item.url));
+    const matchingTab = boundTabFor(item.id);
     if (matchingTab?.active) tile.classList.add('active');
+    if (matchingTab) tile.classList.add('has-binding');
 
     const favicon = document.createElement('img');
     favicon.src = matchingTab?.favIconUrl || faviconFor(item.url);
@@ -337,6 +431,19 @@ function renderFavorites() {
       const dot = document.createElement('span');
       dot.className = 'favorite-live-dot';
       tile.append(dot);
+
+      const reset = document.createElement('span');
+      reset.className = 'favorite-reset';
+      reset.textContent = '−';
+      reset.title = 'Close and reset to saved URL';
+      reset.setAttribute('role', 'button');
+      reset.setAttribute('aria-label', `Reset ${item.title || 'favorite'}`);
+      reset.addEventListener('click', async event => {
+        event.preventDefault();
+        event.stopPropagation();
+        await resetSavedTab(item);
+      });
+      tile.append(reset);
     }
 
     tile.addEventListener('click', () => focusOrOpen(item));
@@ -460,8 +567,10 @@ els.arcFile.addEventListener('change', async event => {
     model = parseArcSidebar(json);
     state.currentSpaceId = model.spaces[0]?.id || OPEN_TABS_SPACE_ID;
     state.collapsedFolders = {};
+    bindings = {};
     await saveModel();
     await saveState();
+    await saveBindings();
     render();
   } catch (error) {
     console.error(error);
@@ -474,9 +583,16 @@ els.arcFile.addEventListener('change', async event => {
 els.search.addEventListener('input', render);
 
 chrome.tabs.onCreated.addListener(refreshOpenTabs);
-chrome.tabs.onRemoved.addListener(refreshOpenTabs);
+chrome.tabs.onRemoved.addListener(async tabId => {
+  await removeBindingsForTab(tabId);
+  await refreshOpenTabs();
+});
 chrome.tabs.onUpdated.addListener(refreshOpenTabs);
 chrome.tabs.onActivated.addListener(refreshOpenTabs);
+chrome.tabs.onReplaced.addListener(async (addedTabId, removedTabId) => {
+  await replaceBoundTab(removedTabId, addedTabId);
+  await refreshOpenTabs();
+});
 
 await loadData();
 await refreshOpenTabs();
