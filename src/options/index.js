@@ -1,7 +1,10 @@
 const STORAGE_KEY = 'arcSidebarModel';
 const STATE_KEY = 'arcSidebarState';
+const LOCAL_MODEL_UPDATED_KEY = 'arcSidebarModelUpdatedAt';
 const SYNC_ENABLED_KEY = 'arcSidebarSyncEnabled';
 const SYNC_META_KEY = 'arcSidebarSyncMeta';
+const BACKUP_FORMAT = 'arc-sidebar-backup';
+const BACKUP_VERSION = 1;
 
 const arcFile = document.querySelector('#arcFile');
 const status = document.querySelector('#status');
@@ -10,6 +13,12 @@ const importedAt = document.querySelector('#importedAt');
 const syncEnabled = document.querySelector('#syncEnabled');
 const syncNow = document.querySelector('#syncNow');
 const syncStatus = document.querySelector('#syncStatus');
+const extensionId = document.querySelector('#extensionId');
+const downloadBackup = document.querySelector('#downloadBackup');
+const restoreBackup = document.querySelector('#restoreBackup');
+const backupStatus = document.querySelector('#backupStatus');
+
+extensionId.textContent = chrome.runtime.id;
 
 function pairArray(arr = []) {
   const out = new Map();
@@ -115,6 +124,17 @@ function formatSyncTime(value) {
   catch { return ''; }
 }
 
+function isValidSidebarModel(model) {
+  if (!model || typeof model !== 'object') return false;
+  if (!Array.isArray(model.spaces) || !Array.isArray(model.favorites)) return false;
+  return model.spaces.every(space => space && typeof space === 'object' && Array.isArray(space.children));
+}
+
+function backupFilename() {
+  const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+  return `arc-sidebar-backup-${stamp}.json`;
+}
+
 async function renderSyncStatus(message = '') {
   const synced = await chrome.storage.sync.get([SYNC_ENABLED_KEY, SYNC_META_KEY]);
   const enabled = synced[SYNC_ENABLED_KEY] === true;
@@ -168,7 +188,12 @@ arcFile.addEventListener('change', async event => {
   if (!file) return;
   try {
     const model = parseArcSidebar(JSON.parse(await file.text()));
-    await chrome.storage.local.set({ [STORAGE_KEY]: model, [STATE_KEY]: { currentSpaceId: model.spaces[0]?.id || null, collapsedFolders: {} } });
+    const now = Date.now();
+    await chrome.storage.local.set({
+      [STORAGE_KEY]: model,
+      [STATE_KEY]: { currentSpaceId: model.spaces[0]?.id || null, collapsedFolders: {} },
+      [LOCAL_MODEL_UPDATED_KEY]: now
+    });
     status.textContent = 'Import complete.';
     render(model);
     if (syncEnabled.checked) {
@@ -178,6 +203,64 @@ arcFile.addEventListener('change', async event => {
   } catch (error) {
     console.error(error);
     status.textContent = `Import failed: ${error.message}`;
+  } finally {
+    event.target.value = '';
+  }
+});
+
+downloadBackup.addEventListener('click', async () => {
+  backupStatus.textContent = '';
+  const stored = await chrome.storage.local.get(STORAGE_KEY);
+  const model = stored[STORAGE_KEY];
+  if (!isValidSidebarModel(model)) {
+    backupStatus.textContent = 'No sidebar data to back up.';
+    return;
+  }
+
+  const payload = {
+    format: BACKUP_FORMAT,
+    version: BACKUP_VERSION,
+    exportedAt: new Date().toISOString(),
+    model
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = backupFilename();
+  document.body.append(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 0);
+  backupStatus.textContent = 'Backup downloaded.';
+});
+
+restoreBackup.addEventListener('change', async event => {
+  const file = event.target.files?.[0];
+  if (!file) return;
+
+  try {
+    const payload = JSON.parse(await file.text());
+    const model = payload?.format === BACKUP_FORMAT ? payload.model : payload;
+    if (!isValidSidebarModel(model)) throw new Error('Not a valid Arc Sidebar backup.');
+
+    const now = Date.now();
+    await chrome.storage.local.set({
+      [STORAGE_KEY]: model,
+      [STATE_KEY]: { currentSpaceId: model.spaces[0]?.id || null, collapsedFolders: {} },
+      [LOCAL_MODEL_UPDATED_KEY]: now
+    });
+
+    render(model);
+    backupStatus.textContent = 'Backup restored.';
+
+    if (syncEnabled.checked) {
+      syncStatus.textContent = 'Backup restored locally · syncing…';
+      await runSyncNow();
+    }
+  } catch (error) {
+    console.error(error);
+    backupStatus.textContent = `Restore failed: ${error.message}`;
   } finally {
     event.target.value = '';
   }
