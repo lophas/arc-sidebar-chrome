@@ -1,10 +1,15 @@
 const STORAGE_KEY = 'arcSidebarModel';
 const STATE_KEY = 'arcSidebarState';
+const SYNC_ENABLED_KEY = 'arcSidebarSyncEnabled';
+const SYNC_META_KEY = 'arcSidebarSyncMeta';
 
 const arcFile = document.querySelector('#arcFile');
 const status = document.querySelector('#status');
 const stats = document.querySelector('#stats');
 const importedAt = document.querySelector('#importedAt');
+const syncEnabled = document.querySelector('#syncEnabled');
+const syncNow = document.querySelector('#syncNow');
+const syncStatus = document.querySelector('#syncStatus');
 
 function pairArray(arr = []) {
   const out = new Map();
@@ -104,9 +109,58 @@ function render(model) {
   importedAt.textContent = model.importedAt ? `Last import: ${new Date(model.importedAt).toLocaleString()}` : '';
 }
 
+function formatSyncTime(value) {
+  if (!value) return '';
+  try { return new Date(value).toLocaleString(); }
+  catch { return ''; }
+}
+
+async function renderSyncStatus(message = '') {
+  const synced = await chrome.storage.sync.get([SYNC_ENABLED_KEY, SYNC_META_KEY]);
+  const enabled = synced[SYNC_ENABLED_KEY] === true;
+  const meta = synced[SYNC_META_KEY];
+
+  syncEnabled.checked = enabled;
+  syncNow.disabled = !enabled;
+
+  if (message) {
+    syncStatus.textContent = message;
+    return;
+  }
+
+  if (!enabled) {
+    syncStatus.textContent = 'Sync is off.';
+    return;
+  }
+
+  const when = formatSyncTime(meta?.updatedAt);
+  syncStatus.textContent = when ? `Sync is on · last synced ${when}` : 'Sync is on · waiting for the first sync.';
+}
+
+async function runSyncNow() {
+  syncNow.disabled = true;
+  syncStatus.textContent = 'Syncing…';
+  try {
+    const result = await chrome.runtime.sendMessage({ type: 'arc-sidebar-sync-now' });
+    if (!result?.ok) throw new Error(result?.reason || 'Sync failed');
+
+    if (result.direction === 'pull') syncStatus.textContent = 'Synced from Chrome Sync.';
+    else if (result.direction === 'push') syncStatus.textContent = 'Saved to Chrome Sync.';
+    else syncStatus.textContent = 'Already up to date.';
+
+    setTimeout(() => renderSyncStatus(), 900);
+  } catch (error) {
+    console.error(error);
+    syncStatus.textContent = `Sync failed: ${error.message}`;
+  } finally {
+    syncNow.disabled = !syncEnabled.checked;
+  }
+}
+
 async function load() {
   const stored = await chrome.storage.local.get(STORAGE_KEY);
   render(stored[STORAGE_KEY]);
+  await renderSyncStatus();
 }
 
 arcFile.addEventListener('change', async event => {
@@ -117,12 +171,43 @@ arcFile.addEventListener('change', async event => {
     await chrome.storage.local.set({ [STORAGE_KEY]: model, [STATE_KEY]: { currentSpaceId: model.spaces[0]?.id || null, collapsedFolders: {} } });
     status.textContent = 'Import complete.';
     render(model);
+    if (syncEnabled.checked) {
+      syncStatus.textContent = 'Imported locally · syncing…';
+      await runSyncNow();
+    }
   } catch (error) {
     console.error(error);
     status.textContent = `Import failed: ${error.message}`;
   } finally {
     event.target.value = '';
   }
+});
+
+syncEnabled.addEventListener('change', async () => {
+  syncEnabled.disabled = true;
+  try {
+    await chrome.storage.sync.set({ [SYNC_ENABLED_KEY]: syncEnabled.checked });
+    if (syncEnabled.checked) {
+      syncStatus.textContent = 'Enabling Chrome Sync…';
+      await runSyncNow();
+    } else {
+      syncNow.disabled = true;
+      syncStatus.textContent = 'Sync is off. The existing cloud snapshot is kept for future re-enabling.';
+    }
+  } catch (error) {
+    console.error(error);
+    syncEnabled.checked = !syncEnabled.checked;
+    syncStatus.textContent = `Could not change sync setting: ${error.message}`;
+  } finally {
+    syncEnabled.disabled = false;
+  }
+});
+
+syncNow.addEventListener('click', runSyncNow);
+
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === 'local' && changes[STORAGE_KEY]) render(changes[STORAGE_KEY].newValue);
+  if (area === 'sync' && (changes[SYNC_ENABLED_KEY] || changes[SYNC_META_KEY])) renderSyncStatus();
 });
 
 await load();
