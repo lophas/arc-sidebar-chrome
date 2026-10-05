@@ -1,5 +1,6 @@
 const STORAGE_KEY = 'arcSidebarModel';
 const favoritesEl = document.querySelector('#favorites');
+const addFavoriteButton = document.querySelector('#addFavorite');
 
 let dragIndex = null;
 let dialog = null;
@@ -25,18 +26,25 @@ function ensureDialog() {
   dialog = document.createElement('dialog');
   dialog.className = 'item-dialog';
   dialog.innerHTML = `
-    <form method="dialog" class="item-form">
+    <form class="item-form" novalidate>
       <h3 id="itemDialogTitle">Favorite</h3>
       <label>Title<input id="favoriteTitle" type="text" autocomplete="off"></label>
-      <label>URL<input id="favoriteUrl" type="url" autocomplete="off" required></label>
+      <label>URL<input id="favoriteUrl" type="url" autocomplete="off"></label>
       <div class="dialog-actions">
         <button id="favoriteDelete" class="danger" type="button">Delete</button>
         <span class="dialog-spacer"></span>
-        <button value="cancel">Cancel</button>
+        <button id="favoriteCancel" type="button">Cancel</button>
         <button id="favoriteSave" class="primary" type="button">Save</button>
       </div>
     </form>`;
   document.body.append(dialog);
+
+  dialog.querySelector('#favoriteCancel').addEventListener('click', () => dialog.close());
+  dialog.addEventListener('cancel', event => {
+    event.preventDefault();
+    dialog.close();
+  });
+
   return dialog;
 }
 
@@ -51,10 +59,26 @@ async function openFavoriteEditor(index = null) {
   d.querySelector('#favoriteDelete').style.display = item ? '' : 'none';
 
   d.querySelector('#favoriteSave').onclick = async () => {
-    const title = d.querySelector('#favoriteTitle').value.trim();
-    const url = d.querySelector('#favoriteUrl').value.trim();
-    if (!url) return;
-    try { new URL(url); } catch { d.querySelector('#favoriteUrl').reportValidity(); return; }
+    const titleInput = d.querySelector('#favoriteTitle');
+    const urlInput = d.querySelector('#favoriteUrl');
+    const title = titleInput.value.trim();
+    const url = urlInput.value.trim();
+
+    if (!url) {
+      urlInput.setCustomValidity('Please enter a URL.');
+      urlInput.reportValidity();
+      return;
+    }
+
+    try {
+      new URL(url);
+      urlInput.setCustomValidity('');
+    } catch {
+      urlInput.setCustomValidity('Please enter a valid URL.');
+      urlInput.reportValidity();
+      return;
+    }
+
     const next = { type: 'tab', id: item?.id || uid(), title: title || url, url };
     if (item) model.favorites[index] = next;
     else model.favorites.push(next);
@@ -74,7 +98,7 @@ async function openFavoriteEditor(index = null) {
 }
 
 function favoriteTiles() {
-  return [...favoritesEl.querySelectorAll('.favorite-tile:not(.favorite-add-tile)')];
+  return [...favoritesEl.querySelectorAll('.favorite-tile')];
 }
 
 function decorateFavorites() {
@@ -112,19 +136,9 @@ function decorateFavorites() {
       await saveModel(model);
     });
   });
-
-  let add = favoritesEl.querySelector('.favorite-add-tile');
-  if (!add) {
-    add = document.createElement('button');
-    add.type = 'button';
-    add.className = 'favorite-tile favorite-add-tile';
-    add.title = 'Add favorite';
-    add.setAttribute('aria-label', 'Add favorite');
-    add.textContent = '+';
-    add.addEventListener('click', () => openFavoriteEditor(null));
-    favoritesEl.append(add);
-  }
 }
+
+addFavoriteButton?.addEventListener('click', () => openFavoriteEditor(null));
 
 const observer = new MutationObserver(() => queueMicrotask(decorateFavorites));
 if (favoritesEl) {
