@@ -27,20 +27,17 @@ function hideTooltip() {
 
 function showTooltip(button) {
   const label = labelFor(button);
-  if (!label) return;
+  if (!label || !button.isConnected) return;
 
   const tip = ensureTooltip();
   tip.textContent = label;
   tip.hidden = false;
 
-  // Measure after making it visible, then position above the hovered Space icon.
   const rect = button.getBoundingClientRect();
   const tipRect = tip.getBoundingClientRect();
   const margin = 8;
-
   let left = rect.left + rect.width / 2 - tipRect.width / 2;
   left = Math.max(margin, Math.min(left, window.innerWidth - tipRect.width - margin));
-
   let top = rect.top - tipRect.height - 8;
   if (top < margin) top = rect.bottom + 8;
 
@@ -51,8 +48,6 @@ function showTooltip(button) {
 function decorateButton(button) {
   if (button.dataset.customTooltipManaged === '1') return;
   button.dataset.customTooltipManaged = '1';
-
-  // Avoid relying on Chromium's native title tooltip inside the Side Panel.
   button.removeAttribute('title');
 
   button.addEventListener('mouseenter', () => {
@@ -69,16 +64,11 @@ function decorateButton(button) {
 
 function syncSpaceTooltips() {
   if (!spacesEl) return;
-  for (const button of spacesEl.querySelectorAll('.space-button')) {
-    decorateButton(button);
-  }
+  hideTooltip();
+  for (const button of spacesEl.querySelectorAll('.space-button')) decorateButton(button);
 }
 
-const observer = new MutationObserver(() => queueMicrotask(syncSpaceTooltips));
-if (spacesEl) {
-  observer.observe(spacesEl, { childList: true, subtree: true });
-  syncSpaceTooltips();
-}
-
+window.addEventListener('arc-sidebar-rendered', () => queueMicrotask(syncSpaceTooltips));
+syncSpaceTooltips();
 window.addEventListener('resize', hideTooltip);
 window.addEventListener('scroll', hideTooltip, true);
