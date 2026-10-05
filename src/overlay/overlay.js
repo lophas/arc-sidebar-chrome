@@ -102,6 +102,7 @@
 
   const edge = shadow.querySelector('.edge');
   const panel = shadow.querySelector('.panel');
+  const iframe = shadow.querySelector('iframe');
   const resizeHandle = shadow.querySelector('.resize-handle');
   let showTimer = null;
   let hideTimer = null;
@@ -132,6 +133,11 @@
     hideTimer = null;
   };
 
+  const cancelClose = () => {
+    if (hideTimer) clearTimeout(hideTimer);
+    hideTimer = null;
+  };
+
   const forceClosePanel = () => {
     clearTimers();
     isOpen = false;
@@ -146,8 +152,7 @@
 
   const openPanel = () => {
     if (nativePanelOpen) return;
-    if (hideTimer) clearTimeout(hideTimer);
-    hideTimer = null;
+    cancelClose();
     if (isOpen) return;
     isOpen = true;
     panel.classList.add('open');
@@ -164,8 +169,7 @@
 
   const scheduleOpen = () => {
     if (nativePanelOpen) return;
-    if (hideTimer) clearTimeout(hideTimer);
-    hideTimer = null;
+    cancelClose();
     if (isOpen || showTimer) return;
     showTimer = setTimeout(() => {
       showTimer = null;
@@ -178,7 +182,7 @@
     if (showTimer) clearTimeout(showTimer);
     showTimer = null;
     if (!isOpen) return;
-    if (hideTimer) clearTimeout(hideTimer);
+    cancelClose();
     hideTimer = setTimeout(() => {
       hideTimer = null;
       closePanel();
@@ -203,11 +207,20 @@
     }
   });
 
-  panel.addEventListener('mouseenter', () => {
-    if (hideTimer) clearTimeout(hideTimer);
-    hideTimer = null;
+  // An iframe is a separate browsing context. Crossing from the panel host into
+  // the iframe can look like a mouseleave on some Chrome/macOS builds. Treat the
+  // iframe itself as part of the hover surface and cancel any pending close as
+  // soon as the pointer enters it.
+  panel.addEventListener('mouseenter', cancelClose);
+  iframe.addEventListener('mouseenter', cancelClose);
+  iframe.addEventListener('pointerenter', cancelClose);
+
+  panel.addEventListener('mouseleave', event => {
+    const target = event.relatedTarget;
+    if (target === iframe || (target instanceof Node && panel.contains(target))) return;
+    scheduleClose();
   });
-  panel.addEventListener('mouseleave', scheduleClose);
+  iframe.addEventListener('mouseleave', scheduleClose);
 
   resizeHandle.addEventListener('pointerdown', event => {
     if (nativePanelOpen || event.button !== 0) return;
