@@ -63,6 +63,7 @@ Arc Sidebar deliberately uses Chrome as the execution layer, which enables a few
 - **Native Chrome Side Panel fallback:** the toolbar button can open the persistent Chrome Side Panel when you want the sidebar to stay visible.
 - **Persistent live-tab binding:** if a pinned page navigates away from its original URL, it still belongs to that sidebar item.
 - **Chrome restart recovery:** restored Chrome tabs are reconnected to their saved sidebar items after restart when they can be matched safely.
+- **Optional Chrome Sync:** sync Spaces, Favorites, folders and pinned links between Chrome installations signed into the same Chrome Sync account.
 - **One-click folder cleanup:** close every live tab belonging to a folder without deleting any saved links.
 - **Low-memory model:** saved sidebar entries do not require open Chrome tabs.
 - **System light/dark mode:** the sidebar follows the operating system theme in both Side Panel and overlay modes.
@@ -76,7 +77,7 @@ This is not a full Arc reimplementation. The following are intentionally out of 
 - Notes / Easel
 - Arc AI features
 - full Arc Archive/history migration
-- Arc account sync or cross-device sidebar sync
+- Arc account sync
 - Arc’s complete command-bar / browser-chrome experience
 
 Chrome also restricts extensions on some privileged pages such as `chrome://` pages, the Chrome Web Store and certain browser error/interstitial pages. The edge-activated overlay cannot run there; use the normal Chrome Side Panel instead.
@@ -88,7 +89,7 @@ There are two supported ways to install the extension. Because this project is n
 ### Recommended: install a GitHub Release
 
 1. Open the repository’s **Releases** page.
-2. Download the latest file named similar to `arc-sidebar-chrome-v0.5.0.zip`.
+2. Download the latest file named similar to `arc-sidebar-chrome-v0.6.0.zip`.
 3. Unzip it to a permanent folder. Do not delete that folder after installation.
 4. Open `chrome://extensions` in Chrome.
 5. Enable **Developer mode** in the top-right corner.
@@ -125,6 +126,31 @@ Then click **Reload** on the extension card in `chrome://extensions`.
 
 Importing is destructive with respect to the extension’s existing sidebar model: it replaces the current Arc Sidebar data. It does not modify Arc itself.
 
+## Chrome Sync
+
+Cross-device sync is optional and is disabled until you turn it on.
+
+Open **Extensions → Arc Sidebar for Chrome → Details → Extension options**, then enable **Chrome Sync**.
+
+When enabled, Chrome Sync carries the persistent sidebar model between Chrome installations using the same Chrome Sync account:
+
+- Spaces
+- Favorites
+- folders
+- pinned links
+
+The following deliberately stay local to each computer:
+
+- currently open Chrome tabs
+- live saved-item ↔ tab bindings
+- restored-tab recovery state
+- collapsed folder state
+- overlay sidebar width
+
+The sidebar model is kept in local storage as the runtime copy and mirrored to `chrome.storage.sync` in quota-safe chunks. If two copies differ, the newer local or synced model wins based on modification time. Disabling sync stops future synchronization but does not delete your local sidebar data.
+
+If Chrome itself is not signed in or Chrome Sync is disabled, `chrome.storage.sync` cannot provide normal cross-device synchronization.
+
 ## Everyday workflow
 
 - Click a Favorite or pinned item once to open it.
@@ -141,9 +167,9 @@ Importing is destructive with respect to the extension’s existing sidebar mode
 
 Arc Sidebar is a local-first Manifest V3 extension built on Chrome’s Side Panel, Tabs, Tab Groups, Storage and favicon APIs.
 
-The persistent sidebar model is stored locally in Chrome storage. Live item-to-tab bindings use session storage, with a small local recovery snapshot used to reconnect restored tabs after Chrome restarts.
+The persistent sidebar model is always kept locally in Chrome storage. If Chrome Sync is enabled in the extension settings, that model is additionally mirrored through Chrome’s `storage.sync` service in chunks. Live item-to-tab bindings use session storage, with a small local recovery snapshot used to reconnect restored tabs after Chrome restarts.
 
-The extension does not require an Arc account or a cloud backend.
+The extension does not require an Arc account or its own cloud backend.
 
 ## Release packaging
 
@@ -152,15 +178,15 @@ Release ZIPs are generated from the tagged source and contain only the files Chr
 Maintainers can create a release by pushing a version tag matching the manifest version, for example:
 
 ```bash
-git tag v0.5.0
-git push origin v0.5.0
+git tag v0.6.0
+git push origin v0.6.0
 ```
 
 The GitHub Actions release workflow packages the extension and publishes the ZIP as a GitHub Release asset.
 
 ## Current version
 
-**v0.5.0**
+**v0.6.0**
 
 ## License
 
