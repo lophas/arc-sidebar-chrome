@@ -1,5 +1,6 @@
 const STORAGE_KEY = 'arcSidebarModel';
 const STATE_KEY = 'arcSidebarState';
+const BINDINGS_KEY = 'arcSidebarBindings';
 const OPEN_TABS_SPACE_ID = '__open_tabs__';
 
 const pinnedEl = document.querySelector('#pinned');
@@ -74,6 +75,39 @@ function findFolderLocation(nodes, id) {
     }
   }
   return null;
+}
+
+function collectTabIds(nodes, out = []) {
+  for (const node of nodes || []) {
+    if (node.type === 'tab' && node.id) out.push(node.id);
+    if (node.type === 'folder') collectTabIds(node.children || [], out);
+  }
+  return out;
+}
+
+async function closeFolderTabs(folder, bindings) {
+  const itemIds = new Set(collectTabIds(folder.children || []));
+  if (!itemIds.size) return;
+
+  const tabIds = [];
+  let changed = false;
+  for (const itemId of itemIds) {
+    const tabId = bindings[itemId];
+    if (tabId == null) continue;
+    const numericTabId = Number(tabId);
+    if (Number.isInteger(numericTabId)) tabIds.push(numericTabId);
+    delete bindings[itemId];
+    changed = true;
+  }
+
+  if (!changed) return;
+
+  // Clear the item↔tab bindings first so tab removal events cannot race with
+  // the sidebar state. The saved pinned links themselves remain untouched.
+  await chrome.storage.session.set({ [BINDINGS_KEY]: bindings });
+  if (tabIds.length) {
+    try { await chrome.tabs.remove([...new Set(tabIds)]); } catch {}
+  }
 }
 
 function ensureFolderDialog() {
@@ -158,27 +192,63 @@ async function openFolderEditor(folderId = null) {
 
 async function decorateFolders() {
   if (!pinnedEl) return;
-  const stored = await getData();
+  const [stored, session] = await Promise.all([
+    getData(),
+    chrome.storage.session.get(BINDINGS_KEY)
+  ]);
   const model = stored[STORAGE_KEY];
   const state = stored[STATE_KEY] || { currentSpaceId: null, collapsedFolders: {} };
+  const bindings = session[BINDINGS_KEY] || {};
   const space = currentSpace(model, state);
   if (!space) return;
 
   const q = searchEl?.value.trim().toLowerCase() || '';
   const folders = visibleFolderNodes(space.children || [], q);
   const headers = [...pinnedEl.querySelectorAll('.folder-header')];
+
   headers.forEach((header, index) => {
     const folder = folders[index];
-    if (!folder || header.dataset.folderEditManaged === '1') return;
-    header.dataset.folderEditManaged = '1';
-    header.dataset.folderEditId = folder.id;
-    header.classList.add('managed-folder');
-    header.title = `${header.title || folder.title}\nRight-click to rename or remove`;
-    header.addEventListener('contextmenu', event => {
+    if (!folder) return;
+
+    if (header.dataset.folderEditManaged !== '1') {
+      header.dataset.folderEditManaged = '1';
+      header.dataset.folderEditId = folder.id;
+      header.classList.add('managed-folder');
+      header.title = `${header.title || folder.title}\nRight-click to rename or remove`;
+      header.addEventListener('contextmenu', event => {
+        event.preventDefault();
+        event.stopPropagation();
+        openFolderEditor(folder.id);
+      });
+    }
+
+    const liveItemIds = collectTabIds(folder.children || []).filter(itemId => bindings[itemId] != null);
+    let closeButton = header.querySelector('.folder-reset');
+
+    if (!liveItemIds.length) {
+      header.classList.remove('has-live-tabs');
+      closeButton?.remove();
+      return;
+    }
+
+    header.classList.add('has-live-tabs');
+    if (!closeButton) {
+      closeButton = document.createElement('button');
+      closeButton.type = 'button';
+      closeButton.className = 'folder-reset';
+      closeButton.textContent = '−';
+      header.append(closeButton);
+    }
+
+    const count = liveItemIds.length;
+    closeButton.title = `Close ${count} open tab${count === 1 ? '' : 's'} in this folder`;
+    closeButton.setAttribute('aria-label', `Close ${count} open tab${count === 1 ? '' : 's'} in ${folder.title || 'folder'}`);
+    closeButton.onclick = async event => {
       event.preventDefault();
       event.stopPropagation();
-      openFolderEditor(folder.id);
-    });
+      const latest = await chrome.storage.session.get(BINDINGS_KEY);
+      await closeFolderTabs(folder, latest[BINDINGS_KEY] || {});
+    };
   });
 }
 
