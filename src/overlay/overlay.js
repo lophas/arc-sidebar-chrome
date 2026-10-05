@@ -107,6 +107,7 @@
   let hideTimer = null;
   let isOpen = false;
   let isResizing = false;
+  let nativePanelOpen = false;
   let currentWidth = DEFAULT_PANEL_WIDTH;
 
   const applyWidth = value => {
@@ -131,7 +132,20 @@
     hideTimer = null;
   };
 
+  const forceClosePanel = () => {
+    clearTimers();
+    isOpen = false;
+    panel.classList.remove('open');
+  };
+
+  const setNativePanelOpen = open => {
+    nativePanelOpen = Boolean(open);
+    edge.style.pointerEvents = nativePanelOpen ? 'none' : 'auto';
+    if (nativePanelOpen) forceClosePanel();
+  };
+
   const openPanel = () => {
+    if (nativePanelOpen) return;
     if (hideTimer) clearTimeout(hideTimer);
     hideTimer = null;
     if (isOpen) return;
@@ -149,6 +163,7 @@
   };
 
   const scheduleOpen = () => {
+    if (nativePanelOpen) return;
     if (hideTimer) clearTimeout(hideTimer);
     hideTimer = null;
     if (isOpen || showTimer) return;
@@ -170,6 +185,16 @@
     }, HIDE_DELAY);
   };
 
+  chrome.runtime.sendMessage({ type: 'arc-native-sidepanel-is-open' })
+    .then(response => setNativePanelOpen(response?.open))
+    .catch(() => {});
+
+  chrome.runtime.onMessage.addListener(message => {
+    if (message?.type === 'arc-native-sidepanel-state') {
+      setNativePanelOpen(message.open);
+    }
+  });
+
   edge.addEventListener('mouseenter', scheduleOpen);
   edge.addEventListener('mouseleave', () => {
     if (!isOpen && showTimer) {
@@ -185,7 +210,7 @@
   panel.addEventListener('mouseleave', scheduleClose);
 
   resizeHandle.addEventListener('pointerdown', event => {
-    if (event.button !== 0) return;
+    if (nativePanelOpen || event.button !== 0) return;
     event.preventDefault();
     event.stopPropagation();
 
