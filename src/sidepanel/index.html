@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Arc Sidebar</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <div class="app-title">Arc Sidebar</div>
+      <div id="stats" class="muted">No Arc data imported</div>
+    </div>
+    <label class="import-button">
+      Import Arc
+      <input id="arcFile" type="file" accept="application/json,.json" hidden>
+    </label>
+  </header>
+
+  <div class="search-wrap">
+    <input id="search" type="search" placeholder="Search pinned and open tabs…" autocomplete="off">
+  </div>
+
+  <nav id="spaces" class="spaces" aria-label="Spaces"></nav>
+
+  <main>
+    <section>
+      <div class="section-title">Pinned</div>
+      <div id="pinned"></div>
+    </section>
+
+    <section class="open-section">
+      <div class="section-title">Open tabs <span id="openCount" class="muted"></span></div>
+      <div id="openTabs"></div>
+    </section>
+  </main>
+
+  <template id="emptyTemplate">
+    <div class="empty-state">
+      <strong>Import your Arc sidebar</strong>
+      <span>Select <code>StorableSidebar.json</code>. Spaces, folders and pinned tabs are stored locally in Chrome.</span>
+    </div>
+  </template>
+
+  <script type="module" src="index.js"></script>
+</body>
+</html>
