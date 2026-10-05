@@ -169,15 +169,15 @@ Release ZIPs are generated from the tagged source and contain only the files Chr
 Maintainers can create a release by pushing a version tag matching the manifest version, for example:
 
 ```bash
-git tag v0.6.0
-git push origin v0.6.0
+git tag v0.6.1
+git push origin v0.6.1
 ```
 
 The GitHub Actions release workflow packages the extension and publishes the ZIP as a GitHub Release asset.
 
 ## Current version
 
-**v0.6.0**
+**v0.6.1**
 
 ## License
 
