@@ -2,6 +2,8 @@ const STORAGE_KEY = 'arcSidebarModel';
 const STATE_KEY = 'arcSidebarState';
 const BINDINGS_KEY = 'arcSidebarBindings';
 const OPEN_TABS_SPACE_ID = '__open_tabs__';
+const TAB_ID_NONE = -1;
+const TAB_REFRESH_DELAY = 50;
 
 const els = {
   arcFile: document.querySelector('#arcFile'),
@@ -23,6 +25,11 @@ let state = { currentSpaceId: null, collapsedFolders: {} };
 let bindings = {};
 let openTabs = [];
 let allTabs = [];
+let tabsById = new Map();
+let refreshTimer = null;
+let refreshRunning = false;
+let refreshPending = false;
+let renderFrame = null;
 
 function pairArray(arr = []) {
   const out = new Map();
@@ -55,6 +62,29 @@ function translateArcInternalUrl(url) {
   if (url.startsWith('arc://password-manager')) return 'chrome://password-manager/passwords';
   if (url.startsWith('arc://settings')) return 'chrome://settings/';
   return '';
+}
+
+function recalcStats(targetModel) {
+  const stats = {
+    spaces: targetModel?.spaces?.length || 0,
+    folders: 0,
+    tabs: 0,
+    favorites: targetModel?.favorites?.length || 0
+  };
+
+  const walk = nodes => {
+    for (const node of nodes || []) {
+      if (node.type === 'tab') stats.tabs += 1;
+      if (node.type === 'folder') {
+        stats.folders += 1;
+        walk(node.children || []);
+      }
+    }
+  };
+
+  for (const space of targetModel?.spaces || []) walk(space.children || []);
+  targetModel.stats = stats;
+  return targetModel;
 }
 
 function parseArcSidebar(json) {
@@ -121,25 +151,13 @@ function parseArcSidebar(json) {
       .filter(item => item?.type === 'tab');
   }
 
-  const count = { spaces: spaces.length, folders: 0, tabs: 0, favorites: favorites.length };
-  const walk = nodes => {
-    for (const node of nodes) {
-      if (node.type === 'tab') count.tabs += 1;
-      if (node.type === 'folder') {
-        count.folders += 1;
-        walk(node.children || []);
-      }
-    }
-  };
-  spaces.forEach(space => walk(space.children));
-
-  return {
+  return recalcStats({
     version: 2,
     importedAt: new Date().toISOString(),
     favorites,
     spaces,
-    stats: count
-  };
+    stats: null
+  });
 }
 
 function domainFor(url) {
@@ -164,12 +182,27 @@ async function saveBindings() {
   await chrome.storage.session.set({ [BINDINGS_KEY]: bindings });
 }
 
+function normalizeState() {
+  const validSpace = state.currentSpaceId === OPEN_TABS_SPACE_ID || model?.spaces?.some(space => space.id === state.currentSpaceId);
+  if (model?.spaces?.length && !validSpace) state.currentSpaceId = model.spaces[0].id;
+}
+
+async function loadData() {
+  const [stored, session] = await Promise.all([
+    chrome.storage.local.get([STORAGE_KEY, STATE_KEY]),
+    chrome.storage.session.get(BINDINGS_KEY)
+  ]);
+  model = stored[STORAGE_KEY] || null;
+  state = { currentSpaceId: null, collapsedFolders: {}, ...(stored[STATE_KEY] || {}) };
+  bindings = session[BINDINGS_KEY] || {};
+  normalizeState();
+}
+
 function collectSavedItemIds() {
   const ids = new Set();
   for (const item of model?.favorites || []) {
     if (item?.type === 'tab' && item.id) ids.add(item.id);
   }
-
   const walk = nodes => {
     for (const node of nodes || []) {
       if (node.type === 'tab' && node.id) ids.add(node.id);
@@ -180,47 +213,63 @@ function collectSavedItemIds() {
   return ids;
 }
 
-async function loadData() {
-  const stored = await chrome.storage.local.get([STORAGE_KEY, STATE_KEY]);
-  const session = await chrome.storage.session.get(BINDINGS_KEY);
-  model = stored[STORAGE_KEY] || null;
-  state = { currentSpaceId: null, collapsedFolders: {}, ...(stored[STATE_KEY] || {}) };
-  bindings = session[BINDINGS_KEY] || {};
-
-  const validSpace = state.currentSpaceId === OPEN_TABS_SPACE_ID || model?.spaces?.some(s => s.id === state.currentSpaceId);
-  if (model?.spaces?.length && !validSpace) {
-    state.currentSpaceId = model.spaces[0].id;
-  }
-}
-
 async function validateBindings() {
   const savedIds = collectSavedItemIds();
-  const liveIds = new Set(allTabs.map(tab => tab.id).filter(id => id != null));
   let changed = false;
-
   for (const [itemId, tabId] of Object.entries(bindings)) {
-    if (!savedIds.has(itemId) || !liveIds.has(tabId)) {
+    if (!savedIds.has(itemId) || !tabsById.has(Number(tabId))) {
       delete bindings[itemId];
       changed = true;
     }
   }
-
   if (changed) await saveBindings();
 }
 
 function boundTabFor(itemId) {
   const tabId = bindings[itemId];
-  if (tabId == null) return null;
-  return allTabs.find(tab => tab.id === tabId) || null;
+  return tabId == null ? null : tabsById.get(Number(tabId)) || null;
 }
 
-async function refreshOpenTabs() {
-  [openTabs, allTabs] = await Promise.all([
-    chrome.tabs.query({ currentWindow: true }),
-    chrome.tabs.query({})
-  ]);
-  await validateBindings();
-  render();
+async function expandAndActivateTab(tabId) {
+  const tab = tabsById.get(Number(tabId)) || await chrome.tabs.get(Number(tabId));
+  if (tab.groupId != null && tab.groupId !== TAB_ID_NONE) {
+    try { await chrome.tabGroups.update(tab.groupId, { collapsed: false }); } catch {}
+  }
+  await chrome.tabs.update(tab.id, { active: true });
+  if (tab.windowId != null) {
+    try { await chrome.windows.update(tab.windowId, { focused: true }); } catch {}
+  }
+}
+
+async function refreshOpenTabsNow() {
+  if (refreshRunning) {
+    refreshPending = true;
+    return;
+  }
+  refreshRunning = true;
+  try {
+    [openTabs, allTabs] = await Promise.all([
+      chrome.tabs.query({ currentWindow: true }),
+      chrome.tabs.query({})
+    ]);
+    tabsById = new Map(allTabs.filter(tab => tab.id != null).map(tab => [tab.id, tab]));
+    await validateBindings();
+    render();
+  } finally {
+    refreshRunning = false;
+    if (refreshPending) {
+      refreshPending = false;
+      scheduleTabRefresh(0);
+    }
+  }
+}
+
+function scheduleTabRefresh(delay = TAB_REFRESH_DELAY) {
+  if (refreshTimer) clearTimeout(refreshTimer);
+  refreshTimer = setTimeout(() => {
+    refreshTimer = null;
+    refreshOpenTabsNow().catch(error => console.error('Arc Sidebar: tab refresh failed', error));
+  }, delay);
 }
 
 async function focusOrOpen(saved) {
@@ -228,9 +277,10 @@ async function focusOrOpen(saved) {
 
   const existing = boundTabFor(saved.id);
   if (existing?.id != null) {
-    await chrome.tabs.update(existing.id, { active: true });
-    if (existing.windowId != null) await chrome.windows.update(existing.windowId, { focused: true });
-    return;
+    try {
+      await expandAndActivateTab(existing.id);
+      return;
+    } catch {}
   }
 
   if (bindings[saved.id] != null) {
@@ -243,7 +293,7 @@ async function focusOrOpen(saved) {
     bindings[saved.id] = created.id;
     await saveBindings();
   }
-  await refreshOpenTabs();
+  scheduleTabRefresh(0);
 }
 
 async function resetSavedTab(saved) {
@@ -253,18 +303,14 @@ async function resetSavedTab(saved) {
 
   delete bindings[saved.id];
   await saveBindings();
-
-  try {
-    await chrome.tabs.remove(tabId);
-  } catch {}
-
-  await refreshOpenTabs();
+  try { await chrome.tabs.remove(Number(tabId)); } catch {}
+  scheduleTabRefresh(0);
 }
 
 async function removeBindingsForTab(tabId) {
   let changed = false;
   for (const [itemId, boundTabId] of Object.entries(bindings)) {
-    if (boundTabId === tabId) {
+    if (Number(boundTabId) === Number(tabId)) {
       delete bindings[itemId];
       changed = true;
     }
@@ -275,7 +321,7 @@ async function removeBindingsForTab(tabId) {
 async function replaceBoundTab(removedTabId, addedTabId) {
   let changed = false;
   for (const [itemId, boundTabId] of Object.entries(bindings)) {
-    if (boundTabId === removedTabId) {
+    if (Number(boundTabId) === Number(removedTabId)) {
       bindings[itemId] = addedTabId;
       changed = true;
     }
@@ -285,15 +331,14 @@ async function replaceBoundTab(removedTabId, addedTabId) {
 
 function currentSpace() {
   if (state.currentSpaceId === OPEN_TABS_SPACE_ID) return null;
-  return model?.spaces?.find(s => s.id === state.currentSpaceId) || model?.spaces?.[0] || null;
+  return model?.spaces?.find(space => space.id === state.currentSpaceId) || model?.spaces?.[0] || null;
 }
 
 function matchesSearch(node, q) {
   if (!q) return true;
   const haystack = `${node.title || ''} ${node.url || ''}`.toLowerCase();
   if (haystack.includes(q)) return true;
-  if (node.type === 'folder') return (node.children || []).some(child => matchesSearch(child, q));
-  return false;
+  return node.type === 'folder' && (node.children || []).some(child => matchesSearch(child, q));
 }
 
 function createTabRow(item, { live = false, active = false, boundTab = null } = {}) {
@@ -303,9 +348,7 @@ function createTabRow(item, { live = false, active = false, boundTab = null } = 
 
   const favicon = document.createElement('img');
   favicon.className = 'favicon';
-  favicon.src = live && item.favIconUrl
-    ? item.favIconUrl
-    : boundTab?.favIconUrl || faviconFor(item.url);
+  favicon.src = live && item.favIconUrl ? item.favIconUrl : boundTab?.favIconUrl || faviconFor(item.url);
   favicon.alt = '';
   favicon.addEventListener('error', () => {
     const fallback = document.createElement('span');
@@ -321,7 +364,6 @@ function createTabRow(item, { live = false, active = false, boundTab = null } = 
   const domain = document.createElement('span');
   domain.className = 'row-domain';
   domain.textContent = domainFor(item.url);
-
   row.append(favicon, title, domain);
 
   if (live) {
@@ -335,8 +377,8 @@ function createTabRow(item, { live = false, active = false, boundTab = null } = 
       if (item.id != null) await chrome.tabs.remove(item.id);
     });
     row.append(close);
-    row.addEventListener('click', async () => {
-      if (item.id != null) await chrome.tabs.update(item.id, { active: true });
+    row.addEventListener('click', () => {
+      if (item.id != null) expandAndActivateTab(item.id).catch(() => {});
     });
   } else {
     if (boundTab) {
@@ -366,39 +408,37 @@ function renderNode(node, q) {
     return createTabRow(node, { active: Boolean(boundTab?.active), boundTab });
   }
 
-  if (node.type === 'folder') {
-    const folder = document.createElement('div');
-    folder.className = 'folder';
-    if (state.collapsedFolders[node.id] && !q) folder.classList.add('collapsed');
+  if (node.type !== 'folder') return null;
 
-    const header = document.createElement('div');
-    header.className = 'folder-header';
-    const caret = document.createElement('span');
-    caret.className = 'folder-caret';
-    caret.textContent = folder.classList.contains('collapsed') ? '▶' : '▼';
-    const title = document.createElement('span');
-    title.className = 'row-title';
-    title.textContent = node.title;
-    header.append(caret, title);
+  const folder = document.createElement('div');
+  folder.className = 'folder';
+  if (state.collapsedFolders[node.id] && !q) folder.classList.add('collapsed');
 
-    const children = document.createElement('div');
-    children.className = 'folder-children';
-    for (const child of node.children || []) {
-      const rendered = renderNode(child, q);
-      if (rendered) children.append(rendered);
-    }
+  const header = document.createElement('div');
+  header.className = 'folder-header';
+  const caret = document.createElement('span');
+  caret.className = 'folder-caret';
+  caret.textContent = folder.classList.contains('collapsed') ? '▶' : '▼';
+  const title = document.createElement('span');
+  title.className = 'row-title';
+  title.textContent = node.title;
+  header.append(caret, title);
 
-    header.addEventListener('click', async () => {
-      state.collapsedFolders[node.id] = !folder.classList.contains('collapsed');
-      await saveState();
-      render();
-    });
-
-    folder.append(header, children);
-    return folder;
+  const children = document.createElement('div');
+  children.className = 'folder-children';
+  for (const child of node.children || []) {
+    const rendered = renderNode(child, q);
+    if (rendered) children.append(rendered);
   }
 
-  return null;
+  header.addEventListener('click', async () => {
+    state.collapsedFolders[node.id] = !folder.classList.contains('collapsed');
+    await saveState();
+    render();
+  });
+
+  folder.append(header, children);
+  return folder;
 }
 
 function renderFavorites() {
@@ -462,8 +502,10 @@ function renderSpaces() {
     button.type = 'button';
     button.textContent = space.emoji || label.slice(0, 1).toUpperCase();
     button.dataset.label = label;
+    button.dataset.spaceId = space.id;
     button.setAttribute('aria-label', label);
     button.addEventListener('click', async () => {
+      if (state.currentSpaceId === space.id) return;
       state.currentSpaceId = space.id;
       await saveState();
       render();
@@ -477,14 +519,15 @@ function renderSpaces() {
   openButton.type = 'button';
   openButton.textContent = '🪟';
   openButton.dataset.label = openLabel;
+  openButton.dataset.spaceId = OPEN_TABS_SPACE_ID;
   openButton.setAttribute('aria-label', openLabel);
 
   const count = document.createElement('span');
   count.className = 'space-count';
   count.textContent = String(openTabs.length);
   openButton.append(count);
-
   openButton.addEventListener('click', async () => {
+    if (state.currentSpaceId === OPEN_TABS_SPACE_ID) return;
     state.currentSpaceId = OPEN_TABS_SPACE_ID;
     await saveState();
     render();
@@ -534,7 +577,6 @@ function renderOpenTabs() {
     return `${tab.title || ''} ${tab.url || ''}`.toLowerCase().includes(q);
   });
   els.openCount.textContent = `(${openTabs.length})`;
-
   for (const tab of visibleTabs) {
     els.openTabs.append(createTabRow(tab, { live: true, active: Boolean(tab.active) }));
   }
@@ -556,21 +598,26 @@ function render() {
   renderSpaces();
   renderPinned();
   renderOpenTabs();
+  window.dispatchEvent(new CustomEvent('arc-sidebar-rendered'));
+}
+
+function scheduleRender() {
+  if (renderFrame != null) return;
+  renderFrame = requestAnimationFrame(() => {
+    renderFrame = null;
+    render();
+  });
 }
 
 els.arcFile.addEventListener('change', async event => {
   const file = event.target.files?.[0];
   if (!file) return;
-
   try {
-    const json = JSON.parse(await file.text());
-    model = parseArcSidebar(json);
+    model = parseArcSidebar(JSON.parse(await file.text()));
     state.currentSpaceId = model.spaces[0]?.id || OPEN_TABS_SPACE_ID;
     state.collapsedFolders = {};
     bindings = {};
-    await saveModel();
-    await saveState();
-    await saveBindings();
+    await Promise.all([saveModel(), saveState(), saveBindings()]);
     render();
   } catch (error) {
     console.error(error);
@@ -580,19 +627,41 @@ els.arcFile.addEventListener('change', async event => {
   }
 });
 
-els.search.addEventListener('input', render);
+els.search.addEventListener('input', scheduleRender);
 
-chrome.tabs.onCreated.addListener(refreshOpenTabs);
+chrome.tabs.onCreated.addListener(() => scheduleTabRefresh());
 chrome.tabs.onRemoved.addListener(async tabId => {
   await removeBindingsForTab(tabId);
-  await refreshOpenTabs();
+  scheduleTabRefresh(0);
 });
-chrome.tabs.onUpdated.addListener(refreshOpenTabs);
-chrome.tabs.onActivated.addListener(refreshOpenTabs);
+chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
+  if (!changeInfo.url && !changeInfo.title && !changeInfo.favIconUrl && changeInfo.status !== 'complete') return;
+  scheduleTabRefresh();
+});
+chrome.tabs.onActivated.addListener(() => scheduleTabRefresh(0));
+chrome.tabs.onMoved.addListener(() => scheduleTabRefresh());
+chrome.tabs.onAttached.addListener(() => scheduleTabRefresh());
+chrome.tabs.onDetached.addListener(() => scheduleTabRefresh());
 chrome.tabs.onReplaced.addListener(async (addedTabId, removedTabId) => {
   await replaceBoundTab(removedTabId, addedTabId);
-  await refreshOpenTabs();
+  scheduleTabRefresh(0);
+});
+
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === 'local') {
+    if (changes[STORAGE_KEY]) model = changes[STORAGE_KEY].newValue || null;
+    if (changes[STATE_KEY]) state = { currentSpaceId: null, collapsedFolders: {}, ...(changes[STATE_KEY].newValue || {}) };
+    if (changes[STORAGE_KEY] || changes[STATE_KEY]) {
+      normalizeState();
+      scheduleRender();
+    }
+  }
+
+  if (area === 'session' && changes[BINDINGS_KEY]) {
+    bindings = changes[BINDINGS_KEY].newValue || {};
+    scheduleTabRefresh(0);
+  }
 });
 
 await loadData();
-await refreshOpenTabs();
+await refreshOpenTabsNow();
