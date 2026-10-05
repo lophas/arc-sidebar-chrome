@@ -11,6 +11,8 @@
   const RESIZE_HANDLE_WIDTH = 7;
   const SHOW_DELAY = 80;
   const HIDE_DELAY = 320;
+  const themeMedia = window.matchMedia('(prefers-color-scheme: dark)');
+  const currentTheme = () => themeMedia.matches ? 'dark' : 'light';
 
   const clampWidth = value => {
     const viewportMax = Math.max(MIN_PANEL_WIDTH, Math.min(MAX_PANEL_WIDTH, window.innerWidth - 48));
@@ -21,9 +23,14 @@
   const host = document.createElement('div');
   host.id = 'arc-sidebar-overlay-host';
   host.style.all = 'initial';
+  host.style.colorScheme = currentTheme();
   document.documentElement.append(host);
 
   const shadow = host.attachShadow({ mode: 'closed' });
+  const sidebarUrl = new URL(chrome.runtime.getURL('src/sidepanel/index.html'));
+  sidebarUrl.searchParams.set('overlay', '1');
+  sidebarUrl.searchParams.set('theme', currentTheme());
+
   shadow.innerHTML = `
     <style>
       :host {
@@ -100,7 +107,7 @@
     <div class="edge" aria-hidden="true"></div>
     <div class="panel" role="complementary" aria-label="Arc Sidebar">
       <div class="resize-handle" title="Drag to resize sidebar" aria-hidden="true"></div>
-      <iframe title="Arc Sidebar" src="${chrome.runtime.getURL('src/sidepanel/index.html?overlay=1')}"></iframe>
+      <iframe title="Arc Sidebar" src="${sidebarUrl.href}"></iframe>
     </div>`;
 
   const edge = shadow.querySelector('.edge');
@@ -113,6 +120,20 @@
   let isResizing = false;
   let nativePanelOpen = false;
   let currentWidth = DEFAULT_PANEL_WIDTH;
+
+  const sendTheme = () => {
+    const theme = currentTheme();
+    host.style.colorScheme = theme;
+    panel.style.colorScheme = theme;
+    iframe.style.colorScheme = theme;
+    try {
+      iframe.contentWindow?.postMessage({ type: 'arc-sidebar-theme', theme }, '*');
+    } catch {}
+  };
+
+  iframe.addEventListener('load', sendTheme);
+  themeMedia.addEventListener('change', sendTheme);
+  sendTheme();
 
   const applyWidth = value => {
     currentWidth = clampWidth(value);
@@ -156,6 +177,7 @@
   const openPanel = () => {
     if (nativePanelOpen) return;
     cancelClose();
+    sendTheme();
     if (isOpen) return;
     isOpen = true;
     panel.classList.add('open');
