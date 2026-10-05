@@ -23,7 +23,6 @@ function recalcStats(model) {
     tabs: 0,
     favorites: model.favorites?.length || 0
   };
-
   const walk = nodes => {
     for (const node of nodes || []) {
       if (node.type === 'tab') stats.tabs += 1;
@@ -33,7 +32,6 @@ function recalcStats(model) {
       }
     }
   };
-
   for (const space of model.spaces || []) walk(space.children || []);
   model.stats = stats;
 }
@@ -43,7 +41,6 @@ async function saveData(model, state = null) {
   const values = { [STORAGE_KEY]: model };
   if (state) values[STATE_KEY] = state;
   await chrome.storage.local.set(values);
-  location.reload();
 }
 
 function currentSpace(model, state) {
@@ -55,8 +52,7 @@ function matchesSearch(node, q) {
   if (!q) return true;
   const haystack = `${node.title || ''} ${node.url || ''}`.toLowerCase();
   if (haystack.includes(q)) return true;
-  if (node.type === 'folder') return (node.children || []).some(child => matchesSearch(child, q));
-  return false;
+  return node.type === 'folder' && (node.children || []).some(child => matchesSearch(child, q));
 }
 
 function visibleFolderNodes(nodes, q, out = []) {
@@ -98,13 +94,11 @@ function ensureFolderDialog() {
       </div>
     </form>`;
   document.body.append(folderDialog);
-
   folderDialog.querySelector('#folderCancel').addEventListener('click', () => folderDialog.close());
   folderDialog.addEventListener('cancel', event => {
     event.preventDefault();
     folderDialog.close();
   });
-
   return folderDialog;
 }
 
@@ -139,32 +133,18 @@ async function openFolderEditor(folderId = null) {
       return;
     }
     nameInput.setCustomValidity('');
-
-    if (folder) {
-      folder.title = title;
-    } else {
-      space.children.push({
-        type: 'folder',
-        id: uid(),
-        title,
-        children: []
-      });
-    }
-
+    if (folder) folder.title = title;
+    else space.children.push({ type: 'folder', id: uid(), title, children: [] });
     dialog.close();
     await saveData(model);
   };
 
   deleteButton.onclick = async () => {
     if (!location) return;
-
-    // Safe removal: ungroup instead of deleting the folder contents.
     const children = location.node.children || [];
     location.parent.splice(location.index, 1, ...children);
-
     state.collapsedFolders ||= {};
     delete state.collapsedFolders[location.node.id];
-
     dialog.close();
     await saveData(model, state);
   };
@@ -178,7 +158,6 @@ async function openFolderEditor(folderId = null) {
 
 async function decorateFolders() {
   if (!pinnedEl) return;
-
   const stored = await getData();
   const model = stored[STORAGE_KEY];
   const state = stored[STATE_KEY] || { currentSpaceId: null, collapsedFolders: {} };
@@ -188,16 +167,13 @@ async function decorateFolders() {
   const q = searchEl?.value.trim().toLowerCase() || '';
   const folders = visibleFolderNodes(space.children || [], q);
   const headers = [...pinnedEl.querySelectorAll('.folder-header')];
-
   headers.forEach((header, index) => {
     const folder = folders[index];
     if (!folder || header.dataset.folderEditManaged === '1') return;
-
     header.dataset.folderEditManaged = '1';
     header.dataset.folderEditId = folder.id;
     header.classList.add('managed-folder');
     header.title = `${header.title || folder.title}\nRight-click to rename or remove`;
-
     header.addEventListener('contextmenu', event => {
       event.preventDefault();
       event.stopPropagation();
@@ -207,11 +183,5 @@ async function decorateFolders() {
 }
 
 addFolderButton?.addEventListener('click', () => openFolderEditor(null));
-
-const observer = new MutationObserver(() => queueMicrotask(decorateFolders));
-if (pinnedEl) {
-  observer.observe(pinnedEl, { childList: true, subtree: true });
-  decorateFolders();
-}
-
-searchEl?.addEventListener('input', () => queueMicrotask(decorateFolders));
+window.addEventListener('arc-sidebar-rendered', () => queueMicrotask(decorateFolders));
+decorateFolders();
