@@ -1,10 +1,15 @@
 const STORAGE_KEY = 'arcSidebarModel';
 const STATE_KEY = 'arcSidebarState';
+const OPEN_TABS_SPACE_ID = '__open_tabs__';
 
 const els = {
   arcFile: document.querySelector('#arcFile'),
   spaces: document.querySelector('#spaces'),
+  favoritesSection: document.querySelector('#favoritesSection'),
+  favorites: document.querySelector('#favorites'),
+  pinnedSection: document.querySelector('#pinnedSection'),
   pinned: document.querySelector('#pinned'),
+  openSection: document.querySelector('#openSection'),
   openTabs: document.querySelector('#openTabs'),
   openCount: document.querySelector('#openCount'),
   stats: document.querySelector('#stats'),
@@ -40,6 +45,15 @@ function getPinnedContainerId(space) {
   return index >= 0 ? ids[index + 1] : null;
 }
 
+function translateArcInternalUrl(url) {
+  if (!url?.startsWith('arc://')) return url || '';
+  if (url.startsWith('arc://downloads')) return 'chrome://downloads/';
+  if (url.startsWith('arc://history')) return 'chrome://history/';
+  if (url.startsWith('arc://password-manager')) return 'chrome://password-manager/passwords';
+  if (url.startsWith('arc://settings')) return 'chrome://settings/';
+  return '';
+}
+
 function parseArcSidebar(json) {
   const container = getSidebarContainer(json);
   const items = pairArray(container.items);
@@ -53,8 +67,8 @@ function parseArcSidebar(json) {
 
     if (raw?.data?.tab) {
       const tab = raw.data.tab;
-      const url = tab.savedURL || '';
-      if (!url || url.startsWith('arc://')) return null;
+      const url = translateArcInternalUrl(tab.savedURL || '');
+      if (!url) return null;
       return {
         type: 'tab',
         id,
@@ -94,7 +108,20 @@ function parseArcSidebar(json) {
     });
   }
 
-  const count = { spaces: spaces.length, folders: 0, tabs: 0 };
+  // Arc Favorites / Top Apps are global and appear above every Space.
+  // Prefer the default-profile Top Apps container, which corresponds to the
+  // global Favorites drawer in Arc.
+  let favorites = [];
+  const defaultTopAppsContainer = [...items.values()].find(raw =>
+    raw?.data?.itemContainer?.containerType?.topApps?._0?.default === true
+  );
+  if (defaultTopAppsContainer) {
+    favorites = (defaultTopAppsContainer.childrenIds || [])
+      .map(id => parseItem(id))
+      .filter(item => item?.type === 'tab');
+  }
+
+  const count = { spaces: spaces.length, folders: 0, tabs: 0, favorites: favorites.length };
   const walk = nodes => {
     for (const node of nodes) {
       if (node.type === 'tab') count.tabs += 1;
@@ -107,8 +134,9 @@ function parseArcSidebar(json) {
   spaces.forEach(space => walk(space.children));
 
   return {
-    version: 1,
+    version: 2,
     importedAt: new Date().toISOString(),
+    favorites,
     spaces,
     stats: count
   };
@@ -146,7 +174,8 @@ async function loadData() {
   const stored = await chrome.storage.local.get([STORAGE_KEY, STATE_KEY]);
   model = stored[STORAGE_KEY] || null;
   state = { currentSpaceId: null, collapsedFolders: {}, ...(stored[STATE_KEY] || {}) };
-  if (model?.spaces?.length && !model.spaces.some(s => s.id === state.currentSpaceId)) {
+  const validSpace = state.currentSpaceId === OPEN_TABS_SPACE_ID || model?.spaces?.some(s => s.id === state.currentSpaceId);
+  if (model?.spaces?.length && !validSpace) {
     state.currentSpaceId = model.spaces[0].id;
   }
 }
@@ -181,6 +210,7 @@ async function focusOrOpen(saved) {
 }
 
 function currentSpace() {
+  if (state.currentSpaceId === OPEN_TABS_SPACE_ID) return null;
   return model?.spaces?.find(s => s.id === state.currentSpaceId) || model?.spaces?.[0] || null;
 }
 
@@ -281,9 +311,46 @@ function renderNode(node, q) {
   return null;
 }
 
+function renderFavorites() {
+  els.favorites.replaceChildren();
+  const favorites = model?.favorites || [];
+  els.favoritesSection.classList.toggle('hidden', favorites.length === 0);
+
+  for (const item of favorites) {
+    const tile = document.createElement('button');
+    tile.type = 'button';
+    tile.className = 'favorite-tile';
+    tile.title = item.title || item.url;
+
+    const matchingTab = openTabs.find(tab => normalizedUrl(tab.url) === normalizedUrl(item.url));
+    if (matchingTab?.active) tile.classList.add('active');
+
+    const favicon = document.createElement('img');
+    favicon.src = matchingTab?.favIconUrl || faviconFor(item.url);
+    favicon.alt = '';
+    favicon.addEventListener('error', () => {
+      const fallback = document.createElement('span');
+      fallback.className = 'favicon-fallback';
+      fallback.textContent = '●';
+      favicon.replaceWith(fallback);
+    }, { once: true });
+    tile.append(favicon);
+
+    if (matchingTab) {
+      const dot = document.createElement('span');
+      dot.className = 'favorite-live-dot';
+      tile.append(dot);
+    }
+
+    tile.addEventListener('click', () => focusOrOpen(item));
+    els.favorites.append(tile);
+  }
+}
+
 function renderSpaces() {
   els.spaces.replaceChildren();
   if (!model?.spaces?.length) return;
+
   for (const space of model.spaces) {
     const button = document.createElement('button');
     button.className = `space-button${space.id === state.currentSpaceId ? ' active' : ''}`;
@@ -296,9 +363,24 @@ function renderSpaces() {
     });
     els.spaces.append(button);
   }
+
+  const openButton = document.createElement('button');
+  openButton.className = `space-button${state.currentSpaceId === OPEN_TABS_SPACE_ID ? ' active' : ''}`;
+  openButton.type = 'button';
+  openButton.textContent = `🪟 Open tabs (${openTabs.length})`;
+  openButton.addEventListener('click', async () => {
+    state.currentSpaceId = OPEN_TABS_SPACE_ID;
+    await saveState();
+    render();
+  });
+  els.spaces.append(openButton);
 }
 
 function renderPinned() {
+  const isOpenSpace = state.currentSpaceId === OPEN_TABS_SPACE_ID;
+  els.pinnedSection.classList.toggle('hidden', isOpenSpace);
+  if (isOpenSpace) return;
+
   els.pinned.replaceChildren();
   const space = currentSpace();
   if (!space) {
@@ -324,16 +406,20 @@ function renderPinned() {
 }
 
 function renderOpenTabs() {
+  const isOpenSpace = state.currentSpaceId === OPEN_TABS_SPACE_ID;
+  els.openSection.classList.toggle('hidden', !isOpenSpace);
+  if (!isOpenSpace) return;
+
   els.openTabs.replaceChildren();
   const q = els.search.value.trim().toLowerCase();
-  const tabs = openTabs.filter(tab => {
+  const visibleTabs = openTabs.filter(tab => {
+    if (!tab.url || tab.url.startsWith('chrome-extension://')) return false;
     if (!q) return true;
     return `${tab.title || ''} ${tab.url || ''}`.toLowerCase().includes(q);
   });
   els.openCount.textContent = `(${openTabs.length})`;
 
-  for (const tab of tabs) {
-    if (!tab.url || tab.url.startsWith('chrome-extension://')) continue;
+  for (const tab of visibleTabs) {
     els.openTabs.append(createTabRow(tab, { live: true, active: Boolean(tab.active) }));
   }
 }
@@ -344,11 +430,13 @@ function renderStats() {
     return;
   }
   const s = model.stats;
-  els.stats.textContent = `${s.spaces} Spaces · ${s.folders} folders · ${s.tabs} pinned`;
+  const fav = model.favorites?.length ? ` · ${model.favorites.length} favorites` : '';
+  els.stats.textContent = `${s.spaces} Spaces · ${s.folders} folders · ${s.tabs} pinned${fav}`;
 }
 
 function render() {
   renderStats();
+  renderFavorites();
   renderSpaces();
   renderPinned();
   renderOpenTabs();
@@ -361,7 +449,7 @@ els.arcFile.addEventListener('change', async event => {
   try {
     const json = JSON.parse(await file.text());
     model = parseArcSidebar(json);
-    state.currentSpaceId = model.spaces[0]?.id || null;
+    state.currentSpaceId = model.spaces[0]?.id || OPEN_TABS_SPACE_ID;
     state.collapsedFolders = {};
     await saveModel();
     await saveState();
