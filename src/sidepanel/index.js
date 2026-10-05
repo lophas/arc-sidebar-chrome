@@ -108,9 +108,6 @@ function parseArcSidebar(json) {
     });
   }
 
-  // Arc Favorites / Top Apps are global and appear above every Space.
-  // Prefer the default-profile Top Apps container, which corresponds to the
-  // global Favorites drawer in Arc.
   let favorites = [];
   const defaultTopAppsContainer = [...items.values()].find(raw =>
     raw?.data?.itemContainer?.containerType?.topApps?._0?.default === true
@@ -353,9 +350,12 @@ function renderSpaces() {
 
   for (const space of model.spaces) {
     const button = document.createElement('button');
+    const label = space.title || 'Untitled Space';
     button.className = `space-button${space.id === state.currentSpaceId ? ' active' : ''}`;
     button.type = 'button';
-    button.textContent = `${space.emoji ? `${space.emoji} ` : ''}${space.title}`;
+    button.textContent = space.emoji || label.slice(0, 1).toUpperCase();
+    button.dataset.label = label;
+    button.setAttribute('aria-label', label);
     button.addEventListener('click', async () => {
       state.currentSpaceId = space.id;
       await saveState();
@@ -365,9 +365,18 @@ function renderSpaces() {
   }
 
   const openButton = document.createElement('button');
+  const openLabel = `Open tabs (${openTabs.length})`;
   openButton.className = `space-button${state.currentSpaceId === OPEN_TABS_SPACE_ID ? ' active' : ''}`;
   openButton.type = 'button';
-  openButton.textContent = `🪟 Open tabs (${openTabs.length})`;
+  openButton.textContent = '🪟';
+  openButton.dataset.label = openLabel;
+  openButton.setAttribute('aria-label', openLabel);
+
+  const count = document.createElement('span');
+  count.className = 'space-count';
+  count.textContent = String(openTabs.length);
+  openButton.append(count);
+
   openButton.addEventListener('click', async () => {
     state.currentSpaceId = OPEN_TABS_SPACE_ID;
     await saveState();
