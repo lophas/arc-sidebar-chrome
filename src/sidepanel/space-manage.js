@@ -23,7 +23,6 @@ function recalcStats(model) {
     tabs: 0,
     favorites: model.favorites?.length || 0
   };
-
   const walk = nodes => {
     for (const node of nodes || []) {
       if (node.type === 'tab') stats.tabs += 1;
@@ -33,7 +32,6 @@ function recalcStats(model) {
       }
     }
   };
-
   for (const space of model.spaces || []) walk(space.children || []);
   model.stats = stats;
 }
@@ -44,7 +42,6 @@ async function saveData(model, state) {
     [STORAGE_KEY]: model,
     [STATE_KEY]: state
   });
-  location.reload();
 }
 
 function ensureSpaceDialog() {
@@ -282,12 +279,7 @@ async function openSpaceEditor(spaceId = null) {
       space.title = title;
       space.emoji = emoji;
     } else {
-      const newSpace = {
-        id: uid(),
-        title,
-        emoji,
-        children: []
-      };
+      const newSpace = { id: uid(), title, emoji, children: [] };
       model.spaces.push(newSpace);
       state.currentSpaceId = newSpace.id;
     }
@@ -322,9 +314,8 @@ function decorateSpaces() {
       event.stopPropagation();
       const stored = await getData();
       const model = stored[STORAGE_KEY];
-      const candidates = model?.spaces || [];
-      const index = normalButtons.indexOf(button);
-      const space = candidates[index];
+      const spaceId = button.dataset.spaceId;
+      const space = model?.spaces?.find(candidate => candidate.id === spaceId);
       if (space) openSpaceEditor(space.id);
     });
   });
@@ -343,8 +334,5 @@ function decorateSpaces() {
   }
 }
 
-const observer = new MutationObserver(() => queueMicrotask(decorateSpaces));
-if (spacesEl) {
-  observer.observe(spacesEl, { childList: true });
-  decorateSpaces();
-}
+window.addEventListener('arc-sidebar-rendered', () => queueMicrotask(decorateSpaces));
+decorateSpaces();
