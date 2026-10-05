@@ -4,11 +4,13 @@ const OPEN_TABS_SPACE_ID = '__open_tabs__';
 
 const favoritesEl = document.querySelector('#favorites');
 const pinnedEl = document.querySelector('#pinned');
+const pinnedSection = document.querySelector('#pinnedSection');
 const searchEl = document.querySelector('#search');
 const addFavoriteButton = document.querySelector('#addFavorite');
 const addPinnedButton = document.querySelector('#addPinned');
 
 let dragIndex = null;
+let draggedPinnedId = null;
 let dialog = null;
 
 function uid() {
@@ -123,6 +125,62 @@ function findNodeLocation(nodes, id) {
     }
   }
   return null;
+}
+
+function findFolder(nodes, id) {
+  for (const node of nodes || []) {
+    if (node.type === 'folder' && node.id === id) return node;
+    if (node.type === 'folder') {
+      const found = findFolder(node.children || [], id);
+      if (found) return found;
+    }
+  }
+  return null;
+}
+
+function removeNode(nodes, id) {
+  const location = findNodeLocation(nodes, id);
+  if (!location) return null;
+  const [node] = location.parent.splice(location.index, 1);
+  return node;
+}
+
+async function movePinnedTo(targetFolderId = null) {
+  if (!draggedPinnedId) return;
+
+  const model = await getModel();
+  const state = await getState();
+  if (state.currentSpaceId === OPEN_TABS_SPACE_ID) return;
+
+  const space = model.spaces?.find(candidate => candidate.id === state.currentSpaceId) || model.spaces?.[0];
+  if (!space) return;
+  space.children ||= [];
+
+  const location = findNodeLocation(space.children, draggedPinnedId);
+  if (!location || location.node.type !== 'tab') return;
+
+  if (targetFolderId) {
+    const targetFolder = findFolder(space.children, targetFolderId);
+    if (!targetFolder) return;
+    if (location.parent === targetFolder.children) return;
+  } else if (location.parent === space.children) {
+    return;
+  }
+
+  const moved = removeNode(space.children, draggedPinnedId);
+  if (!moved) return;
+
+  if (targetFolderId) {
+    const targetFolder = findFolder(space.children, targetFolderId);
+    if (!targetFolder) return;
+    targetFolder.children ||= [];
+    targetFolder.children.push(moved);
+  } else {
+    space.children.push(moved);
+  }
+
+  draggedPinnedId = null;
+  await saveModel(model);
 }
 
 async function openFavoriteEditor(index = null) {
@@ -269,6 +327,20 @@ function visibleTabNodes(nodes, q, out = []) {
   return out;
 }
 
+function visibleFolderNodes(nodes, q, out = []) {
+  for (const node of nodes || []) {
+    if (node.type !== 'folder' || !matchesSearch(node, q)) continue;
+    out.push(node);
+    visibleFolderNodes(node.children || [], q, out);
+  }
+  return out;
+}
+
+function clearDropTargets() {
+  pinnedEl?.querySelectorAll('.drop-target').forEach(el => el.classList.remove('drop-target'));
+  pinnedSection?.querySelectorAll('.drop-target-root').forEach(el => el.classList.remove('drop-target-root'));
+}
+
 async function decoratePinned() {
   if (!pinnedEl) return;
 
@@ -288,14 +360,97 @@ async function decoratePinned() {
     if (!node || row.dataset.managedPinned === '1') return;
 
     row.dataset.managedPinned = '1';
+    row.dataset.nodeId = node.id;
     row.classList.add('managed-pinned');
-    row.title = `${row.title || node.url}\nRight-click to edit`;
+    row.draggable = true;
+    row.title = `${row.title || node.url}\nRight-click to edit · Drag to move`;
+
     row.addEventListener('contextmenu', event => {
       event.preventDefault();
       event.stopPropagation();
       openPinnedEditor(node.id);
     });
+
+    row.addEventListener('dragstart', event => {
+      draggedPinnedId = node.id;
+      row.classList.add('dragging');
+      event.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.setData('text/plain', node.id);
+    });
+
+    row.addEventListener('dragend', () => {
+      row.classList.remove('dragging');
+      draggedPinnedId = null;
+      clearDropTargets();
+    });
   });
+
+  const folders = visibleFolderNodes(space.children || [], q);
+  const folderHeaders = [...pinnedEl.querySelectorAll('.folder-header')];
+
+  folderHeaders.forEach((header, index) => {
+    const folder = folders[index];
+    if (!folder || header.dataset.managedDrop === '1') return;
+
+    header.dataset.managedDrop = '1';
+    header.dataset.folderId = folder.id;
+    header.title = `${header.title || folder.title}\nDrop a pinned link here`;
+
+    header.addEventListener('dragenter', event => {
+      if (!draggedPinnedId) return;
+      event.preventDefault();
+      event.stopPropagation();
+      header.classList.add('drop-target');
+    });
+
+    header.addEventListener('dragover', event => {
+      if (!draggedPinnedId) return;
+      event.preventDefault();
+      event.stopPropagation();
+      event.dataTransfer.dropEffect = 'move';
+      header.classList.add('drop-target');
+    });
+
+    header.addEventListener('dragleave', event => {
+      if (!header.contains(event.relatedTarget)) header.classList.remove('drop-target');
+    });
+
+    header.addEventListener('drop', async event => {
+      if (!draggedPinnedId) return;
+      event.preventDefault();
+      event.stopPropagation();
+      header.classList.remove('drop-target');
+      await movePinnedTo(folder.id);
+    });
+  });
+
+  const rootTarget = pinnedSection?.querySelector('.section-title');
+  if (rootTarget && rootTarget.dataset.managedRootDrop !== '1') {
+    rootTarget.dataset.managedRootDrop = '1';
+    rootTarget.title = 'Drop here to move a link out of a folder';
+
+    rootTarget.addEventListener('dragenter', event => {
+      if (!draggedPinnedId) return;
+      event.preventDefault();
+      rootTarget.classList.add('drop-target-root');
+    });
+
+    rootTarget.addEventListener('dragover', event => {
+      if (!draggedPinnedId) return;
+      event.preventDefault();
+      event.dataTransfer.dropEffect = 'move';
+      rootTarget.classList.add('drop-target-root');
+    });
+
+    rootTarget.addEventListener('dragleave', () => rootTarget.classList.remove('drop-target-root'));
+
+    rootTarget.addEventListener('drop', async event => {
+      if (!draggedPinnedId) return;
+      event.preventDefault();
+      rootTarget.classList.remove('drop-target-root');
+      await movePinnedTo(null);
+    });
+  }
 }
 
 addFavoriteButton?.addEventListener('click', () => openFavoriteEditor(null));
