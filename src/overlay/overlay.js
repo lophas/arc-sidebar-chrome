@@ -26,7 +26,10 @@
   const shadow = host.attachShadow({ mode: 'closed' });
   shadow.innerHTML = `
     <style>
-      :host { all: initial; }
+      :host {
+        all: initial;
+        color-scheme: light dark;
+      }
       .edge {
         position: fixed;
         top: 0;
@@ -46,11 +49,11 @@
         z-index: 2147483647;
         transform: translateX(100%);
         transition: transform 170ms cubic-bezier(.2,.8,.2,1), box-shadow 170ms ease;
-        background: #171719;
+        background: Canvas;
         box-shadow: none;
         overflow: hidden;
         pointer-events: none;
-        border-left: 1px solid rgba(255,255,255,.08);
+        border-left: 1px solid color-mix(in srgb, CanvasText 10%, transparent);
       }
       .panel.open {
         transform: translateX(0);
@@ -79,19 +82,19 @@
         bottom: 0;
         left: 0;
         width: 2px;
-        background: rgba(255,255,255,0);
+        background: transparent;
         transition: background 120ms ease;
       }
       .resize-handle:hover::after,
       .panel.resizing .resize-handle::after {
-        background: rgba(255,255,255,.26);
+        background: color-mix(in srgb, CanvasText 26%, transparent);
       }
       iframe {
         width: 100%;
         height: 100%;
         border: 0;
         display: block;
-        background: #171719;
+        background: Canvas;
       }
     </style>
     <div class="edge" aria-hidden="true"></div>
@@ -207,10 +210,6 @@
     }
   });
 
-  // An iframe is a separate browsing context. Crossing from the panel host into
-  // the iframe can look like a mouseleave on some Chrome/macOS builds. Treat the
-  // iframe itself as part of the hover surface and cancel any pending close as
-  // soon as the pointer enters it.
   panel.addEventListener('mouseenter', cancelClose);
   iframe.addEventListener('mouseenter', cancelClose);
   iframe.addEventListener('pointerenter', cancelClose);
@@ -238,8 +237,7 @@
 
     const onPointerMove = moveEvent => {
       if (!isResizing) return;
-      const nextWidth = startWidth + (startX - moveEvent.clientX);
-      applyWidth(nextWidth);
+      applyWidth(startWidth + (startX - moveEvent.clientX));
     };
 
     const finishResize = async upEvent => {
@@ -263,13 +261,8 @@
   });
 
   window.addEventListener('resize', () => applyWidth(currentWidth));
-
   document.addEventListener('keydown', event => {
     if (event.key === 'Escape' && isOpen) closePanel();
   }, true);
-
-  // Do not close on window blur: focusing the extension iframe itself causes
-  // the host page window to blur. Mouseleave is the authoritative close signal.
-
   window.addEventListener('beforeunload', clearTimers, { once: true });
 })();
