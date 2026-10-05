@@ -145,7 +145,34 @@ function removeNode(nodes, id) {
   return node;
 }
 
-async function movePinnedTo(itemId, targetFolderId = null) {
+async function movePinnedRelative(itemId, targetId, after = false) {
+  if (!itemId || !targetId || itemId === targetId) return;
+
+  const model = await getModel();
+  const state = await getState();
+  if (state.currentSpaceId === OPEN_TABS_SPACE_ID) return;
+
+  const space = model.spaces?.find(candidate => candidate.id === state.currentSpaceId) || model.spaces?.[0];
+  if (!space) return;
+  space.children ||= [];
+
+  const source = findNodeLocation(space.children, itemId);
+  const target = findNodeLocation(space.children, targetId);
+  if (!source || source.node.type !== 'tab' || !target || target.node.type !== 'tab') return;
+
+  const moved = removeNode(space.children, itemId);
+  if (!moved) return;
+
+  // Re-find after removal because indexes may have shifted.
+  const targetAfterRemoval = findNodeLocation(space.children, targetId);
+  if (!targetAfterRemoval) return;
+
+  const insertAt = targetAfterRemoval.index + (after ? 1 : 0);
+  targetAfterRemoval.parent.splice(insertAt, 0, moved);
+  await saveModel(model);
+}
+
+async function movePinnedToRoot(itemId) {
   if (!itemId) return;
 
   const model = await getModel();
@@ -157,29 +184,33 @@ async function movePinnedTo(itemId, targetFolderId = null) {
   space.children ||= [];
 
   const location = findNodeLocation(space.children, itemId);
-  if (!location || location.node.type !== 'tab') return;
-
-  if (targetFolderId) {
-    const targetFolder = findFolder(space.children, targetFolderId);
-    if (!targetFolder) return;
-    targetFolder.children ||= [];
-    if (location.parent === targetFolder.children) return;
-  } else if (location.parent === space.children) {
-    return;
-  }
+  if (!location || location.node.type !== 'tab' || location.parent === space.children) return;
 
   const moved = removeNode(space.children, itemId);
   if (!moved) return;
+  space.children.push(moved);
+  await saveModel(model);
+}
 
-  if (targetFolderId) {
-    const targetFolder = findFolder(space.children, targetFolderId);
-    if (!targetFolder) return;
-    targetFolder.children ||= [];
-    targetFolder.children.push(moved);
-  } else {
-    space.children.push(moved);
-  }
+async function movePinnedToEmptyFolder(itemId, folderId) {
+  if (!itemId || !folderId) return;
 
+  const model = await getModel();
+  const state = await getState();
+  if (state.currentSpaceId === OPEN_TABS_SPACE_ID) return;
+
+  const space = model.spaces?.find(candidate => candidate.id === state.currentSpaceId) || model.spaces?.[0];
+  if (!space) return;
+  space.children ||= [];
+
+  const folder = findFolder(space.children, folderId);
+  if (!folder) return;
+  folder.children ||= [];
+  if (folder.children.length) return;
+
+  const moved = removeNode(space.children, itemId);
+  if (!moved || moved.type !== 'tab') return;
+  folder.children.push(moved);
   await saveModel(model);
 }
 
@@ -337,7 +368,9 @@ function visibleFolderNodes(nodes, q, out = []) {
 }
 
 function clearDropTargets() {
-  pinnedEl?.querySelectorAll('.drop-target').forEach(el => el.classList.remove('drop-target'));
+  pinnedEl?.querySelectorAll('.drop-before,.drop-after,.drop-target-empty').forEach(el => {
+    el.classList.remove('drop-before', 'drop-after', 'drop-target-empty');
+  });
   pinnedSection?.querySelectorAll('.drop-target-root').forEach(el => el.classList.remove('drop-target-root'));
 }
 
@@ -363,7 +396,7 @@ async function decoratePinned() {
     row.dataset.nodeId = node.id;
     row.classList.add('managed-pinned');
     row.draggable = true;
-    row.title = `${row.title || node.url}\nRight-click to edit · Drag to move`;
+    row.title = `${row.title || node.url}\nRight-click to edit · Drag between links to move`;
 
     row.addEventListener('contextmenu', event => {
       event.preventDefault();
@@ -383,72 +416,100 @@ async function decoratePinned() {
       draggedPinnedId = null;
       clearDropTargets();
     });
-  });
 
-  const folders = visibleFolderNodes(space.children || [], q);
-  const folderHeaders = [...pinnedEl.querySelectorAll('.folder-header')];
-
-  folderHeaders.forEach((header, index) => {
-    const folder = folders[index];
-    if (!folder || header.dataset.managedDrop === '1') return;
-
-    header.dataset.managedDrop = '1';
-    header.dataset.folderId = folder.id;
-    header.title = `${header.title || folder.title}\nDrop a pinned link here`;
-
-    header.addEventListener('dragenter', event => {
-      if (!draggedPinnedId) return;
-      event.preventDefault();
-      event.stopPropagation();
-      header.classList.add('drop-target');
-    });
-
-    header.addEventListener('dragover', event => {
-      if (!draggedPinnedId) return;
+    // Every pinned link is now a positional drop target. Upper half = before,
+    // lower half = after. The target link's parent determines the destination
+    // container, so this also moves links into/out of folders naturally.
+    row.addEventListener('dragover', event => {
+      const itemId = event.dataTransfer.getData('text/plain') || draggedPinnedId;
+      if (!itemId || itemId === node.id) return;
       event.preventDefault();
       event.stopPropagation();
       event.dataTransfer.dropEffect = 'move';
-      header.classList.add('drop-target');
+
+      const rect = row.getBoundingClientRect();
+      const after = event.clientY >= rect.top + rect.height / 2;
+      clearDropTargets();
+      row.classList.add(after ? 'drop-after' : 'drop-before');
+    });
+
+    row.addEventListener('dragleave', event => {
+      if (!row.contains(event.relatedTarget)) row.classList.remove('drop-before', 'drop-after');
+    });
+
+    row.addEventListener('drop', async event => {
+      const itemId = event.dataTransfer.getData('text/plain') || draggedPinnedId;
+      if (!itemId || itemId === node.id) return;
+      event.preventDefault();
+      event.stopPropagation();
+
+      const rect = row.getBoundingClientRect();
+      const after = event.clientY >= rect.top + rect.height / 2;
+      row.classList.remove('drop-before', 'drop-after');
+      await movePinnedRelative(itemId, node.id, after);
+    });
+  });
+
+  // Folder headers are no longer normal drop targets. For an empty folder only,
+  // the header remains a practical target because there is no child link to drop
+  // before/after yet.
+  const folders = visibleFolderNodes(space.children || [], q);
+  const folderHeaders = [...pinnedEl.querySelectorAll('.folder-header')];
+  folderHeaders.forEach((header, index) => {
+    const folder = folders[index];
+    if (!folder || (folder.children || []).length || header.dataset.managedEmptyDrop === '1') return;
+
+    header.dataset.managedEmptyDrop = '1';
+    header.title = `${header.title || folder.title}\nEmpty folder · drop a link here`;
+
+    header.addEventListener('dragover', event => {
+      const itemId = event.dataTransfer.getData('text/plain') || draggedPinnedId;
+      if (!itemId) return;
+      event.preventDefault();
+      event.stopPropagation();
+      event.dataTransfer.dropEffect = 'move';
+      clearDropTargets();
+      header.classList.add('drop-target-empty');
     });
 
     header.addEventListener('dragleave', event => {
-      if (!header.contains(event.relatedTarget)) header.classList.remove('drop-target');
+      if (!header.contains(event.relatedTarget)) header.classList.remove('drop-target-empty');
     });
 
     header.addEventListener('drop', async event => {
+      const itemId = event.dataTransfer.getData('text/plain') || draggedPinnedId;
+      if (!itemId) return;
       event.preventDefault();
       event.stopPropagation();
-      const itemId = event.dataTransfer.getData('text/plain') || draggedPinnedId;
-      header.classList.remove('drop-target');
-      await movePinnedTo(itemId, folder.id);
+      header.classList.remove('drop-target-empty');
+      await movePinnedToEmptyFolder(itemId, folder.id);
     });
   });
 
+  // Keep PINNED as a fallback root target for the edge case where the Space has
+  // no top-level links to use as a positional target.
   const rootTarget = pinnedSection?.querySelector('.section-title');
   if (rootTarget && rootTarget.dataset.managedRootDrop !== '1') {
     rootTarget.dataset.managedRootDrop = '1';
-    rootTarget.title = 'Drop here to move a link out of a folder';
-
-    rootTarget.addEventListener('dragenter', event => {
-      if (!draggedPinnedId) return;
-      event.preventDefault();
-      rootTarget.classList.add('drop-target-root');
-    });
+    rootTarget.title = 'Drop here to move a link to the Space root';
 
     rootTarget.addEventListener('dragover', event => {
-      if (!draggedPinnedId) return;
+      const itemId = event.dataTransfer.getData('text/plain') || draggedPinnedId;
+      if (!itemId) return;
       event.preventDefault();
       event.dataTransfer.dropEffect = 'move';
+      clearDropTargets();
       rootTarget.classList.add('drop-target-root');
     });
 
     rootTarget.addEventListener('dragleave', () => rootTarget.classList.remove('drop-target-root'));
 
     rootTarget.addEventListener('drop', async event => {
-      event.preventDefault();
       const itemId = event.dataTransfer.getData('text/plain') || draggedPinnedId;
+      if (!itemId) return;
+      event.preventDefault();
       rootTarget.classList.remove('drop-target-root');
-      await movePinnedTo(itemId, null);
+      await movePinnedToRoot(itemId);
     });
   }
 }
