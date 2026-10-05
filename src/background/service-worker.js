@@ -1,6 +1,10 @@
 const STORAGE_KEY = 'arcSidebarModel';
 const BINDINGS_KEY = 'arcSidebarBindings';
 const GROUP_MAP_KEY = 'arcSidebarNativeGroups';
+const SYNC_META_KEY = 'arcSidebarSyncMeta';
+const SYNC_CHUNK_PREFIX = 'arcSidebarSyncChunk:';
+const SYNC_SCHEMA_VERSION = 1;
+const SYNC_CHUNK_SIZE = 6000;
 const TAB_ID_NONE = -1;
 const FAVORITES_GROUP_ID = '__favorites__';
 const FAVORITES_GROUP = { id: FAVORITES_GROUP_ID, title: 'Favorites', color: 'grey' };
@@ -10,6 +14,157 @@ const nativePanelWindows = new Map();
 let groupSyncTimer = null;
 let groupSyncRunning = false;
 let groupSyncPending = false;
+let modelSyncPushTimer = null;
+let modelSyncPullTimer = null;
+let suppressLocalModelJson = null;
+
+function modelJson(model) {
+  return model ? JSON.stringify(model) : '';
+}
+
+function encodeBase64Utf8(text) {
+  const bytes = new TextEncoder().encode(text);
+  let binary = '';
+  const step = 0x8000;
+  for (let offset = 0; offset < bytes.length; offset += step) {
+    binary += String.fromCharCode(...bytes.subarray(offset, offset + step));
+  }
+  return btoa(binary);
+}
+
+function decodeBase64Utf8(value) {
+  const binary = atob(value);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) bytes[i] = binary.charCodeAt(i);
+  return new TextDecoder().decode(bytes);
+}
+
+function chunkKey(index) {
+  return `${SYNC_CHUNK_PREFIX}${index}`;
+}
+
+async function readSyncedModel() {
+  const data = await chrome.storage.sync.get(null);
+  const meta = data[SYNC_META_KEY];
+  if (!meta || meta.schema !== SYNC_SCHEMA_VERSION || !Number.isInteger(meta.chunks) || meta.chunks < 1) {
+    return null;
+  }
+
+  let encoded = '';
+  for (let index = 0; index < meta.chunks; index += 1) {
+    const chunk = data[chunkKey(index)];
+    if (typeof chunk !== 'string') return null;
+    encoded += chunk;
+  }
+
+  try {
+    const model = JSON.parse(decodeBase64Utf8(encoded));
+    return { model, meta };
+  } catch (error) {
+    console.warn('Arc Sidebar: synced model could not be decoded', error);
+    return null;
+  }
+}
+
+async function writeSyncedModel(model) {
+  if (!model) return;
+
+  const encoded = encodeBase64Utf8(JSON.stringify(model));
+  const chunks = [];
+  for (let offset = 0; offset < encoded.length; offset += SYNC_CHUNK_SIZE) {
+    chunks.push(encoded.slice(offset, offset + SYNC_CHUNK_SIZE));
+  }
+  if (!chunks.length) return;
+
+  const existing = await chrome.storage.sync.get(null);
+  const values = {};
+  chunks.forEach((chunk, index) => {
+    values[chunkKey(index)] = chunk;
+  });
+  values[SYNC_META_KEY] = {
+    schema: SYNC_SCHEMA_VERSION,
+    chunks: chunks.length,
+    updatedAt: Date.now()
+  };
+
+  try {
+    await chrome.storage.sync.set(values);
+  } catch (error) {
+    console.warn('Arc Sidebar: Chrome Sync write failed; local data is unchanged', error);
+    return;
+  }
+
+  const staleKeys = Object.keys(existing).filter(key => {
+    if (!key.startsWith(SYNC_CHUNK_PREFIX)) return false;
+    const index = Number(key.slice(SYNC_CHUNK_PREFIX.length));
+    return Number.isInteger(index) && index >= chunks.length;
+  });
+  if (staleKeys.length) {
+    try { await chrome.storage.sync.remove(staleKeys); } catch {}
+  }
+}
+
+async function applySyncedModel() {
+  const synced = await readSyncedModel();
+  if (!synced?.model) return false;
+
+  const local = await chrome.storage.local.get(STORAGE_KEY);
+  const syncedJson = modelJson(synced.model);
+  if (modelJson(local[STORAGE_KEY]) === syncedJson) return true;
+
+  suppressLocalModelJson = syncedJson;
+  await chrome.storage.local.set({ [STORAGE_KEY]: synced.model });
+  return true;
+}
+
+async function reconcileSidebarSync() {
+  try {
+    const [local, synced] = await Promise.all([
+      chrome.storage.local.get(STORAGE_KEY),
+      readSyncedModel()
+    ]);
+
+    if (synced?.model) {
+      const syncedJson = modelJson(synced.model);
+      if (modelJson(local[STORAGE_KEY]) !== syncedJson) {
+        suppressLocalModelJson = syncedJson;
+        await chrome.storage.local.set({ [STORAGE_KEY]: synced.model });
+      }
+      return;
+    }
+
+    if (local[STORAGE_KEY]) await writeSyncedModel(local[STORAGE_KEY]);
+  } catch (error) {
+    console.warn('Arc Sidebar: Chrome Sync reconciliation failed', error);
+  }
+}
+
+function queueModelSyncPush(delay = 350) {
+  if (modelSyncPushTimer) clearTimeout(modelSyncPushTimer);
+  modelSyncPushTimer = setTimeout(async () => {
+    modelSyncPushTimer = null;
+    try {
+      const local = await chrome.storage.local.get(STORAGE_KEY);
+      if (local[STORAGE_KEY]) await writeSyncedModel(local[STORAGE_KEY]);
+    } catch (error) {
+      console.warn('Arc Sidebar: Chrome Sync push failed', error);
+    }
+  }, delay);
+}
+
+function queueModelSyncPull(delay = 250) {
+  if (modelSyncPullTimer) clearTimeout(modelSyncPullTimer);
+  modelSyncPullTimer = setTimeout(() => {
+    modelSyncPullTimer = null;
+    applySyncedModel().catch(error => {
+      console.warn('Arc Sidebar: Chrome Sync pull failed', error);
+    });
+  }, delay);
+}
+
+function isSidebarSyncChange(changes) {
+  return Object.keys(changes || {}).some(key => key === SYNC_META_KEY || key.startsWith(SYNC_CHUNK_PREFIX));
+}
 
 async function broadcastNativePanelState(windowId, open) {
   if (windowId == null) return;
@@ -213,17 +368,32 @@ function queueNativeGroupSync(delay = 120) {
 
 chrome.runtime.onInstalled.addListener(async () => {
   await setSidePanelBehavior();
+  await reconcileSidebarSync();
   queueNativeGroupSync(250);
 });
 
 chrome.runtime.onStartup.addListener(async () => {
   await setSidePanelBehavior();
+  await reconcileSidebarSync();
   queueNativeGroupSync(750);
 });
 
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area === 'session' && changes[BINDINGS_KEY]) queueNativeGroupSync(80);
-  if (area === 'local' && changes[STORAGE_KEY]) queueNativeGroupSync(80);
+
+  if (area === 'local' && changes[STORAGE_KEY]) {
+    queueNativeGroupSync(80);
+    const nextJson = modelJson(changes[STORAGE_KEY].newValue);
+    if (suppressLocalModelJson && nextJson === suppressLocalModelJson) {
+      suppressLocalModelJson = null;
+    } else if (changes[STORAGE_KEY].newValue) {
+      queueModelSyncPush();
+    }
+  }
+
+  if (area === 'sync' && isSidebarSyncChange(changes)) {
+    queueModelSyncPull();
+  }
 });
 
 chrome.tabs.onCreated.addListener(() => queueNativeGroupSync(250));
