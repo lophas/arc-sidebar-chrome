@@ -1,6 +1,7 @@
 const STORAGE_KEY = 'arcSidebarModel';
 const BINDINGS_KEY = 'arcSidebarBindings';
 const GROUP_MAP_KEY = 'arcSidebarNativeGroups';
+const LOCAL_MODEL_UPDATED_KEY = 'arcSidebarModelUpdatedAt';
 const SYNC_ENABLED_KEY = 'arcSidebarSyncEnabled';
 const SYNC_META_KEY = 'arcSidebarSyncMeta';
 const SYNC_CHUNK_PREFIX = 'arcSidebarSyncChunk:';
@@ -83,6 +84,7 @@ async function writeSyncedModel(model) {
   if (!chunks.length) return { ok: false, reason: 'empty-model' };
 
   const existing = await chrome.storage.sync.get(null);
+  const updatedAt = Date.now();
   const values = {};
   chunks.forEach((chunk, index) => {
     values[chunkKey(index)] = chunk;
@@ -90,11 +92,12 @@ async function writeSyncedModel(model) {
   values[SYNC_META_KEY] = {
     schema: SYNC_SCHEMA_VERSION,
     chunks: chunks.length,
-    updatedAt: Date.now()
+    updatedAt
   };
 
   try {
     await chrome.storage.sync.set(values);
+    await chrome.storage.local.set({ [LOCAL_MODEL_UPDATED_KEY]: updatedAt });
   } catch (error) {
     console.warn('Arc Sidebar: Chrome Sync write failed; local data is unchanged', error);
     return { ok: false, reason: error?.message || 'sync-write-failed' };
@@ -109,22 +112,27 @@ async function writeSyncedModel(model) {
     try { await chrome.storage.sync.remove(staleKeys); } catch {}
   }
 
-  return { ok: true, direction: 'push', updatedAt: values[SYNC_META_KEY].updatedAt };
+  return { ok: true, direction: 'push', updatedAt };
 }
 
-async function applySyncedModel() {
-  const synced = await readSyncedModel();
-  if (!synced?.model) return { ok: false, reason: 'no-remote-model' };
+async function applySyncedModel(synced = null) {
+  const remote = synced || await readSyncedModel();
+  if (!remote?.model) return { ok: false, reason: 'no-remote-model' };
 
   const local = await chrome.storage.local.get(STORAGE_KEY);
-  const syncedJson = modelJson(synced.model);
+  const syncedJson = modelJson(remote.model);
+  const updatedAt = Number(remote.meta?.updatedAt) || Date.now();
   if (modelJson(local[STORAGE_KEY]) === syncedJson) {
-    return { ok: true, direction: 'none', updatedAt: synced.meta.updatedAt || null };
+    await chrome.storage.local.set({ [LOCAL_MODEL_UPDATED_KEY]: updatedAt });
+    return { ok: true, direction: 'none', updatedAt };
   }
 
   suppressLocalModelJson = syncedJson;
-  await chrome.storage.local.set({ [STORAGE_KEY]: synced.model });
-  return { ok: true, direction: 'pull', updatedAt: synced.meta.updatedAt || null };
+  await chrome.storage.local.set({
+    [STORAGE_KEY]: remote.model,
+    [LOCAL_MODEL_UPDATED_KEY]: updatedAt
+  });
+  return { ok: true, direction: 'pull', updatedAt };
 }
 
 async function reconcileSidebarSync() {
@@ -132,21 +140,28 @@ async function reconcileSidebarSync() {
     if (!await isSidebarSyncEnabled()) return { ok: false, reason: 'disabled' };
 
     const [local, synced] = await Promise.all([
-      chrome.storage.local.get(STORAGE_KEY),
+      chrome.storage.local.get([STORAGE_KEY, LOCAL_MODEL_UPDATED_KEY]),
       readSyncedModel()
     ]);
 
+    const localModel = local[STORAGE_KEY];
+    const localUpdatedAt = Number(local[LOCAL_MODEL_UPDATED_KEY]) || 0;
+
     if (synced?.model) {
-      const syncedJson = modelJson(synced.model);
-      if (modelJson(local[STORAGE_KEY]) !== syncedJson) {
-        suppressLocalModelJson = syncedJson;
-        await chrome.storage.local.set({ [STORAGE_KEY]: synced.model });
-        return { ok: true, direction: 'pull', updatedAt: synced.meta.updatedAt || null };
+      const remoteUpdatedAt = Number(synced.meta?.updatedAt) || 0;
+      if (modelJson(localModel) === modelJson(synced.model)) {
+        await chrome.storage.local.set({ [LOCAL_MODEL_UPDATED_KEY]: Math.max(localUpdatedAt, remoteUpdatedAt) });
+        return { ok: true, direction: 'none', updatedAt: remoteUpdatedAt || localUpdatedAt || null };
       }
-      return { ok: true, direction: 'none', updatedAt: synced.meta.updatedAt || null };
+
+      if (localModel && localUpdatedAt > remoteUpdatedAt) {
+        return writeSyncedModel(localModel);
+      }
+
+      return applySyncedModel(synced);
     }
 
-    if (local[STORAGE_KEY]) return writeSyncedModel(local[STORAGE_KEY]);
+    if (localModel) return writeSyncedModel(localModel);
     return { ok: true, direction: 'none', updatedAt: null };
   } catch (error) {
     console.warn('Arc Sidebar: Chrome Sync reconciliation failed', error);
@@ -174,7 +189,7 @@ function queueModelSyncPull(delay = 250) {
     modelSyncPullTimer = null;
     try {
       if (!await isSidebarSyncEnabled()) return;
-      await applySyncedModel();
+      await reconcileSidebarSync();
     } catch (error) {
       console.warn('Arc Sidebar: Chrome Sync pull failed', error);
     }
@@ -406,6 +421,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
     if (suppressLocalModelJson && nextJson === suppressLocalModelJson) {
       suppressLocalModelJson = null;
     } else if (changes[STORAGE_KEY].newValue) {
+      chrome.storage.local.set({ [LOCAL_MODEL_UPDATED_KEY]: Date.now() }).catch(() => {});
       queueModelSyncPush();
     }
   }
