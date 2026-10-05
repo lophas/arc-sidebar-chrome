@@ -22,6 +22,19 @@
     </section>
 
     <section class="card">
+      <h2>Backup & restore</h2>
+      <p>Download a portable JSON backup of your Spaces, Favorites, folders and pinned links, or restore one on this or another computer.</p>
+      <div class="backup-actions">
+        <button id="downloadBackup" class="button button-element" type="button">Download backup</button>
+        <label class="button">
+          Restore backup
+          <input id="restoreBackup" type="file" accept="application/json,.json" hidden>
+        </label>
+      </div>
+      <div id="backupStatus" class="status"></div>
+    </section>
+
+    <section class="card">
       <div class="setting-row">
         <div>
           <h2>Chrome Sync</h2>
@@ -34,6 +47,7 @@
         </label>
       </div>
       <p class="sync-note">Live tab bindings, open tabs, collapsed folders and overlay width stay local to each computer.</p>
+      <p class="sync-note">Extension ID on this computer: <code id="extensionId"></code></p>
       <div class="sync-actions">
         <button id="syncNow" class="button button-element" type="button">Sync now</button>
         <span id="syncStatus" class="muted sync-status">Sync is off.</span>
