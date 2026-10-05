@@ -39,7 +39,6 @@ function recalcStats(model) {
     tabs: 0,
     favorites: model.favorites?.length || 0
   };
-
   const walk = nodes => {
     for (const node of nodes || []) {
       if (node.type === 'tab') stats.tabs += 1;
@@ -49,7 +48,6 @@ function recalcStats(model) {
       }
     }
   };
-
   for (const space of model.spaces || []) walk(space.children);
   model.stats = stats;
 }
@@ -57,7 +55,6 @@ function recalcStats(model) {
 async function saveModel(model) {
   recalcStats(model);
   await chrome.storage.local.set({ [STORAGE_KEY]: model });
-  location.reload();
 }
 
 function normalizeEnteredUrl(value) {
@@ -92,7 +89,6 @@ function ensureDialog() {
     event.preventDefault();
     dialog.close();
   });
-
   return dialog;
 }
 
@@ -103,7 +99,6 @@ function validateUrlInput(input) {
     input.reportValidity();
     return null;
   }
-
   try {
     new URL(normalized);
     input.setCustomValidity('');
@@ -147,7 +142,6 @@ function removeNode(nodes, id) {
 
 async function movePinnedRelative(itemId, targetId, after = false) {
   if (!itemId || !targetId || itemId === targetId) return;
-
   const model = await getModel();
   const state = await getState();
   if (state.currentSpaceId === OPEN_TABS_SPACE_ID) return;
@@ -162,11 +156,8 @@ async function movePinnedRelative(itemId, targetId, after = false) {
 
   const moved = removeNode(space.children, itemId);
   if (!moved) return;
-
-  // Re-find after removal because indexes may have shifted.
   const targetAfterRemoval = findNodeLocation(space.children, targetId);
   if (!targetAfterRemoval) return;
-
   const insertAt = targetAfterRemoval.index + (after ? 1 : 0);
   targetAfterRemoval.parent.splice(insertAt, 0, moved);
   await saveModel(model);
@@ -174,7 +165,6 @@ async function movePinnedRelative(itemId, targetId, after = false) {
 
 async function movePinnedToRoot(itemId) {
   if (!itemId) return;
-
   const model = await getModel();
   const state = await getState();
   if (state.currentSpaceId === OPEN_TABS_SPACE_ID) return;
@@ -182,7 +172,6 @@ async function movePinnedToRoot(itemId) {
   const space = model.spaces?.find(candidate => candidate.id === state.currentSpaceId) || model.spaces?.[0];
   if (!space) return;
   space.children ||= [];
-
   const location = findNodeLocation(space.children, itemId);
   if (!location || location.node.type !== 'tab' || location.parent === space.children) return;
 
@@ -194,7 +183,6 @@ async function movePinnedToRoot(itemId) {
 
 async function movePinnedToEmptyFolder(itemId, folderId) {
   if (!itemId || !folderId) return;
-
   const model = await getModel();
   const state = await getState();
   if (state.currentSpaceId === OPEN_TABS_SPACE_ID) return;
@@ -202,7 +190,6 @@ async function movePinnedToEmptyFolder(itemId, folderId) {
   const space = model.spaces?.find(candidate => candidate.id === state.currentSpaceId) || model.spaces?.[0];
   if (!space) return;
   space.children ||= [];
-
   const folder = findFolder(space.children, folderId);
   if (!folder) return;
   folder.children ||= [];
@@ -230,11 +217,9 @@ async function openFavoriteEditor(index = null) {
     const title = d.querySelector('#itemTitle').value.trim();
     const url = validateUrlInput(d.querySelector('#itemUrl'));
     if (!url) return;
-
     const next = { type: 'tab', id: item?.id || uid(), title: title || url, url };
     if (item) model.favorites[index] = next;
     else model.favorites.push(next);
-
     d.close();
     await saveModel(model);
   };
@@ -253,7 +238,6 @@ async function openFavoriteEditor(index = null) {
 async function openPinnedEditor(itemId = null) {
   const model = await getModel();
   const state = await getState();
-
   if (state.currentSpaceId === OPEN_TABS_SPACE_ID) return;
   const space = model.spaces?.find(candidate => candidate.id === state.currentSpaceId) || model.spaces?.[0];
   if (!space) return;
@@ -274,11 +258,9 @@ async function openPinnedEditor(itemId = null) {
     const title = d.querySelector('#itemTitle').value.trim();
     const url = validateUrlInput(d.querySelector('#itemUrl'));
     if (!url) return;
-
     const next = { type: 'tab', id: item?.id || uid(), title: title || url, url };
     if (location) location.parent[location.index] = next;
     else space.children.push(next);
-
     d.close();
     await saveModel(model);
   };
@@ -300,7 +282,6 @@ function favoriteTiles() {
 
 function decorateFavorites() {
   if (!favoritesEl) return;
-
   const tiles = favoriteTiles();
   tiles.forEach((tile, index) => {
     if (tile.dataset.managed === '1') return;
@@ -332,7 +313,6 @@ function decorateFavorites() {
       event.preventDefault();
       const targetIndex = favoriteTiles().indexOf(tile);
       if (dragIndex == null || targetIndex < 0 || dragIndex === targetIndex) return;
-
       const model = await getModel();
       const [moved] = model.favorites.splice(dragIndex, 1);
       model.favorites.splice(targetIndex, 0, moved);
@@ -345,8 +325,7 @@ function matchesSearch(node, q) {
   if (!q) return true;
   const haystack = `${node.title || ''} ${node.url || ''}`.toLowerCase();
   if (haystack.includes(q)) return true;
-  if (node.type === 'folder') return (node.children || []).some(child => matchesSearch(child, q));
-  return false;
+  return node.type === 'folder' && (node.children || []).some(child => matchesSearch(child, q));
 }
 
 function visibleTabNodes(nodes, q, out = []) {
@@ -376,11 +355,9 @@ function clearDropTargets() {
 
 async function decoratePinned() {
   if (!pinnedEl) return;
-
   const model = await getModel();
   const state = await getState();
   if (state.currentSpaceId === OPEN_TABS_SPACE_ID) return;
-
   const space = model.spaces?.find(candidate => candidate.id === state.currentSpaceId) || model.spaces?.[0];
   if (!space) return;
 
@@ -391,7 +368,6 @@ async function decoratePinned() {
   rows.forEach((row, index) => {
     const node = nodes[index];
     if (!node || row.dataset.managedPinned === '1') return;
-
     row.dataset.managedPinned = '1';
     row.dataset.nodeId = node.id;
     row.classList.add('managed-pinned');
@@ -417,16 +393,12 @@ async function decoratePinned() {
       clearDropTargets();
     });
 
-    // Every pinned link is now a positional drop target. Upper half = before,
-    // lower half = after. The target link's parent determines the destination
-    // container, so this also moves links into/out of folders naturally.
     row.addEventListener('dragover', event => {
       const itemId = event.dataTransfer.getData('text/plain') || draggedPinnedId;
       if (!itemId || itemId === node.id) return;
       event.preventDefault();
       event.stopPropagation();
       event.dataTransfer.dropEffect = 'move';
-
       const rect = row.getBoundingClientRect();
       const after = event.clientY >= rect.top + rect.height / 2;
       clearDropTargets();
@@ -442,7 +414,6 @@ async function decoratePinned() {
       if (!itemId || itemId === node.id) return;
       event.preventDefault();
       event.stopPropagation();
-
       const rect = row.getBoundingClientRect();
       const after = event.clientY >= rect.top + rect.height / 2;
       row.classList.remove('drop-before', 'drop-after');
@@ -450,15 +421,11 @@ async function decoratePinned() {
     });
   });
 
-  // Folder headers are no longer normal drop targets. For an empty folder only,
-  // the header remains a practical target because there is no child link to drop
-  // before/after yet.
   const folders = visibleFolderNodes(space.children || [], q);
   const folderHeaders = [...pinnedEl.querySelectorAll('.folder-header')];
   folderHeaders.forEach((header, index) => {
     const folder = folders[index];
     if (!folder || (folder.children || []).length || header.dataset.managedEmptyDrop === '1') return;
-
     header.dataset.managedEmptyDrop = '1';
     header.title = `${header.title || folder.title}\nEmpty folder · drop a link here`;
 
@@ -486,8 +453,6 @@ async function decoratePinned() {
     });
   });
 
-  // Keep PINNED as a fallback root target for the edge case where the Space has
-  // no top-level links to use as a positional target.
   const rootTarget = pinnedSection?.querySelector('.section-title');
   if (rootTarget && rootTarget.dataset.managedRootDrop !== '1') {
     rootTarget.dataset.managedRootDrop = '1';
@@ -503,7 +468,6 @@ async function decoratePinned() {
     });
 
     rootTarget.addEventListener('dragleave', () => rootTarget.classList.remove('drop-target-root'));
-
     rootTarget.addEventListener('drop', async event => {
       const itemId = event.dataTransfer.getData('text/plain') || draggedPinnedId;
       if (!itemId) return;
@@ -514,22 +478,12 @@ async function decoratePinned() {
   }
 }
 
+function decorateManagedElements() {
+  decorateFavorites();
+  decoratePinned();
+}
+
 addFavoriteButton?.addEventListener('click', () => openFavoriteEditor(null));
 addPinnedButton?.addEventListener('click', () => openPinnedEditor(null));
-
-const observer = new MutationObserver(() => {
-  queueMicrotask(decorateFavorites);
-  queueMicrotask(decoratePinned);
-});
-
-if (favoritesEl) observer.observe(favoritesEl, { childList: true, subtree: true });
-if (pinnedEl) observer.observe(pinnedEl, { childList: true, subtree: true });
-
-decorateFavorites();
-decoratePinned();
-
-searchEl?.addEventListener('input', () => queueMicrotask(decoratePinned));
-
-chrome.storage.onChanged.addListener((changes, area) => {
-  if (area === 'local' && changes[STORAGE_KEY]) location.reload();
-});
+window.addEventListener('arc-sidebar-rendered', () => queueMicrotask(decorateManagedElements));
+decorateManagedElements();
