@@ -138,6 +138,10 @@ The following deliberately stay local to each computer:
 - collapsed folder state
 - overlay sidebar width
 
+Starting with **v0.6.2**, the extension includes a fixed manifest key so unpacked installations use the same extension ID on every computer. This is required for `chrome.storage.sync` to share the same namespace across machines.
+
+If you are upgrading from v0.6.1 or earlier, create a backup first. The stable extension ID introduced in v0.6.2 may differ from the ID Chrome previously generated for your unpacked installation, so local extension storage from the old ID may not be visible automatically. Use **Extension options → Backup & restore** to export before upgrading and restore afterward if needed.
+
 The sidebar model is kept in local storage as the runtime copy and mirrored to `chrome.storage.sync` in quota-safe chunks. If two copies differ, the newer local or synced model wins based on modification time. Disabling sync stops future synchronization but does not delete your local sidebar data.
 
 If Chrome itself is not signed in or Chrome Sync is disabled, `chrome.storage.sync` cannot provide normal cross-device synchronization.
@@ -169,15 +173,15 @@ Release ZIPs are generated from the tagged source and contain only the files Chr
 Maintainers can create a release by pushing a version tag matching the manifest version, for example:
 
 ```bash
-git tag v0.6.1
-git push origin v0.6.1
+git tag v0.6.2
+git push origin v0.6.2
 ```
 
 The GitHub Actions release workflow packages the extension and publishes the ZIP as a GitHub Release asset.
 
 ## Current version
 
-**v0.6.1**
+**v0.6.2**
 
 ## License
 
