@@ -145,8 +145,8 @@ function removeNode(nodes, id) {
   return node;
 }
 
-async function movePinnedTo(targetFolderId = null) {
-  if (!draggedPinnedId) return;
+async function movePinnedTo(itemId, targetFolderId = null) {
+  if (!itemId) return;
 
   const model = await getModel();
   const state = await getState();
@@ -156,18 +156,19 @@ async function movePinnedTo(targetFolderId = null) {
   if (!space) return;
   space.children ||= [];
 
-  const location = findNodeLocation(space.children, draggedPinnedId);
+  const location = findNodeLocation(space.children, itemId);
   if (!location || location.node.type !== 'tab') return;
 
   if (targetFolderId) {
     const targetFolder = findFolder(space.children, targetFolderId);
     if (!targetFolder) return;
+    targetFolder.children ||= [];
     if (location.parent === targetFolder.children) return;
   } else if (location.parent === space.children) {
     return;
   }
 
-  const moved = removeNode(space.children, draggedPinnedId);
+  const moved = removeNode(space.children, itemId);
   if (!moved) return;
 
   if (targetFolderId) {
@@ -179,7 +180,6 @@ async function movePinnedTo(targetFolderId = null) {
     space.children.push(moved);
   }
 
-  draggedPinnedId = null;
   await saveModel(model);
 }
 
@@ -416,11 +416,11 @@ async function decoratePinned() {
     });
 
     header.addEventListener('drop', async event => {
-      if (!draggedPinnedId) return;
       event.preventDefault();
       event.stopPropagation();
+      const itemId = event.dataTransfer.getData('text/plain') || draggedPinnedId;
       header.classList.remove('drop-target');
-      await movePinnedTo(folder.id);
+      await movePinnedTo(itemId, folder.id);
     });
   });
 
@@ -445,10 +445,10 @@ async function decoratePinned() {
     rootTarget.addEventListener('dragleave', () => rootTarget.classList.remove('drop-target-root'));
 
     rootTarget.addEventListener('drop', async event => {
-      if (!draggedPinnedId) return;
       event.preventDefault();
+      const itemId = event.dataTransfer.getData('text/plain') || draggedPinnedId;
       rootTarget.classList.remove('drop-target-root');
-      await movePinnedTo(null);
+      await movePinnedTo(itemId, null);
     });
   }
 }
