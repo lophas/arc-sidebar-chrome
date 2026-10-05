@@ -19,7 +19,6 @@ function recalcStats(model) {
     tabs: 0,
     favorites: model.favorites?.length || 0
   };
-
   const walk = nodes => {
     for (const node of nodes || []) {
       if (node.type === 'tab') stats.tabs += 1;
@@ -29,7 +28,6 @@ function recalcStats(model) {
       }
     }
   };
-
   for (const space of model.spaces || []) walk(space.children || []);
   model.stats = stats;
 }
@@ -47,7 +45,6 @@ function findFolder(nodes, id) {
 
 function ensureDialog() {
   if (dialog) return dialog;
-
   dialog = document.createElement('dialog');
   dialog.className = 'item-dialog';
   dialog.innerHTML = `
@@ -64,24 +61,20 @@ function ensureDialog() {
       </div>
     </form>`;
   document.body.append(dialog);
-
   dialog.querySelector('#openPinCancel').addEventListener('click', () => dialog.close());
   dialog.addEventListener('cancel', event => {
     event.preventDefault();
     dialog.close();
   });
-
   return dialog;
 }
 
 function fillFolderOptions(select, space) {
   select.replaceChildren();
-
   const root = document.createElement('option');
   root.value = '';
   root.textContent = 'Space root';
   select.append(root);
-
   for (const node of space?.children || []) {
     if (node.type !== 'folder') continue;
     const option = document.createElement('option');
@@ -103,7 +96,7 @@ async function openPinDialog(tab) {
   if (!model?.spaces?.length) return;
 
   const bindings = session[BINDINGS_KEY] || {};
-  if (Object.values(bindings).includes(tab.id)) return;
+  if (Object.values(bindings).map(Number).includes(Number(tab.id))) return;
 
   const d = ensureDialog();
   const titleInput = d.querySelector('#openPinTitle');
@@ -129,8 +122,7 @@ async function openPinDialog(tab) {
   fillFolderOptions(folderSelect, model.spaces.find(space => space.id === preferredSpaceId));
 
   spaceSelect.onchange = () => {
-    const space = model.spaces.find(candidate => candidate.id === spaceSelect.value);
-    fillFolderOptions(folderSelect, space);
+    fillFolderOptions(folderSelect, model.spaces.find(candidate => candidate.id === spaceSelect.value));
   };
 
   d.querySelector('#openPinSave').onclick = async () => {
@@ -156,14 +148,14 @@ async function openPinDialog(tab) {
 
     recalcStats(model);
     bindings[item.id] = tab.id;
-
     d.close();
-    await chrome.storage.local.set({
-      [STORAGE_KEY]: model,
-      [LAST_SPACE_KEY]: space.id
-    });
-    await chrome.storage.session.set({ [BINDINGS_KEY]: bindings });
-    location.reload();
+    await Promise.all([
+      chrome.storage.local.set({
+        [STORAGE_KEY]: model,
+        [LAST_SPACE_KEY]: space.id
+      }),
+      chrome.storage.session.set({ [BINDINGS_KEY]: bindings })
+    ]);
   };
 
   d.showModal();
@@ -190,18 +182,16 @@ async function decorateOpenTabs() {
     currentVisibleTabs(),
     chrome.storage.session.get(BINDINGS_KEY)
   ]);
-  const boundTabIds = new Set(Object.values(session[BINDINGS_KEY] || {}));
+  const boundTabIds = new Set(Object.values(session[BINDINGS_KEY] || {}).map(Number));
   const rows = [...openTabsEl.querySelectorAll('.row')];
 
   rows.forEach((row, index) => {
     const tab = tabs[index];
     if (!tab || row.dataset.openPinManaged === '1') return;
-
     row.dataset.openPinManaged = '1';
-    const alreadyPinned = tab.id != null && boundTabIds.has(tab.id);
+    const alreadyPinned = tab.id != null && boundTabIds.has(Number(tab.id));
     row.classList.toggle('open-tab-already-pinned', alreadyPinned);
     row.title = `${row.title || tab.url}${alreadyPinned ? '\nAlready pinned/favorite' : '\nRight-click to pin this tab'}`;
-
     if (!alreadyPinned) {
       row.addEventListener('contextmenu', event => {
         event.preventDefault();
@@ -212,10 +202,5 @@ async function decorateOpenTabs() {
   });
 }
 
-const observer = new MutationObserver(() => queueMicrotask(decorateOpenTabs));
-if (openTabsEl) {
-  observer.observe(openTabsEl, { childList: true });
-  decorateOpenTabs();
-}
-
-searchEl?.addEventListener('input', () => queueMicrotask(decorateOpenTabs));
+window.addEventListener('arc-sidebar-rendered', () => queueMicrotask(decorateOpenTabs));
+decorateOpenTabs();
