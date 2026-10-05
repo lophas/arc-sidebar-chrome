@@ -84,38 +84,29 @@ Chrome also restricts extensions on some privileged pages such as `chrome://` pa
 
 ## Installation
 
-There are two supported ways to install the extension. Because this project is not currently distributed through the Chrome Web Store, Chrome requires **Developer mode** and **Load unpacked**.
-
-### Recommended: install a GitHub Release
+Arc Sidebar for Chrome is distributed as a ZIP file from GitHub Releases. It is not currently published in the Chrome Web Store, so Chrome requires **Developer mode** and **Load unpacked**.
 
 1. Open the repository’s **Releases** page.
-2. Download the latest file named similar to `arc-sidebar-chrome-v0.6.0.zip`.
-3. Unzip it to a permanent folder. Do not delete that folder after installation.
+2. Download the latest `arc-sidebar-chrome-vX.Y.Z.zip` file from the release assets.
+3. Unzip it to a permanent folder on your computer.
 4. Open `chrome://extensions` in Chrome.
 5. Enable **Developer mode** in the top-right corner.
 6. Click **Load unpacked**.
 7. Select the unzipped folder — the folder that directly contains `manifest.json`.
-8. Pin **Arc Sidebar for Chrome** from Chrome’s Extensions menu if you want quick access to the persistent Side Panel.
+8. Optionally pin **Arc Sidebar for Chrome** from Chrome’s Extensions menu for quick access to the persistent Side Panel.
 
-When a new version is released, replace the files in that folder with the new release (or unzip the new version to a new folder), then click **Reload** for the extension on `chrome://extensions`.
+Do not delete or move the unzipped folder after installation, because Chrome loads the extension directly from that location.
 
-### Install from source
+### Updating
 
-```bash
-git clone https://github.com/lophas/arc-sidebar-chrome.git
-cd arc-sidebar-chrome
-```
+When a new version is released:
 
-Then open `chrome://extensions`, enable **Developer mode**, click **Load unpacked**, and select the cloned repository folder.
+1. Download the new ZIP from **Releases**.
+2. Unzip it, replacing the previous extension files or extracting it to a new permanent folder.
+3. Open `chrome://extensions`.
+4. Click **Reload** on the Arc Sidebar for Chrome extension card.
 
-To update later:
-
-```bash
-cd arc-sidebar-chrome
-git pull
-```
-
-Then click **Reload** on the extension card in `chrome://extensions`.
+If you extracted the update to a different folder, remove the old unpacked extension and use **Load unpacked** again with the new folder.
 
 ## Importing your Arc sidebar
 
