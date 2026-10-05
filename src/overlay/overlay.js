@@ -255,9 +255,8 @@
     if (event.key === 'Escape' && isOpen) closePanel();
   }, true);
 
-  window.addEventListener('blur', () => {
-    if (isOpen) scheduleClose();
-  });
+  // Do not close on window blur: focusing the extension iframe itself causes
+  // the host page window to blur. Mouseleave is the authoritative close signal.
 
   window.addEventListener('beforeunload', clearTimers, { once: true });
 })();
