@@ -1,0 +1,190 @@
+:root {
+  color-scheme: light dark;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --bg: #f6f6f7;
+  --panel: #ffffff;
+  --text: #171717;
+  --muted: #6e6e73;
+  --border: rgba(0,0,0,.09);
+  --hover: rgba(0,0,0,.055);
+  --active: rgba(0,0,0,.10);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #18181a;
+    --panel: #202023;
+    --text: #f4f4f5;
+    --muted: #a0a0a6;
+    --border: rgba(255,255,255,.10);
+    --hover: rgba(255,255,255,.065);
+    --active: rgba(255,255,255,.12);
+  }
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 13px;
+}
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+  background: color-mix(in srgb, var(--bg) 92%, transparent);
+  backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border);
+}
+
+.app-title { font-weight: 700; font-size: 15px; }
+.muted { color: var(--muted); font-size: 11px; }
+
+.import-button {
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  border-radius: 8px;
+  padding: 6px 9px;
+  font-weight: 600;
+}
+.import-button:hover { background: var(--hover); }
+
+.search-wrap { padding: 10px 12px 4px; }
+#search {
+  width: 100%;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--text);
+  border-radius: 9px;
+  padding: 8px 10px;
+  outline: none;
+}
+#search:focus { border-color: color-mix(in srgb, var(--text) 28%, var(--border)); }
+
+.spaces {
+  display: flex;
+  gap: 5px;
+  overflow-x: auto;
+  padding: 7px 12px 10px;
+  scrollbar-width: none;
+}
+.spaces::-webkit-scrollbar { display: none; }
+
+.space-button {
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: 999px;
+  padding: 6px 10px;
+  background: var(--panel);
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+}
+.space-button:hover { background: var(--hover); }
+.space-button.active { background: var(--active); font-weight: 700; }
+
+main { padding: 0 8px 14px; }
+section { margin-bottom: 15px; }
+.section-title {
+  padding: 4px 6px 6px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
+.row, .folder-header {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 31px;
+  border-radius: 7px;
+  padding: 5px 7px;
+  cursor: pointer;
+  user-select: none;
+}
+.row:hover, .folder-header:hover { background: var(--hover); }
+.row.active { background: var(--active); }
+
+.favicon {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  border-radius: 3px;
+}
+.favicon-fallback {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.row-title {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.row-domain {
+  color: var(--muted);
+  font-size: 10px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 38%;
+}
+
+.folder { margin: 1px 0; }
+.folder-header { font-weight: 650; }
+.folder-caret {
+  width: 12px;
+  color: var(--muted);
+  font-size: 10px;
+  text-align: center;
+}
+.folder-children {
+  margin-left: 17px;
+  padding-left: 6px;
+  border-left: 1px solid var(--border);
+}
+.folder.collapsed > .folder-children { display: none; }
+
+.open-section { border-top: 1px solid var(--border); padding-top: 10px; }
+.close-tab {
+  opacity: 0;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  padding: 0 2px;
+}
+.row:hover .close-tab { opacity: 1; }
+.close-tab:hover { color: var(--text); }
+
+.empty-state {
+  margin: 14px 6px;
+  padding: 14px;
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  color: var(--muted);
+  display: grid;
+  gap: 7px;
+  line-height: 1.4;
+}
+.empty-state strong { color: var(--text); }
+
+.hidden { display: none !important; }
