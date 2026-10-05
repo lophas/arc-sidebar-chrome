@@ -232,6 +232,13 @@ section { margin-bottom: 15px; }
 }
 .row:hover, .folder-header:hover { background: var(--hover); }
 .row.active { background: var(--active); }
+.row.has-binding {
+  position: relative;
+  background-image: radial-gradient(circle, #ff5d52 0 3px, transparent 3.5px);
+  background-repeat: no-repeat;
+  background-size: 7px 7px;
+  background-position: right 8px bottom 5px;
+}
 
 .favicon {
   width: 16px;
