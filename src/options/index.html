@@ -9,7 +9,7 @@
 <body>
   <main class="page">
     <h1>Arc Sidebar for Chrome</h1>
-    <p class="lead">Import and manage the persistent sidebar data used by the extension.</p>
+    <p class="lead">Import, manage and optionally sync the persistent sidebar data used by the extension.</p>
 
     <section class="card">
       <h2>Arc import</h2>
@@ -19,6 +19,25 @@
         <input id="arcFile" type="file" accept="application/json,.json" hidden>
       </label>
       <div id="status" class="status"></div>
+    </section>
+
+    <section class="card">
+      <div class="setting-row">
+        <div>
+          <h2>Chrome Sync</h2>
+          <p>Sync Spaces, Favorites, folders and pinned links between Chrome installations signed into the same Chrome Sync account.</p>
+        </div>
+        <label class="switch" title="Sync sidebar data with Chrome Sync">
+          <input id="syncEnabled" type="checkbox">
+          <span class="switch-track" aria-hidden="true"></span>
+          <span class="sr-only">Enable Chrome Sync</span>
+        </label>
+      </div>
+      <p class="sync-note">Live tab bindings, open tabs, collapsed folders and overlay width stay local to each computer.</p>
+      <div class="sync-actions">
+        <button id="syncNow" class="button button-element" type="button">Sync now</button>
+        <span id="syncStatus" class="muted sync-status">Sync is off.</span>
+      </div>
     </section>
 
     <section class="card">
