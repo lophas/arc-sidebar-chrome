@@ -1,25 +1,13 @@
 :root {
-  color-scheme: light dark;
+  color-scheme: dark;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --bg: #f6f6f7;
-  --panel: #ffffff;
-  --text: #171717;
-  --muted: #6e6e73;
-  --border: rgba(0,0,0,.09);
-  --hover: rgba(0,0,0,.055);
-  --active: rgba(0,0,0,.10);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #18181a;
-    --panel: #202023;
-    --text: #f4f4f5;
-    --muted: #a0a0a6;
-    --border: rgba(255,255,255,.10);
-    --hover: rgba(255,255,255,.065);
-    --active: rgba(255,255,255,.12);
-  }
+  --bg: #18181a;
+  --panel: #202023;
+  --text: #f4f4f5;
+  --muted: #a0a0a6;
+  --border: rgba(255,255,255,.10);
+  --hover: rgba(255,255,255,.065);
+  --active: rgba(255,255,255,.12);
 }
 
 * { box-sizing: border-box; }
