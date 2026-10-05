@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Arc Sidebar for Chrome",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Arc-like Spaces, folders and persistent pinned tabs in Chrome's side panel.",
   "permissions": ["tabs", "storage", "sidePanel", "favicon"],
   "background": {
@@ -11,6 +11,7 @@
   "side_panel": {
     "default_path": "src/sidepanel/index.html"
   },
+  "options_page": "src/options/index.html",
   "action": {
     "default_title": "Open Arc Sidebar"
   }
