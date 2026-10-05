@@ -28,7 +28,7 @@ body {
   background: var(--bg);
   color: var(--text);
   font-size: 13px;
-  padding-bottom: 58px;
+  padding-bottom: 62px;
 }
 
 .topbar {
@@ -122,14 +122,29 @@ body {
   justify-content: flex-start;
   gap: 4px;
   overflow-x: auto;
-  padding: 7px 10px 8px;
-  min-height: 52px;
+  overflow-y: hidden;
+  padding: 7px 10px 5px;
+  min-height: 56px;
   background: color-mix(in srgb, var(--bg) 88%, transparent);
   backdrop-filter: blur(18px);
   border-top: 1px solid var(--border);
-  scrollbar-width: none;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--muted) 55%, transparent) transparent;
 }
-.spaces::-webkit-scrollbar { display: none; }
+.spaces::-webkit-scrollbar {
+  display: block;
+  height: 6px;
+}
+.spaces::-webkit-scrollbar-track {
+  background: transparent;
+}
+.spaces::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--muted) 55%, transparent);
+  border-radius: 999px;
+}
+.spaces::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--muted) 80%, transparent);
+}
 
 .space-button {
   position: relative;
