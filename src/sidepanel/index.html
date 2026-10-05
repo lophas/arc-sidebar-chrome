@@ -22,15 +22,19 @@
     <input id="search" type="search" placeholder="Search pinned and open tabs…" autocomplete="off">
   </div>
 
+  <section id="favoritesSection" class="favorites-section hidden" aria-label="Favorites">
+    <div id="favorites" class="favorites-drawer"></div>
+  </section>
+
   <nav id="spaces" class="spaces" aria-label="Spaces"></nav>
 
   <main>
-    <section>
+    <section id="pinnedSection">
       <div class="section-title">Pinned</div>
       <div id="pinned"></div>
     </section>
 
-    <section class="open-section">
+    <section id="openSection" class="hidden">
       <div class="section-title">Open tabs <span id="openCount" class="muted"></span></div>
       <div id="openTabs"></div>
     </section>
