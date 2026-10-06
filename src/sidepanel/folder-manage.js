@@ -102,8 +102,6 @@ async function closeFolderTabs(folder, bindings) {
 
   if (!changed) return;
 
-  // Clear the item↔tab bindings first so tab removal events cannot race with
-  // the sidebar state. The saved pinned links themselves remain untouched.
   await chrome.storage.session.set({ [BINDINGS_KEY]: bindings });
   if (tabIds.length) {
     try { await chrome.tabs.remove([...new Set(tabIds)]); } catch {}
@@ -119,6 +117,7 @@ function ensureFolderDialog() {
     <form class="item-form" novalidate>
       <h3 id="folderDialogTitle">Folder</h3>
       <label>Name<input id="folderName" type="text" autocomplete="off"></label>
+      <label>Space<select id="folderSpace"></select></label>
       <div id="folderDeleteNote" class="folder-delete-note" hidden>Removing a folder keeps its links and places them where the folder was.</div>
       <div class="dialog-actions">
         <button id="folderDelete" class="danger" type="button">Remove folder</button>
@@ -150,12 +149,23 @@ async function openFolderEditor(folderId = null) {
   const folder = location?.node || null;
   const dialog = ensureFolderDialog();
   const nameInput = dialog.querySelector('#folderName');
+  const spaceSelect = dialog.querySelector('#folderSpace');
   const deleteButton = dialog.querySelector('#folderDelete');
   const deleteNote = dialog.querySelector('#folderDeleteNote');
 
-  dialog.querySelector('#folderDialogTitle').textContent = folder ? 'Rename folder' : `Add folder · ${space.title}`;
+  dialog.querySelector('#folderDialogTitle').textContent = folder ? 'Edit folder' : `Add folder · ${space.title}`;
   nameInput.value = folder?.title || '';
   nameInput.setCustomValidity('');
+
+  spaceSelect.replaceChildren();
+  for (const candidate of model.spaces || []) {
+    const option = document.createElement('option');
+    option.value = candidate.id;
+    option.textContent = `${candidate.emoji || candidate.title?.slice(0, 1).toUpperCase() || '•'} ${candidate.title || 'Untitled Space'}`;
+    spaceSelect.append(option);
+  }
+  spaceSelect.value = space.id;
+
   deleteButton.style.display = folder ? '' : 'none';
   deleteNote.hidden = !folder;
 
@@ -167,8 +177,21 @@ async function openFolderEditor(folderId = null) {
       return;
     }
     nameInput.setCustomValidity('');
-    if (folder) folder.title = title;
-    else space.children.push({ type: 'folder', id: uid(), title, children: [] });
+
+    const targetSpace = model.spaces?.find(candidate => candidate.id === spaceSelect.value);
+    if (!targetSpace) return;
+    targetSpace.children ||= [];
+
+    if (folder) {
+      folder.title = title;
+      if (targetSpace.id !== space.id) {
+        location.parent.splice(location.index, 1);
+        targetSpace.children.push(folder);
+      }
+    } else {
+      targetSpace.children.push({ type: 'folder', id: uid(), title, children: [] });
+    }
+
     dialog.close();
     await saveData(model);
   };
@@ -214,7 +237,7 @@ async function decorateFolders() {
       header.dataset.folderEditManaged = '1';
       header.dataset.folderEditId = folder.id;
       header.classList.add('managed-folder');
-      header.title = `${header.title || folder.title}\nRight-click to rename or remove`;
+      header.title = `${header.title || folder.title}\nRight-click to edit, move or remove`;
       header.addEventListener('contextmenu', event => {
         event.preventDefault();
         event.stopPropagation();
