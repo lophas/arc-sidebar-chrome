@@ -174,22 +174,25 @@
       }, HIDE_DELAY);
     };
 
+    const setEditorActive = open => {
+      editorActive = Boolean(open);
+      if (editorActive) {
+        cancelClose();
+        openPanel();
+      } else {
+        cancelClose();
+      }
+    };
+
     chrome.runtime.sendMessage({ type: 'arc-native-sidepanel-is-open' }).then(response => setNativePanelOpen(response?.open)).catch(() => {});
     chrome.runtime.onMessage.addListener(message => {
       if (message?.type === 'arc-native-sidepanel-state') setNativePanelOpen(message.open);
+      if (message?.type === 'arc-sidebar-editor-state') setEditorActive(message.open);
     });
 
     window.addEventListener('message', event => {
       if (event.source !== iframe.contentWindow || event.data?.type !== 'arc-sidebar-editor-state') return;
-      editorActive = Boolean(event.data.open);
-      if (editorActive) {
-        cancelClose();
-        openPanel();
-      } else if (isOpen) {
-        // After Save/Cancel the normal autohide rules resume. If the pointer is
-        // already outside, the next leave event will close it as usual.
-        cancelClose();
-      }
+      setEditorActive(event.data.open);
     });
 
     edge.addEventListener('mouseenter', scheduleOpen);
