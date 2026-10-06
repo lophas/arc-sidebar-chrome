@@ -4,6 +4,7 @@ const BINDINGS_KEY = 'arcSidebarBindings';
 let menu = null;
 let bypassContextMenu = false;
 let decorateTimer = null;
+let liveSpaceIds = new Set();
 
 function collectTabIds(nodes, out = []) {
   for (const node of nodes || []) {
@@ -159,9 +160,7 @@ async function showSpaceMenu(button, x, y) {
   positionMenu(x, y);
 }
 
-async function decorateMemoryControls() {
-  const { model, bindings } = await getModelAndBindings();
-
+function decorateImmediateLiveDots() {
   document.querySelectorAll('.row.has-binding .reset-pinned').forEach(button => {
     button.classList.add('live-dot-close');
     button.textContent = '';
@@ -177,15 +176,11 @@ async function decorateMemoryControls() {
     button.title = 'Close tab';
   });
 
-  document.querySelectorAll('.folder-reset').forEach(button => button.remove());
-
   for (const button of document.querySelectorAll('.space-button[data-space-id]')) {
     const spaceId = button.dataset.spaceId;
     if (!spaceId || spaceId === '__open_tabs__') continue;
-    const space = model?.spaces?.find(candidate => candidate.id === spaceId);
-    const liveCount = space ? liveItemIdsForNodes(space.children || [], bindings).length : 0;
     let dot = button.querySelector('.space-live-dot');
-    if (!liveCount) {
+    if (!liveSpaceIds.has(spaceId)) {
       dot?.remove();
       continue;
     }
@@ -198,7 +193,20 @@ async function decorateMemoryControls() {
   }
 }
 
+async function decorateMemoryControls() {
+  const { model, bindings } = await getModelAndBindings();
+
+  liveSpaceIds = new Set();
+  for (const space of model?.spaces || []) {
+    if (liveItemIdsForNodes(space.children || [], bindings).length) liveSpaceIds.add(space.id);
+  }
+
+  decorateImmediateLiveDots();
+  document.querySelectorAll('.folder-reset').forEach(button => button.remove());
+}
+
 function scheduleDecorate() {
+  decorateImmediateLiveDots();
   if (decorateTimer) clearTimeout(decorateTimer);
   decorateTimer = setTimeout(() => {
     decorateTimer = null;
