@@ -37,7 +37,7 @@ Pinned items are persistent sidebar entries, not permanently open browser tabs. 
 
 ### Folders
 
-Pinned items can be organized in folders. Folders can be collapsed, renamed, moved and removed without deleting their contents. A folder with live tabs shows a red status dot and provides a `−` action to close all live tabs contained in that folder at once.
+Pinned items can be organized in folders. Folders can be collapsed, renamed, moved between Spaces and removed without deleting their contents. A folder with live tabs shows a red status dot and provides a `−` action to close all live tabs contained in that folder at once.
 
 ### Open tabs
 
@@ -61,6 +61,8 @@ Arc Sidebar deliberately uses Chrome as the execution layer, which enables a few
 - **Native Chrome Tab Groups:** live pinned tabs are automatically grouped by Space; Favorites get their own native group.
 - **Edge-activated overlay sidebar:** move to the right edge of a normal webpage to reveal the sidebar without permanently giving up page width.
 - **Resizable overlay sidebar:** drag the sidebar's left edge to resize it; the width is remembered locally per computer.
+- **Right-click page pinning:** use the webpage context menu to pin the current page or a specific link directly into a chosen Space.
+- **Folder-to-Space moves:** edit a folder and choose a different Space to move the complete folder with all of its contents.
 - **Native Chrome Side Panel fallback:** the toolbar button can open the persistent Chrome Side Panel when you want the sidebar to stay visible.
 - **Persistent live-tab binding:** if a pinned page navigates away from its original URL, it still belongs to that sidebar item.
 - **Chrome restart recovery:** restored Chrome tabs are reconnected to their saved sidebar items after restart when they can be matched safely.
@@ -155,13 +157,15 @@ If Chrome itself is not signed in or Chrome Sync is disabled, `chrome.storage.sy
 - Use the red dot to see which saved items are currently live.
 - Use `−` on a live pinned item to close/reset only that item.
 - Use `−` on a folder to close all live tabs inside that folder.
+- Right-click a webpage to pin the current page or a link directly into a chosen Space.
 - Right-click Favorites, pinned links, folders and Spaces to edit them.
+- In a folder's editor, choose another Space to move the whole folder there.
 - Drag pinned links within a Space or onto another Space.
 - Use the **Open tabs** Space to pin an already-open Chrome tab without creating a duplicate.
 
 ## Architecture and privacy
 
-Arc Sidebar is a local-first Manifest V3 extension built on Chrome’s Side Panel, Tabs, Tab Groups, Storage and favicon APIs.
+Arc Sidebar is a local-first Manifest V3 extension built on Chrome’s Side Panel, Tabs, Tab Groups, Storage, Context Menus and favicon APIs.
 
 The persistent sidebar model is always kept locally in Chrome storage. If Chrome Sync is enabled in the extension settings, that model is additionally mirrored through Chrome’s `storage.sync` service in chunks. Live item-to-tab bindings use session storage, with a small local recovery snapshot used to reconnect restored tabs after Chrome restarts.
 
@@ -174,15 +178,15 @@ Release ZIPs are generated from the tagged source and contain only the files Chr
 Maintainers can create a release by pushing a version tag matching the manifest version, for example:
 
 ```bash
-git tag v0.6.3
-git push origin v0.6.3
+git tag v0.6.4
+git push origin v0.6.4
 ```
 
 The GitHub Actions release workflow packages the extension and publishes the ZIP as a GitHub Release asset.
 
 ## Current version
 
-**v0.6.3**
+**v0.6.4**
 
 ## License
 
