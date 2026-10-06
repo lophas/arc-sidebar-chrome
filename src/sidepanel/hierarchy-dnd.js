@@ -6,12 +6,20 @@ const FOLDER_DRAG_TYPE = 'application/x-arc-sidebar-folder';
 
 const spacesEl = document.querySelector('#spaces');
 const pinnedEl = document.querySelector('#pinned');
+const searchEl = document.querySelector('#search');
 
 let draggedSpaceId = null;
 let draggedFolderId = null;
 
 async function getData() {
   return chrome.storage.local.get([STORAGE_KEY, STATE_KEY]);
+}
+
+function matchesSearch(node, q) {
+  if (!q) return true;
+  const haystack = `${node?.title || ''} ${node?.url || ''}`.toLowerCase();
+  if (haystack.includes(q)) return true;
+  return node?.type === 'folder' && (node.children || []).some(child => matchesSearch(child, q));
 }
 
 function clearSpaceDropIndicators() {
@@ -54,8 +62,8 @@ async function reorderFolder(sourceId, targetId, after) {
   const space = model.spaces.find(candidate => candidate.id === state.currentSpaceId);
   if (!space?.children?.length) return;
 
-  // Folders are reordered only at the root of their current Space. Moving a
-  // folder to another Space remains an explicit action in the folder editor.
+  // Folder drag is deliberately limited to the root of the current Space.
+  // Moving a folder between Spaces remains an explicit editor/context action.
   const sourceIndex = space.children.findIndex(node => node?.type === 'folder' && node.id === sourceId);
   const targetIndex = space.children.findIndex(node => node?.type === 'folder' && node.id === targetId);
   if (sourceIndex < 0 || targetIndex < 0) return;
@@ -126,26 +134,49 @@ function decorateSpaceReordering() {
   }
 }
 
-function decorateFolderReordering() {
+async function decorateFolderReordering() {
   if (!pinnedEl) return;
 
-  // Only root-level folders are draggable. This preserves the one-level folder
-  // model and guarantees that dragging never moves a folder to another Space.
-  const folderEls = [...pinnedEl.children].filter(element => element.classList?.contains('folder'));
+  const stored = await getData();
+  const model = stored[STORAGE_KEY];
+  const state = stored[STATE_KEY] || {};
+  if (!model?.spaces?.length || !state.currentSpaceId || state.currentSpaceId === OPEN_TABS_SPACE_ID) return;
 
-  for (const folderEl of folderEls) {
+  const space = model.spaces.find(candidate => candidate.id === state.currentSpaceId);
+  if (!space) return;
+
+  // Do not depend on folder-manage.js / space-dnd.js having already decorated
+  // the headers. Those decorators are async and can run after this module.
+  // Instead, derive the folder IDs directly from the current model and map them
+  // to the root-level folder elements in exactly the same render/search order.
+  const q = searchEl?.value.trim().toLowerCase() || '';
+  const visibleRootFolders = (space.children || [])
+    .filter(node => node?.type === 'folder' && matchesSearch(node, q));
+  const folderEls = [...pinnedEl.children]
+    .filter(element => element.classList?.contains('folder'));
+
+  folderEls.forEach((folderEl, index) => {
+    const folder = visibleRootFolders[index];
     const header = folderEl.querySelector(':scope > .folder-header');
-    const folderId = header?.dataset.folderEditId || header?.dataset.crossSpaceFolderId;
-    if (!header || !folderId || header.dataset.folderReorderManaged === '1') continue;
+    if (!folder || !header) return;
+
+    const folderId = folder.id;
+    header.dataset.folderReorderId = folderId;
+    if (header.dataset.folderReorderManaged === '1') return;
 
     header.dataset.folderReorderManaged = '1';
     header.draggable = true;
 
     header.addEventListener('dragstart', event => {
-      draggedFolderId = folderId;
+      const sourceId = header.dataset.folderReorderId;
+      if (!sourceId) {
+        event.preventDefault();
+        return;
+      }
+      draggedFolderId = sourceId;
       folderEl.classList.add('reordering');
       event.dataTransfer.effectAllowed = 'move';
-      event.dataTransfer.setData(FOLDER_DRAG_TYPE, folderId);
+      event.dataTransfer.setData(FOLDER_DRAG_TYPE, sourceId);
     });
 
     header.addEventListener('dragend', () => {
@@ -156,7 +187,8 @@ function decorateFolderReordering() {
 
     header.addEventListener('dragover', event => {
       const sourceId = event.dataTransfer?.getData(FOLDER_DRAG_TYPE) || draggedFolderId;
-      if (!sourceId || sourceId === folderId) return;
+      const targetId = header.dataset.folderReorderId;
+      if (!sourceId || !targetId || sourceId === targetId) return;
       event.preventDefault();
       event.stopPropagation();
       event.dataTransfer.dropEffect = 'move';
@@ -173,20 +205,23 @@ function decorateFolderReordering() {
 
     header.addEventListener('drop', async event => {
       const sourceId = event.dataTransfer?.getData(FOLDER_DRAG_TYPE) || draggedFolderId;
-      if (!sourceId || sourceId === folderId) return;
+      const targetId = header.dataset.folderReorderId;
+      if (!sourceId || !targetId || sourceId === targetId) return;
       event.preventDefault();
       event.stopPropagation();
       const rect = header.getBoundingClientRect();
       const after = event.clientY >= rect.top + rect.height / 2;
       clearFolderDropIndicators();
-      await reorderFolder(sourceId, folderId, after);
+      await reorderFolder(sourceId, targetId, after);
     });
-  }
+  });
 }
 
 function decorateHierarchyDnD() {
   decorateSpaceReordering();
-  decorateFolderReordering();
+  decorateFolderReordering().catch(error => {
+    console.warn('Arc Sidebar: folder reorder decoration failed', error);
+  });
 }
 
 window.addEventListener('arc-sidebar-rendered', () => queueMicrotask(decorateHierarchyDnD));
