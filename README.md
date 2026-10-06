@@ -60,6 +60,7 @@ Arc Sidebar deliberately uses Chrome as the execution layer, which enables a few
 
 - **Native Chrome Tab Groups:** live pinned tabs are automatically grouped by Space; Favorites get their own native group.
 - **Edge-activated overlay sidebar:** move to the right edge of a normal webpage to reveal the sidebar without permanently giving up page width.
+- **Resizable overlay sidebar:** drag the sidebar's left edge to resize it; the width is remembered locally per computer.
 - **Native Chrome Side Panel fallback:** the toolbar button can open the persistent Chrome Side Panel when you want the sidebar to stay visible.
 - **Persistent live-tab binding:** if a pinned page navigates away from its original URL, it still belongs to that sidebar item.
 - **Chrome restart recovery:** restored Chrome tabs are reconnected to their saved sidebar items after restart when they can be matched safely.
@@ -173,15 +174,15 @@ Release ZIPs are generated from the tagged source and contain only the files Chr
 Maintainers can create a release by pushing a version tag matching the manifest version, for example:
 
 ```bash
-git tag v0.6.2
-git push origin v0.6.2
+git tag v0.6.3
+git push origin v0.6.3
 ```
 
 The GitHub Actions release workflow packages the extension and publishes the ZIP as a GitHub Release asset.
 
 ## Current version
 
-**v0.6.2**
+**v0.6.3**
 
 ## License
 
