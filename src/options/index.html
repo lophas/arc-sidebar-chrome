@@ -34,6 +34,26 @@
     </section>
 
     <section class="card">
+      <div class="setting-row">
+        <div>
+          <h2>Favorite button size</h2>
+          <p>Choose one of five fixed Favorite tile sizes. 100% is the original/default size.</p>
+        </div>
+        <label class="select-setting">
+          <span class="sr-only">Favorite button size</span>
+          <select id="favoriteSize">
+            <option value="80">80%</option>
+            <option value="90">90%</option>
+            <option value="100">100% · default</option>
+            <option value="110">110%</option>
+            <option value="120">120%</option>
+          </select>
+        </label>
+      </div>
+      <div id="favoriteSizeStatus" class="status"></div>
+    </section>
+
+    <section class="card">
       <h2>Arc import</h2>
       <p>Select Arc's <code>StorableSidebar.json</code>. Import replaces the current sidebar model.</p>
       <div class="import-actions">
@@ -71,7 +91,7 @@
           <span class="sr-only">Enable Chrome Sync</span>
         </label>
       </div>
-      <p class="sync-note">Live tab bindings, open tabs, collapsed folders, overlay width and sidebar mode stay local to each computer.</p>
+      <p class="sync-note">Live tab bindings, open tabs, collapsed folders, overlay width, sidebar mode and Favorite size stay local to each computer.</p>
       <p class="sync-note">Extension ID on this computer: <code id="extensionId"></code></p>
       <div class="sync-actions">
         <button id="syncNow" class="button button-element" type="button">Sync now</button>
@@ -87,6 +107,7 @@
   </main>
 
   <script type="module" src="sidebar-mode.js"></script>
+  <script type="module" src="favorite-size.js"></script>
   <script type="module" src="index.js"></script>
 </body>
 </html>
