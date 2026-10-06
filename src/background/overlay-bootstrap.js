@@ -1,24 +1,15 @@
-const OVERLAY_PING = 'arc-sidebar-overlay-ping';
 const OVERLAY_FILE = 'src/overlay/overlay.js';
 
 function isWebUrl(url) {
   return /^https?:\/\//i.test(url || '');
 }
 
-async function overlayIsPresent(tabId) {
-  try {
-    const response = await chrome.tabs.sendMessage(tabId, { type: OVERLAY_PING });
-    return response?.present === true;
-  } catch {
-    return false;
-  }
-}
-
 async function ensureOverlay(tab) {
   if (!tab?.id || !isWebUrl(tab.url || tab.pendingUrl)) return;
-  if (await overlayIsPresent(tab.id)) return;
 
   try {
+    // Safe to call even when the declarative content script already ran:
+    // overlay.js has its own isolated-world singleton guard and exits at once.
     await chrome.scripting.executeScript({
       target: { tabId: tab.id, frameIds: [0] },
       files: [OVERLAY_FILE]
@@ -39,8 +30,9 @@ async function ensureAllOverlays() {
 }
 
 chrome.runtime.onStartup.addListener(() => {
-  // Chrome may restore an already-loaded document without rerunning declarative
-  // content scripts. Probe each restored web tab and inject only when missing.
+  // Restored documents can survive Chrome startup without the declarative
+  // content script being attached again. Re-run overlay.js on web tabs; its
+  // singleton guard makes this idempotent on tabs where it is already present.
   setTimeout(() => {
     ensureAllOverlays().catch(error => {
       console.warn('Arc Sidebar: startup overlay restore failed', error);
