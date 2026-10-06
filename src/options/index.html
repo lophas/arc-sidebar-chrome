@@ -36,10 +36,13 @@
     <section class="card">
       <h2>Arc import</h2>
       <p>Select Arc's <code>StorableSidebar.json</code>. Import replaces the current sidebar model.</p>
-      <label class="button">
-        Import StorableSidebar.json
-        <input id="arcFile" type="file" accept="application/json,.json" hidden>
-      </label>
+      <div class="import-actions">
+        <label class="button">
+          Import StorableSidebar.json
+          <input id="arcFile" type="file" accept="application/json,.json" hidden>
+        </label>
+        <button id="resetAll" class="button button-element danger-button" type="button">Reset all extension data</button>
+      </div>
       <div id="status" class="status"></div>
     </section>
 
