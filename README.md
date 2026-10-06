@@ -67,6 +67,7 @@ Arc Sidebar deliberately uses Chrome as the execution layer, which enables a few
 - **Persistent live-tab binding:** if a pinned page navigates away from its original URL, it still belongs to that sidebar item.
 - **Chrome restart recovery:** restored Chrome tabs are reconnected to their saved sidebar items after restart when they can be matched safely.
 - **Optional Chrome Sync:** sync Spaces, Favorites, folders and pinned links between Chrome installations signed into the same Chrome Sync account.
+- **Backup & restore:** export the complete persistent sidebar model to a JSON backup and restore it later on the same or another computer.
 - **One-click folder cleanup:** close every live tab belonging to a folder without deleting any saved links.
 - **Low-memory model:** saved sidebar entries do not require open Chrome tabs.
 - **System light/dark mode:** the sidebar follows the operating system theme in both Side Panel and overlay modes.
@@ -112,6 +113,8 @@ When a new version is released:
 If you extracted the update to a different folder, remove the old unpacked extension and use **Load unpacked** again with the new folder.
 
 ## Importing your Arc sidebar
+
+On macOS, Arc normally stores the sidebar file at `~/Library/Application Support/Arc/StorableSidebar.json`; in Finder press **⌘⇧G**, paste that path, and copy the file somewhere safe before importing it. On Windows, the common location is `%LOCALAPPDATA%\Packages\TheBrowserCompany.Arc_*\LocalCache\Local\Arc\StorableSidebar.json`.
 
 1. Obtain your Arc `StorableSidebar.json` from your Arc profile/data files.
 2. In Chrome, open **Extensions → Arc Sidebar for Chrome → Details → Extension options**.
@@ -196,11 +199,36 @@ Disabling Chrome Sync in Arc Sidebar stops future synchronization but does not d
 
 If Chrome itself is not signed in, browser Sync is disabled, or Chrome prevents `storage.sync` from operating normally, Arc Sidebar continues to work locally.
 
-### Backup and restore
+## Backup and restore
 
-Chrome Sync is not a replacement for a backup. The Extension Options page provides **Backup & restore** so the complete persistent sidebar model can be exported to JSON and restored on the same or another machine.
+Backup & restore is available from **Extensions → Arc Sidebar for Chrome → Details → Extension options**.
 
-A backup contains the persistent organization — Spaces, Favorites, folders and pinned links — but intentionally does not include machine-specific live tab/session state.
+### Create a backup
+
+1. Open **Extension options**.
+2. In **Backup & restore**, click **Download backup**.
+3. Save the generated JSON file somewhere safe.
+
+The backup contains the complete persistent sidebar model:
+
+- Spaces
+- Space names and emoji/icons
+- Favorites
+- folders and their hierarchy
+- pinned links
+
+It intentionally does **not** contain machine-specific runtime state such as currently open tabs, live item↔tab bindings, collapsed-folder state or overlay width.
+
+### Restore a backup
+
+1. Open **Extension options**.
+2. In **Backup & restore**, choose **Restore backup**.
+3. Select a backup JSON file created by Arc Sidebar.
+4. Confirm the restore.
+
+Restore replaces the current persistent sidebar model with the contents of the backup. It can be used on the same computer or on another installation of Arc Sidebar.
+
+If Chrome Sync is enabled, the restored model becomes the new local model and is then reconciled with Sync. For migrations or troubleshooting, keeping a manual backup is still recommended even if Sync is enabled.
 
 ## Everyday workflow
 
@@ -216,6 +244,7 @@ A backup contains the persistent organization — Spaces, Favorites, folders and
 - Drag pinned links within a Space or onto another Space.
 - Use the **Open tabs** Space to pin an already-open Chrome tab without creating a duplicate.
 - Enable **Chrome Sync** if you want the same persistent sidebar structure on multiple Chrome installations.
+- Use **Backup & restore** before major upgrades, migrations or experiments.
 
 ## Architecture and privacy
 
