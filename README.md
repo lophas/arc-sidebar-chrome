@@ -8,23 +8,27 @@ It is not a full visual clone of Arc. The goal is to preserve the browsing model
 
 > This project is independent and is not affiliated with, endorsed by, or sponsored by The Browser Company or Arc.
 
-## 1.0.0 RC2
+## 1.0.0
 
-The current release candidate is **v1.0.0-rc2**.
+**v1.0.0 is the first stable release.**
 
-RC2 keeps the RC1 feature set and adds the final UI/behavior refinements made during real-world testing:
+It includes the full RC feature set plus the final fixes and UI refinements from real-world testing:
 
-- Favorite and pinned-link custom icon selection;
-- responsive Favorite drawer;
-- configurable Favorite tile size: 80%, 90%, 100%, 110% or 120%;
-- 100% remains the original/default Favorite size;
-- pinned rows no longer show the URL/domain beside the title;
-- overlay sidebar can be resized much narrower than before;
-- sidebar scroll position is remembered separately for each Space, including Open tabs;
-- opening or closing Chrome’s native Side Panel while using Autohide overlay reloads the active webpage so the overlay state is applied cleanly;
-- native Chrome tab grouping and sidebar-order group sorting are preserved after an RC2 startup regression was caught and fixed during final testing.
-
-RC2 is still a release candidate. Back up the sidebar before major experiments or upgrades.
+- two sidebar modes: Autohide overlay and Native Chrome Side Panel;
+- Arc-style Spaces, folders, persistent pinned links and global Favorites;
+- native Chrome tab grouping by Space and Favorites, with group tab order following the sidebar hierarchy;
+- drag-and-drop reordering for Spaces, folders, Favorites and pinned items;
+- moving pinned items between folders, out to Space root, and across Spaces;
+- folder moves across Spaces through the folder editor;
+- red live-state indicators and bulk-close actions for folders and Spaces;
+- responsive Favorite drawer with five size presets: 80%, 90%, 100%, 110%, 120%;
+- custom uploaded icons for Favorites, pinned links and Spaces;
+- searchable Space emoji picker with a curated compatibility-safe set, country flags, country-name search and common ASCII emoticon aliases;
+- per-Space and Open-tabs scroll-position memory;
+- Chrome Sync, backup/restore and full reset;
+- right-click webpage pinning;
+- stable extension ID across unpacked installs;
+- overlay editing lock: the autohide sidebar stays open while an editor dialog is active.
 
 ## Core model
 
@@ -41,7 +45,9 @@ This makes it practical to keep hundreds of organized links without keeping hund
 
 ### Spaces
 
-- Arc-like Spaces with title and emoji/icon;
+- Arc-like Spaces with title and icon;
+- emoji picker with search by name/keyword, country name and common emoticon aliases such as `:)`, `:D`, `<3`;
+- custom SVG/PNG/WebP/JPEG icon upload by click or drag-and-drop;
 - drag-and-drop Space reordering;
 - red live-state dot when the Space contains open bound tabs;
 - right-click to edit the Space or close all live tabs belonging to it.
@@ -54,7 +60,7 @@ Favorites are global across Spaces.
 - red live-state dot when open;
 - click the red dot to close the live tab while preserving the Favorite;
 - drag-and-drop Favorite reordering;
-- optional custom emoji/symbol icon;
+- use the site favicon or upload a custom SVG/PNG/WebP/JPEG icon;
 - responsive drawer that adapts to available sidebar width;
 - five local tile-size presets: 80%, 90%, 100%, 110%, 120%.
 
@@ -65,7 +71,8 @@ Pinned items are persistent sidebar entries rather than permanently open browser
 - click to open/focus;
 - red live-state dot when open;
 - click the dot to close/reset the live tab while keeping the saved URL;
-- right-click to edit title, URL and optional custom icon;
+- right-click to edit title, URL and custom icon;
+- use the site favicon or upload a custom SVG/PNG/WebP/JPEG icon;
 - drag within the Space root, within folders, between folders, from a folder back to root, or onto another Space.
 
 Pinned rows show the saved title without repeating the URL/domain beside it.
@@ -103,7 +110,8 @@ Choose the mode under **Extension options → Sidebar mode**.
 - closes automatically after leaving it;
 - floats above the page instead of narrowing the viewport;
 - resizable and remembered locally;
-- supports a narrow compact layout.
+- supports a narrow compact layout;
+- stays open while an edit dialog is active, and resumes autohide after Save/Cancel.
 
 If Chrome’s native Side Panel is manually opened or closed while Autohide overlay mode is active, the current HTTP/HTTPS page reloads once so the overlay trigger/state is rebuilt cleanly.
 
@@ -132,10 +140,16 @@ The Favorite drawer is responsive rather than fixed at four columns, and can col
 Favorites and pinned links can use:
 
 - the website favicon;
-- one of the built-in emoji/symbol presets;
-- any emoji or short symbol pasted into the icon field.
+- a custom SVG/PNG/WebP/JPEG icon uploaded by click or drag-and-drop.
 
-Custom icons are part of the persistent sidebar model, so they are included in Backup/Restore and Chrome Sync.
+Spaces can use:
+
+- a searchable emoji from the built-in compatibility-safe set;
+- a country flag searchable by country name/code;
+- a pasted emoji;
+- a custom SVG/PNG/WebP/JPEG icon uploaded by click or drag-and-drop.
+
+Uploaded image icons are resized/compressed before storage. Custom icons are part of the persistent sidebar model, so they are included in Backup/Restore and Chrome Sync.
 
 ## Arc import
 
@@ -180,7 +194,7 @@ Synced persistent data includes:
 - Spaces and their order;
 - Space names/icons;
 - Favorites;
-- custom Favorite/pinned icons;
+- custom Favorite/pinned/Space icons;
 - folders and folder order;
 - pinned links and hierarchy.
 
@@ -228,7 +242,7 @@ A useful restore test is:
 
 Arc Sidebar for Chrome is distributed as an unpacked extension ZIP from GitHub Releases.
 
-1. Download the latest release/prerelease ZIP.
+1. Download the latest release ZIP.
 2. Extract it to a permanent folder.
 3. Open `chrome://extensions`.
 4. Enable **Developer mode**.
@@ -257,7 +271,7 @@ The extension is local-first and built on Chrome’s Manifest V3 APIs:
 - Context Menus;
 - favicon API.
 
-The background entry point is `src/background/service-worker.js`. Native group creation/synchronization lives in the service worker, while group ordering and native-panel reload handling are loaded as background feature modules through the existing context-menu import chain. This is the proven startup path used by RC1 and retained for RC2 after final regression testing.
+The background entry point is `src/background/service-worker.js`. Native group creation/synchronization lives in the service worker, while group ordering and native-panel reload handling are loaded through background feature modules.
 
 The persistent sidebar model lives in `chrome.storage.local`. If Chrome Sync is enabled, a chunked mirror is stored in `chrome.storage.sync`. Live item-to-tab bindings use session storage with persistent recovery metadata for Chrome restart recovery.
 
@@ -288,20 +302,18 @@ Tagged releases are built by GitHub Actions and contain only:
 - `manifest.json`
 - `src/`
 
-For prereleases, the tag must match `manifest.json` → `version_name`.
-
-For RC2:
+For the stable 1.0 release:
 
 ```bash
-git tag v1.0.0-rc2
-git push origin v1.0.0-rc2
+git tag v1.0.0
+git push origin v1.0.0
 ```
 
-The workflow validates the tag, builds `arc-sidebar-chrome-v1.0.0-rc2.zip`, and publishes it as a GitHub prerelease.
+The workflow validates the tag against `manifest.json`, builds `arc-sidebar-chrome-v1.0.0.zip`, and publishes it as a normal GitHub Release.
 
 ## Current version
 
-**v1.0.0-rc2**
+**v1.0.0**
 
 Manifest numeric version: **1.0.0**
 
