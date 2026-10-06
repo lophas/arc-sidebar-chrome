@@ -17,6 +17,7 @@ const extensionId = document.querySelector('#extensionId');
 const downloadBackup = document.querySelector('#downloadBackup');
 const restoreBackup = document.querySelector('#restoreBackup');
 const backupStatus = document.querySelector('#backupStatus');
+const resetAll = document.querySelector('#resetAll');
 
 extensionId.textContent = chrome.runtime.id;
 
@@ -183,6 +184,35 @@ async function load() {
   await renderSyncStatus();
 }
 
+async function resetExtensionData() {
+  const confirmed = window.confirm(
+    'Reset all Arc Sidebar data and settings on this computer, including the Chrome Sync snapshot?\n\n' +
+    'Your currently open browser tabs will stay open. This cannot be undone unless you have a backup.'
+  );
+  if (!confirmed) return;
+
+  resetAll.disabled = true;
+  status.textContent = 'Resetting…';
+  backupStatus.textContent = '';
+
+  try {
+    // Clear the cloud snapshot first so clearing the local model cannot be
+    // immediately repopulated by Chrome Sync while testing backup restore.
+    await chrome.storage.sync.clear();
+    await chrome.storage.session.clear();
+    await chrome.storage.local.clear();
+
+    render(null);
+    await renderSyncStatus();
+    status.textContent = 'Reset complete. All extension data and settings were cleared.';
+  } catch (error) {
+    console.error(error);
+    status.textContent = `Reset failed: ${error.message}`;
+  } finally {
+    resetAll.disabled = false;
+  }
+}
+
 arcFile.addEventListener('change', async event => {
   const file = event.target.files?.[0];
   if (!file) return;
@@ -287,6 +317,7 @@ syncEnabled.addEventListener('change', async () => {
 });
 
 syncNow.addEventListener('click', runSyncNow);
+resetAll.addEventListener('click', resetExtensionData);
 
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area === 'local' && changes[STORAGE_KEY]) render(changes[STORAGE_KEY].newValue);
