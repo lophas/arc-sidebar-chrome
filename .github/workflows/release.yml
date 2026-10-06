@@ -16,14 +16,14 @@ jobs:
       - name: Check out source
         uses: actions/checkout@v4
 
-      - name: Verify tag matches manifest version
+      - name: Verify tag matches manifest release version
         shell: bash
         run: |
           set -euo pipefail
           TAG_VERSION="${GITHUB_REF_NAME#v}"
-          MANIFEST_VERSION="$(python3 -c 'import json; print(json.load(open("manifest.json"))["version"])')"
-          if [[ "$TAG_VERSION" != "$MANIFEST_VERSION" ]]; then
-            echo "Tag version ($TAG_VERSION) does not match manifest version ($MANIFEST_VERSION)." >&2
+          MANIFEST_RELEASE_VERSION="$(python3 -c 'import json; m=json.load(open("manifest.json")); print(m.get("version_name", m["version"]))')"
+          if [[ "$TAG_VERSION" != "$MANIFEST_RELEASE_VERSION" ]]; then
+            echo "Tag version ($TAG_VERSION) does not match manifest release version ($MANIFEST_RELEASE_VERSION)." >&2
             exit 1
           fi
 
@@ -55,8 +55,13 @@ jobs:
           set -euo pipefail
           VERSION="${GITHUB_REF_NAME#v}"
           ZIP_FILE="dist/arc-sidebar-chrome-v${VERSION}.zip"
+          EXTRA_ARGS=()
+          if [[ "$VERSION" == *-* ]]; then
+            EXTRA_ARGS+=(--prerelease)
+          fi
 
           gh release create "$GITHUB_REF_NAME" \
             "$ZIP_FILE" \
-            --title "Arc Sidebar for Chrome ${GITHUB_REF_NAME}" \
-            --generate-notes
+            --title "Arc Sidebar for Chrome ${VERSION}" \
+            --generate-notes \
+            "${EXTRA_ARGS[@]}"
