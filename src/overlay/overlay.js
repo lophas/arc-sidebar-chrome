@@ -15,7 +15,7 @@
     overlayInitialized = true;
 
     const DEFAULT_PANEL_WIDTH = 390;
-    const MIN_PANEL_WIDTH = 280;
+    const MIN_PANEL_WIDTH = 120;
     const MAX_PANEL_WIDTH = 720;
     const WIDTH_STORAGE_KEY = 'arcSidebarOverlayWidth';
     const EDGE_WIDTH = 7;
