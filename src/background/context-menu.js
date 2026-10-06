@@ -1,3 +1,5 @@
+import './overlay-bootstrap.js';
+
 const STORAGE_KEY = 'arcSidebarModel';
 const BINDINGS_KEY = 'arcSidebarBindings';
 const MENU_ROOT_ID = 'arc-sidebar-pin-root';
