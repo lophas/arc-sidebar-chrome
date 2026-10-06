@@ -9,6 +9,10 @@ const addFavoriteButton = document.querySelector('#addFavorite');
 const addPinnedButton = document.querySelector('#addPinned');
 
 const ICON_PRESETS = ['⭐','❤️','💬','📧','📅','📚','🧰','🖥️','🏠','🌐','📰','🎬','🎵','📷','🧭','✈️','🚗','💡','🔧','🧪'];
+const IMAGE_ICON_PREFIX = 'data:image/';
+const MAX_SOURCE_ICON_BYTES = 2 * 1024 * 1024;
+const MAX_STORED_ICON_CHARS = 24000;
+const ACCEPTED_ICON_TYPES = new Set(['image/svg+xml', 'image/png', 'image/webp', 'image/jpeg']);
 
 let cachedModel = null;
 let cachedState = { currentSpaceId: null, collapsedFolders: {} };
@@ -23,6 +27,10 @@ function normalizeEnteredUrl(value) {
   if (/^[a-z][a-z0-9+.-]*:\/\//i.test(url)) return url;
   if (/^(chrome|edge|about):/i.test(url)) return url;
   return `https://${url}`;
+}
+
+function isImageIcon(value) {
+  return typeof value === 'string' && value.startsWith(IMAGE_ICON_PREFIX);
 }
 
 function findNodeLocation(nodes, id) {
@@ -55,16 +63,33 @@ function visibleTabNodes(nodes, q, out = []) {
 
 function replaceWithCustomIcon(container, icon, className) {
   if (!container || !icon) return;
+
+  const wantsImage = isImageIcon(icon);
   let custom = container.querySelector(`.${className}`);
-  if (!custom) {
-    custom = document.createElement('span');
-    custom.className = className;
-    custom.setAttribute('aria-hidden', 'true');
-    const original = container.querySelector('img, .favicon-fallback');
-    if (!original) return;
-    original.replaceWith(custom);
+  const correctElement = custom && (wantsImage ? custom.tagName === 'IMG' : custom.tagName === 'SPAN');
+
+  if (!correctElement) {
+    const replacement = document.createElement(wantsImage ? 'img' : 'span');
+    replacement.className = className;
+    replacement.setAttribute('aria-hidden', 'true');
+    if (wantsImage) replacement.classList.add('custom-icon-image');
+
+    if (custom) {
+      custom.replaceWith(replacement);
+    } else {
+      const original = container.querySelector('img, .favicon-fallback');
+      if (!original) return;
+      original.replaceWith(replacement);
+    }
+    custom = replacement;
   }
-  custom.textContent = icon;
+
+  if (wantsImage) {
+    custom.src = icon;
+    custom.alt = '';
+  } else {
+    custom.textContent = icon;
+  }
 }
 
 function decorateVisibleIcons() {
@@ -109,6 +134,106 @@ function currentIconForEditing() {
   return '';
 }
 
+function fileToImage(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const image = new Image();
+    image.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve(image);
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('Could not read this image.'));
+    };
+    image.src = url;
+  });
+}
+
+async function rasterizeIconFile(file, size) {
+  const image = await fileToImage(file);
+  const width = image.naturalWidth || image.width;
+  const height = image.naturalHeight || image.height;
+  if (!width || !height) throw new Error('Image has no usable dimensions.');
+
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d', { alpha: true });
+  const scale = Math.min(size / width, size / height);
+  const drawWidth = Math.max(1, Math.round(width * scale));
+  const drawHeight = Math.max(1, Math.round(height * scale));
+  const x = Math.round((size - drawWidth) / 2);
+  const y = Math.round((size - drawHeight) / 2);
+  ctx.clearRect(0, 0, size, size);
+  ctx.drawImage(image, x, y, drawWidth, drawHeight);
+  return canvas.toDataURL('image/webp', 0.9);
+}
+
+async function prepareIconFile(file) {
+  if (!file) throw new Error('No file selected.');
+  if (file.size > MAX_SOURCE_ICON_BYTES) throw new Error('Icon file is too large. Maximum source size is 2 MB.');
+
+  const type = file.type || '';
+  const extensionOk = /\.(svg|png|webp|jpe?g)$/i.test(file.name || '');
+  if (!ACCEPTED_ICON_TYPES.has(type) && !extensionOk) {
+    throw new Error('Use an SVG, PNG, WebP or JPEG image.');
+  }
+
+  for (const size of [64, 48, 32]) {
+    const dataUrl = await rasterizeIconFile(file, size);
+    if (dataUrl.length <= MAX_STORED_ICON_CHARS) return dataUrl;
+  }
+  throw new Error('The icon could not be compressed enough for safe Sync/Backup storage.');
+}
+
+function setIconStatus(field, message, isError = false) {
+  const status = field.querySelector('.item-icon-status');
+  if (!status) return;
+  status.textContent = message || '';
+  status.classList.toggle('error', Boolean(isError));
+}
+
+function setImagePreview(field, icon, fileName = '') {
+  const preview = field.querySelector('.item-icon-file-preview');
+  const image = preview?.querySelector('img');
+  const name = preview?.querySelector('span');
+  if (!preview || !image || !name) return;
+
+  if (isImageIcon(icon)) {
+    image.src = icon;
+    name.textContent = fileName || 'Custom image icon';
+    preview.hidden = false;
+  } else {
+    image.removeAttribute('src');
+    name.textContent = '';
+    preview.hidden = true;
+  }
+}
+
+function clearFileIcon(field) {
+  delete field.dataset.fileIcon;
+  setImagePreview(field, '');
+}
+
+async function selectIconFile(field, file) {
+  const dropzone = field.querySelector('.item-icon-dropzone');
+  const input = field.querySelector('#itemIcon');
+  try {
+    dropzone?.classList.add('busy');
+    setIconStatus(field, 'Preparing icon…');
+    const dataUrl = await prepareIconFile(file);
+    field.dataset.fileIcon = dataUrl;
+    if (input) input.value = '';
+    setImagePreview(field, dataUrl, file.name || 'Custom image icon');
+    setIconStatus(field, 'Image icon ready. Save to apply it.');
+  } catch (error) {
+    setIconStatus(field, error?.message || 'Could not use this icon.', true);
+  } finally {
+    dropzone?.classList.remove('busy');
+  }
+}
+
 function createIconField() {
   const label = document.createElement('label');
   label.className = 'item-icon-field';
@@ -118,11 +243,21 @@ function createIconField() {
       <input id="itemIcon" class="item-icon-input" type="text" maxlength="8" autocomplete="off" placeholder="Site favicon">
       <button class="item-icon-clear" type="button" title="Use site favicon">Use favicon</button>
     </div>
+    <div class="item-icon-help">Type or paste any emoji/symbol, choose a preset, or drop an image file below.</div>
+    <div class="item-icon-dropzone" role="button" tabindex="0" aria-label="Drop or choose a custom icon image">
+      <strong>Drop icon here</strong>
+      <span>SVG, PNG, WebP or JPEG · or click to choose</span>
+      <input class="item-icon-file-input" type="file" accept="image/svg+xml,image/png,image/webp,image/jpeg" hidden>
+    </div>
+    <div class="item-icon-file-preview" hidden><img alt=""><span></span></div>
+    <div class="item-icon-status" aria-live="polite"></div>
     <div class="item-icon-grid" aria-label="Icon presets"></div>`;
 
   const input = label.querySelector('#itemIcon');
   const grid = label.querySelector('.item-icon-grid');
   const clear = label.querySelector('.item-icon-clear');
+  const dropzone = label.querySelector('.item-icon-dropzone');
+  const fileInput = label.querySelector('.item-icon-file-input');
 
   for (const icon of ICON_PRESETS) {
     const button = document.createElement('button');
@@ -131,16 +266,61 @@ function createIconField() {
     button.textContent = icon;
     button.title = `Use ${icon}`;
     button.addEventListener('click', () => {
+      clearFileIcon(label);
       input.value = icon;
+      setIconStatus(label, '');
       input.focus();
     });
     grid.append(button);
   }
 
+  input.addEventListener('input', () => {
+    if (input.value) clearFileIcon(label);
+    setIconStatus(label, '');
+  });
+
   clear.addEventListener('click', () => {
+    clearFileIcon(label);
     input.value = '';
+    setIconStatus(label, 'Using the site favicon.');
     input.focus();
   });
+
+  const chooseFile = () => fileInput.click();
+  dropzone.addEventListener('click', chooseFile);
+  dropzone.addEventListener('keydown', event => {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault();
+      chooseFile();
+    }
+  });
+  fileInput.addEventListener('click', event => event.stopPropagation());
+  fileInput.addEventListener('change', () => {
+    const file = fileInput.files?.[0];
+    if (file) selectIconFile(label, file);
+    fileInput.value = '';
+  });
+
+  for (const eventName of ['dragenter', 'dragover']) {
+    dropzone.addEventListener(eventName, event => {
+      event.preventDefault();
+      event.stopPropagation();
+      dropzone.classList.add('dragover');
+      if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy';
+    });
+  }
+  for (const eventName of ['dragleave', 'drop']) {
+    dropzone.addEventListener(eventName, event => {
+      event.preventDefault();
+      event.stopPropagation();
+      dropzone.classList.remove('dragover');
+    });
+  }
+  dropzone.addEventListener('drop', event => {
+    const file = event.dataTransfer?.files?.[0];
+    if (file) selectIconFile(label, file);
+  });
+
   return label;
 }
 
@@ -160,8 +340,18 @@ function showIconFieldWhenReady(attempt = 0) {
     field = createIconField();
     urlInput.closest('label')?.after(field);
   }
+
   const input = field.querySelector('#itemIcon');
-  if (input) input.value = currentIconForEditing();
+  const current = currentIconForEditing();
+  clearFileIcon(field);
+  setIconStatus(field, '');
+  if (isImageIcon(current)) {
+    field.dataset.fileIcon = current;
+    if (input) input.value = '';
+    setImagePreview(field, current, 'Current custom image icon');
+  } else if (input) {
+    input.value = current;
+  }
 }
 
 function setEditingFromTarget(target) {
@@ -183,14 +373,15 @@ function setEditingFromTarget(target) {
 
 function armPendingSave() {
   const dialog = document.querySelector('.item-dialog');
-  const input = dialog?.querySelector('#itemIcon');
-  if (!editing || !input) return;
+  const field = dialog?.querySelector('.item-icon-field');
+  const input = field?.querySelector('#itemIcon');
+  if (!editing || !field || !input) return;
 
   const normalizedUrl = normalizeEnteredUrl(dialog.querySelector('#itemUrl')?.value || '');
   const enteredTitle = dialog.querySelector('#itemTitle')?.value.trim() || '';
   pendingIconSave = {
     ...editing,
-    icon: input.value.trim(),
+    icon: field.dataset.fileIcon || input.value.trim(),
     expectedUrl: normalizedUrl,
     expectedTitle: enteredTitle || normalizedUrl
   };
