@@ -1,4 +1,5 @@
 import './group-order.js';
+import './native-panel-reload.js';
 
 const STORAGE_KEY = 'arcSidebarModel';
 const BINDINGS_KEY = 'arcSidebarBindings';
