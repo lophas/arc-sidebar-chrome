@@ -44,88 +44,20 @@
 
     shadow.innerHTML = `
       <style>
-        :host {
-          all: initial;
-          color-scheme: light dark;
-        }
-        .edge {
-          position: fixed;
-          top: 0;
-          right: 0;
-          width: ${EDGE_WIDTH}px;
-          height: 100vh;
-          z-index: 2147483646;
-          background: transparent;
-          pointer-events: auto;
-        }
-        .panel {
-          position: fixed;
-          top: 0;
-          right: 0;
-          width: ${DEFAULT_PANEL_WIDTH}px;
-          height: 100vh;
-          z-index: 2147483647;
-          transform: translateX(100%);
-          transition: transform 170ms cubic-bezier(.2,.8,.2,1), box-shadow 170ms ease;
-          background: Canvas;
-          box-shadow: none;
-          overflow: hidden;
-          pointer-events: none;
-          border-left: 1px solid color-mix(in srgb, CanvasText 10%, transparent);
-        }
-        .panel.open {
-          transform: translateX(0);
-          box-shadow: -18px 0 42px rgba(0,0,0,.34);
-          pointer-events: auto;
-        }
-        .panel.resizing {
-          transition: none;
-          user-select: none;
-        }
-        .resize-handle {
-          position: fixed;
-          top: 0;
-          width: ${RESIZE_HANDLE_WIDTH}px;
-          height: 100vh;
-          z-index: 2147483647;
-          cursor: ew-resize;
-          background: transparent;
-          touch-action: none;
-          pointer-events: none;
-          opacity: 0;
-        }
-        .resize-handle.open {
-          pointer-events: auto;
-          opacity: 1;
-        }
-        .resize-handle::after {
-          content: '';
-          position: absolute;
-          top: 0;
-          bottom: 0;
-          left: 50%;
-          width: 2px;
-          transform: translateX(-1px);
-          background: transparent;
-          transition: background 120ms ease;
-        }
-        .resize-handle:hover::after,
-        .resize-handle.resizing::after {
-          background: color-mix(in srgb, CanvasText 26%, transparent);
-        }
-        iframe {
-          width: 100%;
-          height: 100%;
-          border: 0;
-          display: block;
-          background: Canvas;
-        }
+        :host { all: initial; color-scheme: light dark; }
+        .edge { position: fixed; top: 0; right: 0; width: ${EDGE_WIDTH}px; height: 100vh; z-index: 2147483646; background: transparent; pointer-events: auto; }
+        .panel { position: fixed; top: 0; right: 0; width: ${DEFAULT_PANEL_WIDTH}px; height: 100vh; z-index: 2147483647; transform: translateX(100%); transition: transform 170ms cubic-bezier(.2,.8,.2,1), box-shadow 170ms ease; background: Canvas; box-shadow: none; overflow: hidden; pointer-events: none; border-left: 1px solid color-mix(in srgb, CanvasText 10%, transparent); }
+        .panel.open { transform: translateX(0); box-shadow: -18px 0 42px rgba(0,0,0,.34); pointer-events: auto; }
+        .panel.resizing { transition: none; user-select: none; }
+        .resize-handle { position: fixed; top: 0; width: ${RESIZE_HANDLE_WIDTH}px; height: 100vh; z-index: 2147483647; cursor: ew-resize; background: transparent; touch-action: none; pointer-events: none; opacity: 0; }
+        .resize-handle.open { pointer-events: auto; opacity: 1; }
+        .resize-handle::after { content: ''; position: absolute; top: 0; bottom: 0; left: 50%; width: 2px; transform: translateX(-1px); background: transparent; transition: background 120ms ease; }
+        .resize-handle:hover::after, .resize-handle.resizing::after { background: color-mix(in srgb, CanvasText 26%, transparent); }
+        iframe { width: 100%; height: 100%; border: 0; display: block; background: Canvas; }
       </style>
       <div class="edge" aria-hidden="true"></div>
       <div class="resize-handle" title="Drag to resize sidebar" aria-hidden="true"></div>
-      <div class="panel" role="complementary" aria-label="Arc Sidebar">
-        <iframe title="Arc Sidebar" src="${sidebarUrl.href}"></iframe>
-      </div>`;
+      <div class="panel" role="complementary" aria-label="Arc Sidebar"><iframe title="Arc Sidebar" src="${sidebarUrl.href}"></iframe></div>`;
 
     const edge = shadow.querySelector('.edge');
     const panel = shadow.querySelector('.panel');
@@ -136,6 +68,7 @@
     let isOpen = false;
     let isResizing = false;
     let nativePanelOpen = false;
+    let editorActive = false;
     let currentWidth = DEFAULT_PANEL_WIDTH;
     let sidebarMode = OVERLAY_MODE;
 
@@ -144,9 +77,7 @@
       host.style.colorScheme = theme;
       panel.style.colorScheme = theme;
       iframe.style.colorScheme = theme;
-      try {
-        iframe.contentWindow?.postMessage({ type: 'arc-sidebar-theme', theme }, '*');
-      } catch {}
+      try { iframe.contentWindow?.postMessage({ type: 'arc-sidebar-theme', theme }, '*'); } catch {}
     };
 
     iframe.addEventListener('load', sendTheme);
@@ -159,14 +90,9 @@
       resizeHandle.style.right = `${currentWidth - (RESIZE_HANDLE_WIDTH / 2)}px`;
     };
 
-    chrome.storage.local.get(WIDTH_STORAGE_KEY).then(stored => {
-      applyWidth(stored[WIDTH_STORAGE_KEY]);
-    }).catch(() => applyWidth(DEFAULT_PANEL_WIDTH));
-
+    chrome.storage.local.get(WIDTH_STORAGE_KEY).then(stored => applyWidth(stored[WIDTH_STORAGE_KEY])).catch(() => applyWidth(DEFAULT_PANEL_WIDTH));
     chrome.storage.onChanged.addListener((changes, area) => {
-      if (area === 'local' && changes[WIDTH_STORAGE_KEY] && !isResizing) {
-        applyWidth(changes[WIDTH_STORAGE_KEY].newValue);
-      }
+      if (area === 'local' && changes[WIDTH_STORAGE_KEY] && !isResizing) applyWidth(changes[WIDTH_STORAGE_KEY].newValue);
     });
 
     const clearTimers = () => {
@@ -217,7 +143,7 @@
     };
 
     const closePanel = () => {
-      if (isResizing) return;
+      if (isResizing || editorActive) return;
       if (showTimer) clearTimeout(showTimer);
       showTimer = null;
       if (!isOpen) return;
@@ -237,7 +163,7 @@
     };
 
     const scheduleClose = () => {
-      if (isResizing) return;
+      if (isResizing || editorActive) return;
       if (showTimer) clearTimeout(showTimer);
       showTimer = null;
       if (!isOpen) return;
@@ -248,13 +174,21 @@
       }, HIDE_DELAY);
     };
 
-    chrome.runtime.sendMessage({ type: 'arc-native-sidepanel-is-open' })
-      .then(response => setNativePanelOpen(response?.open))
-      .catch(() => {});
-
+    chrome.runtime.sendMessage({ type: 'arc-native-sidepanel-is-open' }).then(response => setNativePanelOpen(response?.open)).catch(() => {});
     chrome.runtime.onMessage.addListener(message => {
-      if (message?.type === 'arc-native-sidepanel-state') {
-        setNativePanelOpen(message.open);
+      if (message?.type === 'arc-native-sidepanel-state') setNativePanelOpen(message.open);
+    });
+
+    window.addEventListener('message', event => {
+      if (event.source !== iframe.contentWindow || event.data?.type !== 'arc-sidebar-editor-state') return;
+      editorActive = Boolean(event.data.open);
+      if (editorActive) {
+        cancelClose();
+        openPanel();
+      } else if (isOpen) {
+        // After Save/Cancel the normal autohide rules resume. If the pointer is
+        // already outside, the next leave event will close it as usual.
+        cancelClose();
       }
     });
 
@@ -289,22 +223,18 @@
       if (sidebarMode !== OVERLAY_MODE || nativePanelOpen || event.button !== 0) return;
       event.preventDefault();
       event.stopPropagation();
-
       isResizing = true;
       clearTimers();
       openPanel();
       panel.classList.add('resizing');
       resizeHandle.classList.add('resizing');
       resizeHandle.setPointerCapture(event.pointerId);
-
       const startX = event.clientX;
       const startWidth = currentWidth;
-
       const onPointerMove = moveEvent => {
         if (!isResizing) return;
         applyWidth(startWidth + (startX - moveEvent.clientX));
       };
-
       const finishResize = async upEvent => {
         if (!isResizing) return;
         isResizing = false;
@@ -313,14 +243,9 @@
         resizeHandle.removeEventListener('pointermove', onPointerMove);
         resizeHandle.removeEventListener('pointerup', finishResize);
         resizeHandle.removeEventListener('pointercancel', finishResize);
-        try {
-          if (resizeHandle.hasPointerCapture(upEvent.pointerId)) {
-            resizeHandle.releasePointerCapture(upEvent.pointerId);
-          }
-        } catch {}
+        try { if (resizeHandle.hasPointerCapture(upEvent.pointerId)) resizeHandle.releasePointerCapture(upEvent.pointerId); } catch {}
         await chrome.storage.local.set({ [WIDTH_STORAGE_KEY]: currentWidth });
       };
-
       resizeHandle.addEventListener('pointermove', onPointerMove);
       resizeHandle.addEventListener('pointerup', finishResize);
       resizeHandle.addEventListener('pointercancel', finishResize);
@@ -328,7 +253,7 @@
 
     window.addEventListener('resize', () => applyWidth(currentWidth));
     document.addEventListener('keydown', event => {
-      if (event.key === 'Escape' && isOpen) closePanel();
+      if (event.key === 'Escape' && isOpen && !editorActive) closePanel();
     }, true);
     window.addEventListener('beforeunload', clearTimers, { once: true });
   }
@@ -340,12 +265,8 @@
   };
 
   chrome.storage.onChanged.addListener((changes, area) => {
-    if (area === 'local' && changes[SIDEBAR_MODE_KEY]) {
-      applyMode(changes[SIDEBAR_MODE_KEY].newValue);
-    }
+    if (area === 'local' && changes[SIDEBAR_MODE_KEY]) applyMode(changes[SIDEBAR_MODE_KEY].newValue);
   });
 
-  chrome.storage.local.get(SIDEBAR_MODE_KEY)
-    .then(stored => applyMode(stored[SIDEBAR_MODE_KEY]))
-    .catch(() => applyMode(OVERLAY_MODE));
+  chrome.storage.local.get(SIDEBAR_MODE_KEY).then(stored => applyMode(stored[SIDEBAR_MODE_KEY])).catch(() => applyMode(OVERLAY_MODE));
 })();
