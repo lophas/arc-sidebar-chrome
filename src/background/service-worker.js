@@ -1,3 +1,5 @@
+import './context-menu.js';
+
 const STORAGE_KEY = 'arcSidebarModel';
 const BINDINGS_KEY = 'arcSidebarBindings';
 const GROUP_MAP_KEY = 'arcSidebarNativeGroups';
