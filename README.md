@@ -22,7 +22,7 @@ RC2 keeps the RC1 feature set and adds the final UI/behavior refinements made du
 - overlay sidebar can be resized much narrower than before;
 - sidebar scroll position is remembered separately for each Space, including Open tabs;
 - opening or closing Chrome’s native Side Panel while using Autohide overlay reloads the active webpage so the overlay state is applied cleanly;
-- background startup was refactored into an explicit bootstrap module so background features no longer depend on hidden transitive imports.
+- native Chrome tab grouping and sidebar-order group sorting are preserved after an RC2 startup regression was caught and fixed during final testing.
 
 RC2 is still a release candidate. Back up the sidebar before major experiments or upgrades.
 
@@ -257,7 +257,7 @@ The extension is local-first and built on Chrome’s Manifest V3 APIs:
 - Context Menus;
 - favicon API.
 
-The background entry point is `src/background/bootstrap.js`, which explicitly loads the background feature modules before the main service-worker logic. This keeps context-menu, native-panel reload and group-order behavior separated instead of relying on transitive side-effect imports.
+The background entry point is `src/background/service-worker.js`. Native group creation/synchronization lives in the service worker, while group ordering and native-panel reload handling are loaded as background feature modules through the existing context-menu import chain. This is the proven startup path used by RC1 and retained for RC2 after final regression testing.
 
 The persistent sidebar model lives in `chrome.storage.local`. If Chrome Sync is enabled, a chunked mirror is stored in `chrome.storage.sync`. Live item-to-tab bindings use session storage with persistent recovery metadata for Chrome restart recovery.
 
