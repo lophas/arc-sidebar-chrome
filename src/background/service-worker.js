@@ -217,27 +217,6 @@ async function setSidePanelBehavior() {
   await chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
 }
 
-function isInjectableTabUrl(url = '') {
-  return /^https?:\/\//i.test(url);
-}
-
-async function ensureOverlayInjected(tabId, url = '') {
-  if (tabId == null || !isInjectableTabUrl(url)) return;
-  try {
-    await chrome.scripting.executeScript({
-      target: { tabId, allFrames: false },
-      files: ['src/overlay/overlay.js']
-    });
-  } catch {}
-}
-
-async function ensureOverlayInjectedIntoExistingTabs() {
-  const tabs = await chrome.tabs.query({});
-  await Promise.allSettled(tabs.map(tab =>
-    ensureOverlayInjected(tab.id, tab.url || tab.pendingUrl || '')
-  ));
-}
-
 function buildSpaceIndex(model) {
   const itemToSpace = new Map();
   const spaces = model?.spaces || [];
@@ -424,14 +403,12 @@ function queueNativeGroupSync(delay = 120) {
 chrome.runtime.onInstalled.addListener(async () => {
   await setSidePanelBehavior();
   await reconcileSidebarSync();
-  await ensureOverlayInjectedIntoExistingTabs();
   queueNativeGroupSync(250);
 });
 
 chrome.runtime.onStartup.addListener(async () => {
   await setSidePanelBehavior();
   await reconcileSidebarSync();
-  await ensureOverlayInjectedIntoExistingTabs();
   queueNativeGroupSync(750);
 });
 
@@ -464,31 +441,11 @@ chrome.storage.onChanged.addListener((changes, area) => {
   }
 });
 
-chrome.tabs.onCreated.addListener(tab => {
-  queueNativeGroupSync(250);
-  ensureOverlayInjected(tab.id, tab.url || tab.pendingUrl || '').catch(() => {});
-});
+chrome.tabs.onCreated.addListener(() => queueNativeGroupSync(250));
 chrome.tabs.onRemoved.addListener(() => queueNativeGroupSync(100));
-chrome.tabs.onReplaced.addListener(async (addedTabId) => {
-  queueNativeGroupSync(100);
-  try {
-    const tab = await chrome.tabs.get(addedTabId);
-    await ensureOverlayInjected(tab.id, tab.url || tab.pendingUrl || '');
-  } catch {}
-});
+chrome.tabs.onReplaced.addListener(() => queueNativeGroupSync(100));
 chrome.tabs.onAttached.addListener(() => queueNativeGroupSync(100));
 chrome.tabs.onDetached.addListener(() => queueNativeGroupSync(100));
-chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-  if (changeInfo.status === 'complete') {
-    ensureOverlayInjected(tabId, tab.url || tab.pendingUrl || '').catch(() => {});
-  }
-});
-chrome.tabs.onActivated.addListener(async activeInfo => {
-  try {
-    const tab = await chrome.tabs.get(activeInfo.tabId);
-    await ensureOverlayInjected(tab.id, tab.url || tab.pendingUrl || '');
-  } catch {}
-});
 
 chrome.runtime.onConnect.addListener(port => {
   if (port.name !== 'arc-native-sidepanel') return;
