@@ -1,7 +1,22 @@
 .favorites-drawer{
-  grid-template-columns:repeat(auto-fit,minmax(72px,1fr));
+  grid-template-columns:repeat(auto-fit,minmax(58px,1fr));
+  gap:6px;
 }
-.favorite-tile{min-width:0}
+.favorite-tile{
+  min-width:0;
+  min-height:46px;
+  border-radius:10px;
+}
+.favorite-tile img{
+  width:19px;
+  height:19px;
+  border-radius:5px;
+}
+.favorite-custom-icon{
+  width:26px!important;
+  height:26px!important;
+  font-size:22px!important;
+}
 #pinned .row-domain{display:none}
 .item-icon-grid{
   grid-template-columns:repeat(auto-fit,minmax(30px,1fr));
@@ -15,8 +30,8 @@
 @media (max-width:220px){
   .search-wrap{padding-left:6px;padding-right:6px;gap:5px}
   .favorites-section{padding-left:6px;padding-right:6px}
-  .favorites-drawer{grid-template-columns:repeat(auto-fit,minmax(64px,1fr));gap:6px}
-  .favorite-tile{min-height:52px;border-radius:11px}
+  .favorites-drawer{grid-template-columns:repeat(auto-fit,minmax(52px,1fr));gap:5px}
+  .favorite-tile{min-height:42px;border-radius:9px}
   main{padding-left:4px;padding-right:4px}
   .row,.folder-header{gap:5px;padding-left:5px;padding-right:5px}
   .folder-children{margin-left:10px;padding-left:4px}
