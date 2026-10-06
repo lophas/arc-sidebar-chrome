@@ -8,7 +8,7 @@
   "permissions": ["tabs", "tabGroups", "storage", "sidePanel", "favicon", "contextMenus"],
   "host_permissions": ["http://*/*", "https://*/*"],
   "background": {
-    "service_worker": "src/background/bootstrap.js",
+    "service_worker": "src/background/service-worker.js",
     "type": "module"
   },
   "side_panel": {
