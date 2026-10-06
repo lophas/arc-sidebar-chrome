@@ -37,12 +37,10 @@ function buildEmojiSet() {
     values.add(`${key}\uFE0F\u20E3`);
   }
 
-  // All two-letter regional-indicator flag sequences.
   const regionals = [];
   for (let cp = 0x1f1e6; cp <= 0x1f1ff; cp += 1) regionals.push(String.fromCodePoint(cp));
   for (const a of regionals) for (const b of regionals) values.add(a + b);
 
-  // Common multi-codepoint sequences that are useful as Space icons.
   [
     '❤️','❣️','☀️','☁️','☕','✈️','⌛','⌚','⚙️','🛠️','🖥️','⌨️','🖱️','🕹️',
     '🏳️‍🌈','🏳️‍⚧️','🏴‍☠️','👁️‍🗨️','❤️‍🔥','❤️‍🩹','👨‍💻','👩‍💻','🧑‍💻',
@@ -167,6 +165,7 @@ function populateFullEmojiGrid(dialog) {
 
   grid.dataset.fullEmojiSet = '1';
   grid.replaceChildren();
+  const fragment = document.createDocumentFragment();
   for (const emoji of ALL_EMOJIS) {
     const button = document.createElement('button');
     button.type = 'button';
@@ -181,8 +180,9 @@ function populateFullEmojiGrid(dialog) {
       button.classList.add('selected');
       setStatus(dialog, '');
     });
-    grid.append(button);
+    fragment.append(button);
   }
+  grid.append(fragment);
 }
 
 function addImageControls(dialog) {
@@ -269,10 +269,18 @@ function addImageControls(dialog) {
 
 async function enhanceSpaceDialog() {
   const dialog = document.querySelector('.space-dialog');
-  if (!dialog?.open) return;
+  if (!dialog?.open) return false;
   populateFullEmojiGrid(dialog);
   addImageControls(dialog);
   await loadCurrentSpaceIcon(dialog);
+  return true;
+}
+
+function enhanceSpaceDialogWhenReady(attempt = 0) {
+  setTimeout(async () => {
+    const ok = await enhanceSpaceDialog().catch(() => false);
+    if (!ok && attempt < 30) enhanceSpaceDialogWhenReady(attempt + 1);
+  }, attempt === 0 ? 0 : 20);
 }
 
 async function decorateSpaceButtons() {
@@ -327,6 +335,7 @@ async function applyPendingSpaceIcon(modelFromChange) {
     if (!space) return;
 
     const oldIcon = space.icon || '';
+    const oldEmoji = space.emoji || '';
     if (pending.icon) {
       space.icon = pending.icon;
       space.emoji = '';
@@ -335,7 +344,7 @@ async function applyPendingSpaceIcon(modelFromChange) {
       space.emoji = pending.emoji;
     }
 
-    if ((space.icon || '') !== oldIcon || pending.icon) {
+    if ((space.icon || '') !== oldIcon || (space.emoji || '') !== oldEmoji) {
       await chrome.storage.local.set({ [STORAGE_KEY]: model });
     }
   } finally {
@@ -343,12 +352,18 @@ async function applyPendingSpaceIcon(modelFromChange) {
   }
 }
 
+async function applyPendingExistingSpaceIcon() {
+  if (!pendingSpaceIconSave || pendingSpaceIconSave.adding) return;
+  const stored = await chrome.storage.local.get(STORAGE_KEY);
+  if (stored[STORAGE_KEY]) await applyPendingSpaceIcon(stored[STORAGE_KEY]);
+}
+
 document.addEventListener('contextmenu', event => {
   const button = event.target.closest?.('.space-button[data-space-id]');
   if (!button || button.classList.contains('space-add-button') || button.querySelector('.space-count')) return;
   editingSpaceId = button.dataset.spaceId || null;
   addingSpace = false;
-  setTimeout(() => enhanceSpaceDialog().catch(() => {}), 0);
+  enhanceSpaceDialogWhenReady();
 }, true);
 
 document.addEventListener('click', event => {
@@ -356,11 +371,29 @@ document.addEventListener('click', event => {
   if (add) {
     editingSpaceId = null;
     addingSpace = true;
-    setTimeout(() => enhanceSpaceDialog().catch(() => {}), 0);
+    enhanceSpaceDialogWhenReady();
     return;
   }
-  if (event.target?.id === 'spaceSave') armSpaceSave();
+  if (event.target?.id === 'spaceSave') {
+    armSpaceSave();
+    setTimeout(() => {
+      applyPendingExistingSpaceIcon().catch(error => {
+        console.warn('Arc Sidebar: Space image icon save fallback failed', error);
+      });
+    }, 80);
+  }
 }, true);
+
+const dialogObserver = new MutationObserver(records => {
+  for (const record of records) {
+    if (record.type !== 'attributes' || record.attributeName !== 'open') continue;
+    const dialog = record.target;
+    if (dialog instanceof HTMLDialogElement && dialog.classList.contains('space-dialog') && dialog.open) {
+      enhanceSpaceDialog().catch(() => {});
+    }
+  }
+});
+dialogObserver.observe(document.documentElement, { subtree: true, attributes: true, attributeFilter: ['open'] });
 
 window.addEventListener('arc-sidebar-rendered', () => {
   queueMicrotask(() => decorateSpaceButtons().catch(() => {}));
