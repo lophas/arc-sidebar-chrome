@@ -8,7 +8,7 @@
   const MAX_PANEL_WIDTH = 720;
   const WIDTH_STORAGE_KEY = 'arcSidebarOverlayWidth';
   const EDGE_WIDTH = 7;
-  const RESIZE_HANDLE_WIDTH = 7;
+  const RESIZE_HANDLE_WIDTH = 14;
   const SHOW_DELAY = 80;
   const HIDE_DELAY = 320;
   const themeMedia = window.matchMedia('(prefers-color-scheme: dark)');
@@ -72,28 +72,34 @@
         user-select: none;
       }
       .resize-handle {
-        position: absolute;
+        position: fixed;
         top: 0;
-        left: 0;
         width: ${RESIZE_HANDLE_WIDTH}px;
-        height: 100%;
-        z-index: 3;
+        height: 100vh;
+        z-index: 2147483647;
         cursor: ew-resize;
         background: transparent;
         touch-action: none;
+        pointer-events: none;
+        opacity: 0;
+      }
+      .resize-handle.open {
+        pointer-events: auto;
+        opacity: 1;
       }
       .resize-handle::after {
         content: '';
         position: absolute;
         top: 0;
         bottom: 0;
-        left: 0;
+        left: 50%;
         width: 2px;
+        transform: translateX(-1px);
         background: transparent;
         transition: background 120ms ease;
       }
       .resize-handle:hover::after,
-      .panel.resizing .resize-handle::after {
+      .resize-handle.resizing::after {
         background: color-mix(in srgb, CanvasText 26%, transparent);
       }
       iframe {
@@ -105,8 +111,8 @@
       }
     </style>
     <div class="edge" aria-hidden="true"></div>
+    <div class="resize-handle" title="Drag to resize sidebar" aria-hidden="true"></div>
     <div class="panel" role="complementary" aria-label="Arc Sidebar">
-      <div class="resize-handle" title="Drag to resize sidebar" aria-hidden="true"></div>
       <iframe title="Arc Sidebar" src="${sidebarUrl.href}"></iframe>
     </div>`;
 
@@ -138,6 +144,7 @@
   const applyWidth = value => {
     currentWidth = clampWidth(value);
     panel.style.width = `${currentWidth}px`;
+    resizeHandle.style.right = `${currentWidth - (RESIZE_HANDLE_WIDTH / 2)}px`;
   };
 
   chrome.storage.local.get(WIDTH_STORAGE_KEY).then(stored => {
@@ -166,6 +173,7 @@
     clearTimers();
     isOpen = false;
     panel.classList.remove('open');
+    resizeHandle.classList.remove('open');
   };
 
   const setNativePanelOpen = open => {
@@ -181,6 +189,7 @@
     if (isOpen) return;
     isOpen = true;
     panel.classList.add('open');
+    resizeHandle.classList.add('open');
   };
 
   const closePanel = () => {
@@ -190,6 +199,7 @@
     if (!isOpen) return;
     isOpen = false;
     panel.classList.remove('open');
+    resizeHandle.classList.remove('open');
   };
 
   const scheduleOpen = () => {
@@ -235,23 +245,32 @@
   panel.addEventListener('mouseenter', cancelClose);
   iframe.addEventListener('mouseenter', cancelClose);
   iframe.addEventListener('pointerenter', cancelClose);
+  resizeHandle.addEventListener('mouseenter', cancelClose);
 
   panel.addEventListener('mouseleave', event => {
     const target = event.relatedTarget;
-    if (target === iframe || (target instanceof Node && panel.contains(target))) return;
+    if (target === iframe || target === resizeHandle || (target instanceof Node && panel.contains(target))) return;
     scheduleClose();
   });
-  iframe.addEventListener('mouseleave', scheduleClose);
+  iframe.addEventListener('mouseleave', event => {
+    if (event.relatedTarget === resizeHandle) return;
+    scheduleClose();
+  });
+  resizeHandle.addEventListener('mouseleave', event => {
+    if (isResizing || event.relatedTarget === panel || event.relatedTarget === iframe) return;
+    scheduleClose();
+  });
 
   resizeHandle.addEventListener('pointerdown', event => {
     if (nativePanelOpen || event.button !== 0) return;
     event.preventDefault();
     event.stopPropagation();
 
-    openPanel();
     isResizing = true;
     clearTimers();
+    openPanel();
     panel.classList.add('resizing');
+    resizeHandle.classList.add('resizing');
     resizeHandle.setPointerCapture(event.pointerId);
 
     const startX = event.clientX;
@@ -266,6 +285,7 @@
       if (!isResizing) return;
       isResizing = false;
       panel.classList.remove('resizing');
+      resizeHandle.classList.remove('resizing');
       resizeHandle.removeEventListener('pointermove', onPointerMove);
       resizeHandle.removeEventListener('pointerup', finishResize);
       resizeHandle.removeEventListener('pointercancel', finishResize);
