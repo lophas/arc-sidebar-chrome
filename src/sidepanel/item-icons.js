@@ -451,6 +451,12 @@ async function applyPendingIconSave(modelFromChange) {
   }
 }
 
+async function applyPendingExistingIconSave() {
+  if (!pendingIconSave || !['favorite', 'pinned'].includes(pendingIconSave.kind)) return;
+  const stored = await chrome.storage.local.get(STORAGE_KEY);
+  if (stored[STORAGE_KEY]) await applyPendingIconSave(stored[STORAGE_KEY]);
+}
+
 document.addEventListener('contextmenu', event => {
   setEditingFromTarget(event.target);
 }, true);
@@ -466,7 +472,17 @@ addPinnedButton?.addEventListener('click', () => {
 }, true);
 
 document.addEventListener('click', event => {
-  if (event.target?.id === 'itemSave') armPendingSave();
+  if (event.target?.id !== 'itemSave') return;
+  armPendingSave();
+  // Editing an existing item may not cause the base editor to write the model
+  // when title/URL are unchanged. Apply the icon directly as a fallback so an
+  // icon-only edit is still persisted. New items continue to wait for the base
+  // editor's model write, because their node does not exist yet at click time.
+  setTimeout(() => {
+    applyPendingExistingIconSave().catch(error => {
+      console.warn('Arc Sidebar: custom icon save fallback failed', error);
+    });
+  }, 80);
 }, true);
 
 window.addEventListener('arc-sidebar-rendered', decorateVisibleIcons);
