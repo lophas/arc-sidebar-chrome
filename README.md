@@ -20,6 +20,7 @@ RC2 keeps the RC1 feature set and adds the final UI/behavior refinements made du
 - 100% remains the original/default Favorite size;
 - pinned rows no longer show the URL/domain beside the title;
 - overlay sidebar can be resized much narrower than before;
+- sidebar scroll position is remembered separately for each Space, including Open tabs;
 - opening or closing Chrome’s native Side Panel while using Autohide overlay reloads the active webpage so the overlay state is applied cleanly;
 - background startup was refactored into an explicit bootstrap module so background features no longer depend on hidden transitive imports.
 
@@ -122,6 +123,8 @@ When the mode itself changes, existing normal webpages are marked for a one-time
 
 The search/Favorites area remains fixed at the top. The Space switcher remains fixed at the bottom. The middle pinned/open-tab area scrolls independently.
 
+The current vertical scroll position is remembered separately for each Space and for the Open tabs view, so reopening the sidebar returns to the same place instead of jumping to the top.
+
 The Favorite drawer is responsive rather than fixed at four columns, and can collapse to fewer columns as sidebar width decreases.
 
 ## Custom icons
@@ -186,6 +189,7 @@ Machine-specific/session data remains local, including:
 - currently open Chrome tabs;
 - live item ↔ tab bindings;
 - collapsed-folder state;
+- per-Space/Open-tabs scroll positions;
 - overlay width;
 - sidebar mode;
 - Favorite tile size;
