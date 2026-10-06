@@ -1,7 +1,7 @@
 (() => {
   if (window.top !== window) return;
-  if (globalThis.__arcSidebarOverlayInjected) return;
-  globalThis.__arcSidebarOverlayInjected = true;
+  if (document.documentElement.dataset.arcSidebarOverlayInjected === '1') return;
+  document.documentElement.dataset.arcSidebarOverlayInjected = '1';
 
   const DEFAULT_PANEL_WIDTH = 390;
   const MIN_PANEL_WIDTH = 280;
@@ -20,24 +20,10 @@
     return Math.max(MIN_PANEL_WIDTH, Math.min(width, viewportMax));
   };
 
-  // Keep the page-facing footprint to one inert host node. Everything visible
-  // lives inside a closed ShadowRoot, and the content script itself runs in
-  // Chrome's isolated world. No page styles, classes or DOM state are changed.
   const host = document.createElement('div');
-  host.style.cssText = [
-    'all:initial!important',
-    'position:fixed!important',
-    'inset:0!important',
-    'width:100vw!important',
-    'height:100vh!important',
-    'margin:0!important',
-    'padding:0!important',
-    'border:0!important',
-    'pointer-events:none!important',
-    'z-index:2147483647!important',
-    'contain:layout style paint!important',
-    `color-scheme:${currentTheme()}!important`
-  ].join(';');
+  host.id = 'arc-sidebar-overlay-host';
+  host.style.all = 'initial';
+  host.style.colorScheme = currentTheme();
   document.documentElement.append(host);
 
   const shadow = host.attachShadow({ mode: 'closed' });
@@ -57,6 +43,7 @@
         right: 0;
         width: ${EDGE_WIDTH}px;
         height: 100vh;
+        z-index: 2147483646;
         background: transparent;
         pointer-events: auto;
       }
@@ -66,6 +53,7 @@
         right: 0;
         width: ${DEFAULT_PANEL_WIDTH}px;
         height: 100vh;
+        z-index: 2147483647;
         transform: translateX(100%);
         transition: transform 170ms cubic-bezier(.2,.8,.2,1), box-shadow 170ms ease;
         background: Canvas;
@@ -88,6 +76,7 @@
         top: 0;
         width: ${RESIZE_HANDLE_WIDTH}px;
         height: 100vh;
+        z-index: 2147483647;
         cursor: ew-resize;
         background: transparent;
         touch-action: none;
@@ -140,7 +129,7 @@
 
   const sendTheme = () => {
     const theme = currentTheme();
-    host.style.setProperty('color-scheme', theme, 'important');
+    host.style.colorScheme = theme;
     panel.style.colorScheme = theme;
     iframe.style.colorScheme = theme;
     try {
