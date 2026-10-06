@@ -1,335 +1,303 @@
 # Arc Sidebar for Chrome
 
-**Bring the parts of Arc’s sidebar workflow you actually use into Google Chrome.**
+**Bring the useful parts of Arc’s sidebar workflow into Google Chrome.**
 
-Arc Sidebar for Chrome is a Manifest V3 extension for people who like Arc’s **Spaces, Favorites, folders, pinned tabs and sidebar-first workflow**, but want or need to use Chrome.
+Arc Sidebar for Chrome is a Manifest V3 extension for people who like Arc’s **Spaces, Favorites, folders, pinned tabs and sidebar-first workflow**, but want Chrome’s compatibility and extension ecosystem underneath.
 
-It is not a visual clone of Arc and it is not intended to replace every Arc feature. The goal is narrower: preserve the browsing model that makes Arc useful, while keeping Chrome’s compatibility, extension ecosystem and normal tab engine underneath.
+It is not a full visual clone of Arc. The goal is to preserve the browsing model while keeping normal Chrome tabs as the execution layer.
 
 > This project is independent and is not affiliated with, endorsed by, or sponsored by The Browser Company or Arc.
 
-## 1.0.0 RC1
+## 1.0.0 RC2
 
-The current release candidate is **v1.0.0-rc1**. It includes the full day-to-day workflow intended for the 1.0 release: Spaces, Favorites, folders, persistent pinned items, live-tab bindings, Chrome tab groups, overlay/native sidebar modes, drag-and-drop organization, Chrome Sync, backup/restore and reset tools.
+The current release candidate is **v1.0.0-rc2**.
 
-RC1 is intended for real use, but it is still a release candidate. Back up your sidebar before major experiments or upgrades.
+RC2 keeps the RC1 feature set and adds the final UI/behavior refinements made during real-world testing:
 
-## Why an Arc user might want this
+- Favorite and pinned-link custom icon selection;
+- responsive Favorite drawer;
+- configurable Favorite tile size: 80%, 90%, 100%, 110% or 120%;
+- 100% remains the original/default Favorite size;
+- pinned rows no longer show the URL/domain beside the title;
+- overlay sidebar can be resized much narrower than before;
+- opening or closing Chrome’s native Side Panel while using Autohide overlay reloads the active webpage so the overlay state is applied cleanly;
+- background startup was refactored into an explicit bootstrap module so background features no longer depend on hidden transitive imports.
 
-If your Arc sidebar has become the way you organize the web, moving back to a conventional browser can be painful. Bookmarks are too static, normal tabs are too temporary, and keeping every pinned page open wastes memory.
+RC2 is still a release candidate. Back up the sidebar before major experiments or upgrades.
 
-Arc Sidebar keeps those concepts separate:
+## Core model
 
-- a **saved sidebar item** is persistent;
-- a **live Chrome tab** exists only when you actually open that item;
-- reopening the saved item focuses its existing live tab instead of creating duplicates;
+Arc Sidebar deliberately separates **persistent sidebar items** from **live Chrome tabs**:
+
+- a saved sidebar item remains until you remove it;
+- a live Chrome tab exists only when you open that item;
+- reopening the item focuses the existing live tab instead of creating a duplicate;
 - closing the live tab does not delete the saved sidebar item.
 
-That means you can keep hundreds of organized links without keeping hundreds of renderer processes alive.
+This makes it practical to keep hundreds of organized links without keeping hundreds of renderer processes alive.
 
-## Arc concepts reproduced
+## Features
 
 ### Spaces
 
-Create and switch between Arc-like Spaces. Each Space keeps its own pinned hierarchy and can use an emoji/icon.
-
-Spaces can be reordered by drag-and-drop. If a Space contains live tabs, it shows a red status dot. Right-click the Space to edit it or close every live tab belonging to that Space without deleting saved links.
+- Arc-like Spaces with title and emoji/icon;
+- drag-and-drop Space reordering;
+- red live-state dot when the Space contains open bound tabs;
+- right-click to edit the Space or close all live tabs belonging to it.
 
 ### Favorites
 
-Favorites are global. A Favorite opens once, then focuses the same live tab on later clicks.
+Favorites are global across Spaces.
 
-Live Favorites show a red dot. Clicking that dot closes the live Chrome tab while preserving the Favorite.
+- click to open/focus the bound Chrome tab;
+- red live-state dot when open;
+- click the red dot to close the live tab while preserving the Favorite;
+- drag-and-drop Favorite reordering;
+- optional custom emoji/symbol icon;
+- responsive drawer that adapts to available sidebar width;
+- five local tile-size presets: 80%, 90%, 100%, 110%, 120%.
 
-### Pinned tabs
+### Pinned links
 
-Pinned items are persistent sidebar entries, not permanently open browser tabs.
+Pinned items are persistent sidebar entries rather than permanently open browser tabs.
 
-When a pinned item is live, the sidebar shows a red status dot. **The dot itself is the close/reset control**: click it to close the live Chrome tab while keeping the saved URL intact.
+- click to open/focus;
+- red live-state dot when open;
+- click the dot to close/reset the live tab while keeping the saved URL;
+- right-click to edit title, URL and optional custom icon;
+- drag within the Space root, within folders, between folders, from a folder back to root, or onto another Space.
 
-Pinned items can be dragged:
-
-- within the Space root;
-- within a folder;
-- between folders;
-- from a folder back to the Space root;
-- onto another Space to move the pinned item there.
+Pinned rows show the saved title without repeating the URL/domain beside it.
 
 ### Folders
 
-Pinned items can be organized in folders. Folders can be collapsed, renamed, reordered within their current Space, moved to another Space through the folder editor, and removed without deleting their contents.
+- collapse/expand;
+- rename;
+- reorder by drag inside the current Space;
+- move a complete folder to another Space through the folder editor;
+- remove a folder without deleting its contents;
+- red live-state dot when the folder contains open bound tabs;
+- right-click to close all live tabs in that folder.
 
-A folder containing live tabs shows a red status dot. Right-click the folder to edit it or close all live tabs contained in that folder.
-
-Folder drag-and-drop only changes folder order inside the current Space. Moving a whole folder between Spaces remains an explicit editor action.
+Folder drag-and-drop only changes folder order inside the current Space. Cross-Space folder moves remain an explicit editor action.
 
 ### Open tabs
 
-A dedicated **Open tabs** Space provides a live view of the current Chrome window and lets you pin an already-open tab into a Space without opening a duplicate.
+A dedicated **Open tabs** Space shows the live tabs in the current Chrome window and can pin an already-open page without opening a duplicate.
+
+### Native Chrome Tab Groups
+
+Live pinned tabs are grouped by Space in normal Chrome tab groups. Favorites use a separate Favorites group.
+
+The tab order inside each native Chrome group follows the sidebar hierarchy.
 
 ## Sidebar modes
 
-The extension supports two sidebar modes, selectable under **Extension options → Sidebar mode**.
+Choose the mode under **Extension options → Sidebar mode**.
 
 ### Autohide overlay
 
-- Arc-style sidebar overlay on normal webpages;
-- opens when the pointer reaches the right edge;
+- Arc-style overlay on normal webpages;
+- appears when the pointer reaches the right edge;
 - closes automatically after leaving it;
-- does not resize the webpage viewport;
-- width is resizable and remembered locally.
+- floats above the page instead of narrowing the viewport;
+- resizable and remembered locally;
+- supports a narrow compact layout.
 
-### Native Chrome side panel
+If Chrome’s native Side Panel is manually opened or closed while Autohide overlay mode is active, the current HTTP/HTTPS page reloads once so the overlay trigger/state is rebuilt cleanly.
 
-- uses Chrome’s native Side Panel;
-- opened by clicking the extension toolbar button;
-- no edge trigger is active;
-- no overlay UI is injected into the page.
+### Native Chrome Side Panel
 
-The selected mode is local to each computer and is not synced.
+- uses Chrome’s built-in Side Panel;
+- open it by clicking the extension toolbar button;
+- no edge trigger is used;
+- the overlay UI is not created;
+- Chrome controls the native panel’s minimum width.
 
-When the mode changes, already-open normal webpages are marked for a one-time refresh. Each affected tab reloads when you next switch to it, so the new mode is applied cleanly without reloading every tab at once.
+The selected sidebar mode is local to each computer and is not synced.
 
-## Fixed sidebar layout
+When the mode itself changes, existing normal webpages are marked for a one-time deferred refresh. Each affected tab reloads when you next activate it instead of reloading every open tab immediately.
 
-The search/Favorites drawer remains fixed at the top of the sidebar, and the Space switcher remains fixed at the bottom. Only the central pinned/open-tab content area scrolls.
+## Layout
+
+The search/Favorites area remains fixed at the top. The Space switcher remains fixed at the bottom. The middle pinned/open-tab area scrolls independently.
+
+The Favorite drawer is responsive rather than fixed at four columns, and can collapse to fewer columns as sidebar width decreases.
+
+## Custom icons
+
+Favorites and pinned links can use:
+
+- the website favicon;
+- one of the built-in emoji/symbol presets;
+- any emoji or short symbol pasted into the icon field.
+
+Custom icons are part of the persistent sidebar model, so they are included in Backup/Restore and Chrome Sync.
 
 ## Arc import
 
-The extension can import an Arc `StorableSidebar.json` and convert:
+The extension can import Arc’s `StorableSidebar.json` and convert:
 
-- Spaces
-- Favorites
-- pinned tabs
-- folders
+- Spaces;
+- Favorites;
+- pinned tabs;
+- folders.
 
-The import replaces the extension’s current sidebar model. Arc Archive/history data is not imported.
+Import replaces the current Arc Sidebar model. Arc Archive/history data is not imported.
 
-## What this adds beyond Arc-style organization
+### Typical Arc file locations
 
-Arc Sidebar deliberately uses Chrome as the execution layer, which enables several useful additions:
+macOS:
 
-- **Native Chrome Tab Groups:** live pinned tabs are automatically grouped by Space; Favorites get their own native group.
-- **Group order follows sidebar order:** open tabs inside native Chrome groups are arranged to match the sidebar hierarchy.
-- **Two sidebar modes:** autohide overlay or native Chrome Side Panel.
-- **Resizable overlay sidebar:** drag the overlay's left edge to resize it; the width is remembered locally.
-- **Right-click page pinning:** pin the current page or a specific link directly into a chosen Space.
-- **Space and folder reordering:** drag Spaces and reorder folders inside a Space.
-- **Folder-to-Space moves:** move a complete folder through its editor while preserving its contents.
-- **Persistent live-tab binding:** if a pinned page navigates away from its original URL, it still belongs to that sidebar item.
-- **Chrome restart recovery:** restored Chrome tabs reconnect to saved sidebar items when they can be matched safely.
-- **Optional Chrome Sync:** sync Spaces, Favorites, folders and pinned links between Chrome installations signed into the same Chrome Sync account.
-- **Backup & restore:** export and restore the complete persistent sidebar model.
-- **Reset all extension data:** clear local/session/sync extension state for clean testing or recovery.
-- **Bulk live-tab cleanup:** close all live tabs belonging to a folder or Space without deleting saved links.
-- **Low-memory model:** saved sidebar entries do not require open Chrome tabs.
-- **System light/dark mode:** the sidebar follows the operating system theme.
+```text
+~/Library/Application Support/Arc/StorableSidebar.json
+```
 
-## What it does not provide
+Windows commonly uses a path under:
 
-This is not a full Arc reimplementation. The following are intentionally out of scope at present:
+```text
+%LOCALAPPDATA%\Packages\TheBrowserCompany.Arc_*\LocalCache\Local\Arc\StorableSidebar.json
+```
 
-- Boosts
-- Split View
-- Notes / Easel
-- Arc AI features
-- full Arc Archive/history migration
-- Arc account sync
-- Arc’s complete command-bar / browser-chrome experience
+## Right-click page pinning
 
-Chrome also restricts extensions on some privileged pages such as `chrome://` pages, the Chrome Web Store and certain browser error/interstitial pages. The overlay cannot run there; native Side Panel mode remains available.
+Chrome’s webpage context menu contains **Pin to Arc Sidebar**.
 
-## Installation
-
-Arc Sidebar for Chrome is distributed as a ZIP file from GitHub Releases. It is not currently published in the Chrome Web Store, so Chrome requires **Developer mode** and **Load unpacked**.
-
-1. Open the repository’s **Releases** page.
-2. Download the latest `arc-sidebar-chrome-vX.Y.Z.zip` or prerelease ZIP.
-3. Unzip it to a permanent folder on your computer.
-4. Open `chrome://extensions` in Chrome.
-5. Enable **Developer mode**.
-6. Click **Load unpacked**.
-7. Select the folder that directly contains `manifest.json`.
-8. Optionally pin **Arc Sidebar for Chrome** from Chrome’s Extensions menu.
-
-Do not delete or move the unpacked folder after installation, because Chrome loads the extension directly from that location.
-
-### Updating
-
-When a new version is released:
-
-1. Download the new ZIP from **Releases**.
-2. Replace the previous extension files, or extract to a new permanent folder.
-3. Open `chrome://extensions`.
-4. Click **Reload** on the Arc Sidebar for Chrome extension card.
-
-If you extracted the update to a different folder, remove the old unpacked extension and use **Load unpacked** again.
-
-## Importing your Arc sidebar
-
-On macOS, Arc normally stores the sidebar file at:
-
-`~/Library/Application Support/Arc/StorableSidebar.json`
-
-In Finder press **⌘⇧G**, paste that path, and copy the file somewhere safe before importing it.
-
-On Windows, the common location is:
-
-`%LOCALAPPDATA%\Packages\TheBrowserCompany.Arc_*\LocalCache\Local\Arc\StorableSidebar.json`
-
-Then:
-
-1. Open **Extensions → Arc Sidebar for Chrome → Details → Extension options**.
-2. Choose **Import StorableSidebar.json**.
-3. The imported Spaces, Favorites, pinned tabs and folders become the extension’s persistent sidebar model.
-
-Importing replaces the current Arc Sidebar model. It does not modify Arc itself.
-
-## Right-click context menu
-
-Arc Sidebar adds a **Pin to Arc Sidebar** submenu to Chrome's normal webpage context menu.
-
-- Right-click the page background to pin the current page.
-- Right-click a link to pin that link directly.
-- Choose the destination Space.
-- The item is added to that Space and appears in the sidebar immediately.
-
-When the current page itself is pinned, Arc Sidebar keeps the existing live Chrome tab associated with the new sidebar item where possible, avoiding an unnecessary duplicate.
+- right-click the page background to pin the current page;
+- right-click a link to pin that URL;
+- choose the destination Space;
+- when pinning the current page, the existing live tab is bound where possible instead of creating a duplicate.
 
 ## Chrome Sync
 
-Cross-device sync is optional and disabled until explicitly enabled.
+Chrome Sync is optional and disabled until explicitly enabled.
 
-### Enabling sync
+Synced persistent data includes:
 
-1. Make sure Chrome is signed in and Chrome Sync is enabled.
-2. Open **Extension options**.
-3. Enable **Chrome Sync**.
-4. Repeat on each computer where you want the same Arc Sidebar model.
+- Spaces and their order;
+- Space names/icons;
+- Favorites;
+- custom Favorite/pinned icons;
+- folders and folder order;
+- pinned links and hierarchy.
 
-The following data is synchronized:
+Machine-specific/session data remains local, including:
 
-- Spaces and their order
-- Space names and emoji/icons
-- Favorites
-- folders and folder order
-- folder placement between Spaces
-- pinned links and hierarchy
+- currently open Chrome tabs;
+- live item ↔ tab bindings;
+- collapsed-folder state;
+- overlay width;
+- sidebar mode;
+- Favorite tile size;
+- other session/UI state.
 
-The following remains local to each computer:
-
-- currently open Chrome tabs
-- live saved-item ↔ tab bindings
-- restored-tab recovery state
-- collapsed folder state
-- overlay width
-- sidebar mode
-- other machine-specific UI/session state
+Synchronization is whole-model with timestamp-based conflict resolution: the newer model wins.
 
 ### Stable extension ID
 
-Starting with **v0.6.2**, the extension includes a fixed manifest key so unpacked installations use the same extension ID on every computer. This is required because `chrome.storage.sync` is namespaced by extension ID.
+Current unpacked builds use a fixed manifest key so the extension ID stays the same across machines:
 
-The expected extension ID for current builds is:
+```text
+clfmokcejlbebjlmohfjkffeoocffjdn
+```
 
-`clfmokcejlbebjlmohfjkffeoocffjdn`
-
-If you are upgrading from v0.6.1 or earlier, create a backup first because the stable extension ID may differ from the ID Chrome previously generated.
-
-### Sync behavior and conflict handling
-
-Synchronization is whole-model rather than per-item merging.
-
-When local and synced copies differ:
-
-- the newer modification timestamp wins;
-- a newer local model is pushed to Chrome Sync;
-- a newer synced model is pulled into local storage.
-
-If necessary, the Extension Options page can trigger an explicit reconciliation with **Sync now**.
+This is required for consistent `chrome.storage.sync` namespacing.
 
 ## Backup, restore and reset
 
-### Create a backup
+Extension Options provides:
 
-1. Open **Extension options**.
-2. In **Backup & restore**, click **Download backup**.
-3. Save the generated JSON file somewhere safe.
+- **Download backup** — exports the persistent sidebar model as JSON;
+- **Restore backup** — replaces the current persistent model from a backup;
+- **Reset all extension data** — clears local, session and sync extension state for clean testing/recovery.
 
-The backup contains the persistent sidebar model:
+Reset does not close ordinary Chrome tabs.
 
-- Spaces
-- Space names and emoji/icons
-- Favorites
-- folders and hierarchy
-- pinned links
-
-It intentionally does not contain currently open tabs, live item↔tab bindings, collapsed-folder state, overlay width or sidebar mode.
-
-### Restore a backup
-
-1. Open **Extension options**.
-2. Choose **Restore backup**.
-3. Select an Arc Sidebar backup JSON file.
-
-Restore replaces the current persistent sidebar model with the backup contents.
-
-### Reset all extension data
-
-For clean testing or recovery, **Extension options → Arc import → Reset all extension data** clears the extension’s local, session and sync state after confirmation.
-
-This includes sidebar data, bindings, UI state, sidebar mode, overlay width and the extension’s Chrome Sync snapshot. It does **not** close your normal Chrome tabs.
-
-A useful backup test sequence is:
+A useful restore test is:
 
 1. Download backup.
 2. Reset all extension data.
 3. Confirm the sidebar is empty.
-4. Restore backup.
+4. Restore the backup.
 
-## Everyday workflow
+## Installation
 
-- Click a Favorite or pinned item to open it.
-- Click it again to focus the existing live tab.
-- Navigate inside that tab freely — the binding stays attached to the sidebar item.
-- Use red dots to see which saved items, folders and Spaces currently have live tabs.
-- Click a pinned/Favorite red dot to close that one live tab.
-- Right-click a folder or Space to close all live tabs belonging to it.
-- Right-click a webpage to pin the current page or a link into a chosen Space.
-- Right-click Favorites, pinned links, folders and Spaces to edit them.
-- Drag pinned links within/between folders, back to the Space root, or onto another Space.
-- Drag folders to reorder them inside the current Space.
-- Drag Space icons to reorder Spaces.
-- Use the **Open tabs** Space to pin an already-open Chrome tab without creating a duplicate.
-- Enable Chrome Sync for the same persistent structure on multiple Chrome installations.
-- Use Backup & restore before major upgrades, migrations or experiments.
+Arc Sidebar for Chrome is distributed as an unpacked extension ZIP from GitHub Releases.
 
-## Architecture and privacy
+1. Download the latest release/prerelease ZIP.
+2. Extract it to a permanent folder.
+3. Open `chrome://extensions`.
+4. Enable **Developer mode**.
+5. Click **Load unpacked**.
+6. Select the folder that directly contains `manifest.json`.
+7. Optionally pin the extension toolbar button.
 
-Arc Sidebar is a local-first Manifest V3 extension built on Chrome’s Side Panel, Tabs, Tab Groups, Storage, Context Menus and favicon APIs.
+Do not delete or move that folder while Chrome is using the unpacked extension.
 
-The persistent sidebar model is kept locally in Chrome storage. If Chrome Sync is enabled, that model is additionally mirrored through Chrome’s `storage.sync` service in chunks. Live item-to-tab bindings use session storage, with local recovery data used to reconnect restored tabs after Chrome restarts.
+### Updating
+
+For an existing unpacked installation:
+
+1. replace the files with the new release contents;
+2. open `chrome://extensions`;
+3. click **Reload** on Arc Sidebar for Chrome.
+
+## Architecture
+
+The extension is local-first and built on Chrome’s Manifest V3 APIs:
+
+- Side Panel;
+- Tabs;
+- Tab Groups;
+- Storage;
+- Context Menus;
+- favicon API.
+
+The background entry point is `src/background/bootstrap.js`, which explicitly loads the background feature modules before the main service-worker logic. This keeps context-menu, native-panel reload and group-order behavior separated instead of relying on transitive side-effect imports.
+
+The persistent sidebar model lives in `chrome.storage.local`. If Chrome Sync is enabled, a chunked mirror is stored in `chrome.storage.sync`. Live item-to-tab bindings use session storage with persistent recovery metadata for Chrome restart recovery.
 
 The extension does not require an Arc account or its own cloud backend.
 
+## Known platform limitations
+
+Chrome restricts extensions on privileged pages such as `chrome://` pages, the Chrome Web Store and some browser interstitial/error pages. The injected overlay cannot operate there; the native Side Panel remains available.
+
+Chrome also controls the minimum width of the native Side Panel. The extension cannot force that browser-owned panel narrower than Chrome allows.
+
+## Out of scope
+
+At present this project does not attempt to reproduce:
+
+- Boosts;
+- Split View;
+- Notes / Easel;
+- Arc AI features;
+- full Arc Archive/history migration;
+- Arc account sync;
+- Arc’s complete command-bar/browser-chrome UI.
+
 ## Release packaging
 
-Release ZIPs are generated from tagged source and contain only the files Chrome needs to run the extension: `manifest.json` and `src/`.
+Tagged releases are built by GitHub Actions and contain only:
 
-For prereleases, the tag must match `manifest.json` → `version_name`. For stable releases without a `version_name`, it must match `version`.
+- `manifest.json`
+- `src/`
 
-For RC1:
+For prereleases, the tag must match `manifest.json` → `version_name`.
+
+For RC2:
 
 ```bash
-git tag v1.0.0-rc1
-git push origin v1.0.0-rc1
+git tag v1.0.0-rc2
+git push origin v1.0.0-rc2
 ```
 
-The GitHub Actions workflow validates the tag, packages the extension and publishes prerelease tags as GitHub prereleases automatically.
+The workflow validates the tag, builds `arc-sidebar-chrome-v1.0.0-rc2.zip`, and publishes it as a GitHub prerelease.
 
 ## Current version
 
-**v1.0.0-rc1**
+**v1.0.0-rc2**
 
 Manifest numeric version: **1.0.0**
 
