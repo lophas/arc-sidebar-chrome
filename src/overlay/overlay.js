@@ -10,7 +10,7 @@
   const EDGE_WIDTH = 7;
   const RESIZE_HANDLE_WIDTH = 14;
   const SHOW_DELAY = 80;
-  const HIDE_DELAY = 320;
+  const HIDE_DELAY = 600;
   const themeMedia = window.matchMedia('(prefers-color-scheme: dark)');
   const currentTheme = () => themeMedia.matches ? 'dark' : 'light';
 
