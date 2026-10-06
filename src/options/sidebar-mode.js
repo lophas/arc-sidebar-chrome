@@ -24,8 +24,8 @@ async function saveMode(mode) {
     await chrome.storage.local.set({ [SIDEBAR_MODE_KEY]: mode });
     applySelection(mode);
     status.textContent = mode === NATIVE_MODE
-      ? 'Native mode enabled · no edge trigger is active.'
-      : 'Autohide overlay enabled.';
+      ? 'Native mode enabled · no edge trigger is active. Existing web tabs reload once when you next switch to them.'
+      : 'Autohide overlay enabled. Existing web tabs reload once when you next switch to them.';
   } catch (error) {
     console.error(error);
     status.textContent = `Could not change sidebar mode: ${error.message}`;
