@@ -120,34 +120,87 @@ If you extracted the update to a different folder, remove the old unpacked exten
 
 Importing is destructive with respect to the extension’s existing sidebar model: it replaces the current Arc Sidebar data. It does not modify Arc itself.
 
+## Right-click context menu
+
+Arc Sidebar adds a **Pin to Arc Sidebar** submenu to Chrome's normal webpage context menu.
+
+Use it when you want to save something without first opening the sidebar:
+
+- **Right-click the page background** to pin the current page.
+- **Right-click a link** to pin that link directly, even without opening it first.
+- Choose the destination **Space** from the submenu.
+- The item is added to the root of the selected Space and appears in the sidebar immediately.
+
+When the current page itself is pinned, Arc Sidebar keeps the existing live Chrome tab associated with the new sidebar item where possible, so pinning the page does not immediately create a duplicate tab.
+
+The Space submenu is rebuilt from the current sidebar model, so newly created, renamed or removed Spaces are reflected automatically.
+
+This context-menu feature is available on normal web pages where Chrome allows extension context menus. Browser-internal and other protected pages remain subject to Chrome's normal extension restrictions.
+
 ## Chrome Sync
 
-Cross-device sync is optional and is disabled until you turn it on.
+Cross-device sync is optional and disabled until you explicitly turn it on.
 
-Open **Extensions → Arc Sidebar for Chrome → Details → Extension options**, then enable **Chrome Sync**.
+### Enabling sync
 
-When enabled, Chrome Sync carries the persistent sidebar model between Chrome installations using the same Chrome Sync account:
+1. Make sure Chrome is signed in and Chrome Sync is enabled.
+2. Open **Extensions → Arc Sidebar for Chrome → Details → Extension options**.
+3. Enable **Chrome Sync**.
+4. Repeat this on each computer where you want to use the same Arc Sidebar model.
 
-- Spaces
+When enabled, Arc Sidebar keeps its normal runtime model in local Chrome storage and mirrors the persistent sidebar data to `chrome.storage.sync`.
+
+The following data is synchronized:
+
+- Spaces and their order
+- Space names and emoji/icons
 - Favorites
 - folders
-- pinned links
+- folder placement between Spaces
+- pinned links and their hierarchy
 
-The following deliberately stay local to each computer:
+The following deliberately remains local to each computer:
 
 - currently open Chrome tabs
 - live saved-item ↔ tab bindings
 - restored-tab recovery state
 - collapsed folder state
 - overlay sidebar width
+- other machine-specific UI/session state
 
-Starting with **v0.6.2**, the extension includes a fixed manifest key so unpacked installations use the same extension ID on every computer. This is required for `chrome.storage.sync` to share the same namespace across machines.
+This means two computers can share the same persistent sidebar organization without trying to reproduce each other's currently open browser processes.
+
+### Stable extension ID
+
+Starting with **v0.6.2**, the extension includes a fixed manifest key so unpacked installations use the same extension ID on every computer. This is required because `chrome.storage.sync` is namespaced by extension ID.
+
+For Sync to work between two unpacked installations, both must therefore be running a version that uses the fixed key. With the current builds, the extension ID should stay stable across machines as long as the packaged manifest is not modified.
 
 If you are upgrading from v0.6.1 or earlier, create a backup first. The stable extension ID introduced in v0.6.2 may differ from the ID Chrome previously generated for your unpacked installation, so local extension storage from the old ID may not be visible automatically. Use **Extension options → Backup & restore** to export before upgrading and restore afterward if needed.
 
-The sidebar model is kept in local storage as the runtime copy and mirrored to `chrome.storage.sync` in quota-safe chunks. If two copies differ, the newer local or synced model wins based on modification time. Disabling sync stops future synchronization but does not delete your local sidebar data.
+### Sync behavior and conflict handling
 
-If Chrome itself is not signed in or Chrome Sync is disabled, `chrome.storage.sync` cannot provide normal cross-device synchronization.
+The sidebar model is mirrored to Chrome Sync in quota-safe chunks. Synchronization is whole-model rather than per-item merging.
+
+When local and synced copies differ:
+
+- the copy with the newer modification timestamp wins;
+- a newer local model is pushed to Chrome Sync;
+- a newer synced model is pulled into local storage.
+
+This keeps the implementation predictable and avoids partial hierarchy merges that could corrupt folder/Space structure.
+
+Because synchronization is eventually consistent, changes made on one computer may take a short time to appear on another. If necessary, the Extension Options page can trigger an explicit sync/reconciliation.
+
+Disabling Chrome Sync in Arc Sidebar stops future synchronization but does not delete the local sidebar data. Existing remote sync data is also left intact so synchronization can resume later.
+
+If Chrome itself is not signed in, browser Sync is disabled, or Chrome prevents `storage.sync` from operating normally, Arc Sidebar continues to work locally.
+
+### Backup and restore
+
+Chrome Sync is not a replacement for a backup. The Extension Options page provides **Backup & restore** so the complete persistent sidebar model can be exported to JSON and restored on the same or another machine.
+
+A backup contains the persistent organization — Spaces, Favorites, folders and pinned links — but intentionally does not include machine-specific live tab/session state.
 
 ## Everyday workflow
 
@@ -162,6 +215,7 @@ If Chrome itself is not signed in or Chrome Sync is disabled, `chrome.storage.sy
 - In a folder's editor, choose another Space to move the whole folder there.
 - Drag pinned links within a Space or onto another Space.
 - Use the **Open tabs** Space to pin an already-open Chrome tab without creating a duplicate.
+- Enable **Chrome Sync** if you want the same persistent sidebar structure on multiple Chrome installations.
 
 ## Architecture and privacy
 
