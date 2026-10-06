@@ -8,7 +8,6 @@ const searchEl = document.querySelector('#search');
 const addFavoriteButton = document.querySelector('#addFavorite');
 const addPinnedButton = document.querySelector('#addPinned');
 
-const ICON_PRESETS = ['⭐','❤️','💬','📧','📅','📚','🧰','🖥️','🏠','🌐','📰','🎬','🎵','📷','🧭','✈️','🚗','💡','🔧','🧪'];
 const IMAGE_ICON_PREFIX = 'data:image/';
 const MAX_SOURCE_ICON_BYTES = 2 * 1024 * 1024;
 const MAX_STORED_ICON_CHARS = 24000;
@@ -63,7 +62,6 @@ function visibleTabNodes(nodes, q, out = []) {
 
 function replaceWithCustomIcon(container, icon, className) {
   if (!container || !icon) return;
-
   const wantsImage = isImageIcon(icon);
   let custom = container.querySelector(`.${className}`);
   const correctElement = custom && (wantsImage ? custom.tagName === 'IMG' : custom.tagName === 'SPAN');
@@ -88,6 +86,7 @@ function replaceWithCustomIcon(container, icon, className) {
     custom.src = icon;
     custom.alt = '';
   } else {
+    // Backward compatibility for older models that already contain symbol icons.
     custom.textContent = icon;
   }
 }
@@ -218,13 +217,11 @@ function clearFileIcon(field) {
 
 async function selectIconFile(field, file) {
   const dropzone = field.querySelector('.item-icon-dropzone');
-  const input = field.querySelector('#itemIcon');
   try {
     dropzone?.classList.add('busy');
     setIconStatus(field, 'Preparing icon…');
     const dataUrl = await prepareIconFile(file);
     field.dataset.fileIcon = dataUrl;
-    if (input) input.value = '';
     setImagePreview(field, dataUrl, file.name || 'Custom image icon');
     setIconStatus(field, 'Image icon ready. Save to apply it.');
   } catch (error) {
@@ -239,51 +236,25 @@ function createIconField() {
   label.className = 'item-icon-field';
   label.innerHTML = `
     Icon
-    <div class="item-icon-editor">
-      <input id="itemIcon" class="item-icon-input" type="text" maxlength="8" autocomplete="off" placeholder="Site favicon">
+    <div class="item-icon-actions">
       <button class="item-icon-clear" type="button" title="Use site favicon">Use favicon</button>
     </div>
-    <div class="item-icon-help">Type or paste any emoji/symbol, choose a preset, or drop an image file below.</div>
     <div class="item-icon-dropzone" role="button" tabindex="0" aria-label="Drop or choose a custom icon image">
       <strong>Drop icon here</strong>
       <span>SVG, PNG, WebP or JPEG · or click to choose</span>
       <input class="item-icon-file-input" type="file" accept="image/svg+xml,image/png,image/webp,image/jpeg" hidden>
     </div>
     <div class="item-icon-file-preview" hidden><img alt=""><span></span></div>
-    <div class="item-icon-status" aria-live="polite"></div>
-    <div class="item-icon-grid" aria-label="Icon presets"></div>`;
+    <div class="item-icon-status" aria-live="polite"></div>`;
 
-  const input = label.querySelector('#itemIcon');
-  const grid = label.querySelector('.item-icon-grid');
   const clear = label.querySelector('.item-icon-clear');
   const dropzone = label.querySelector('.item-icon-dropzone');
   const fileInput = label.querySelector('.item-icon-file-input');
 
-  for (const icon of ICON_PRESETS) {
-    const button = document.createElement('button');
-    button.type = 'button';
-    button.className = 'item-icon-choice';
-    button.textContent = icon;
-    button.title = `Use ${icon}`;
-    button.addEventListener('click', () => {
-      clearFileIcon(label);
-      input.value = icon;
-      setIconStatus(label, '');
-      input.focus();
-    });
-    grid.append(button);
-  }
-
-  input.addEventListener('input', () => {
-    if (input.value) clearFileIcon(label);
-    setIconStatus(label, '');
-  });
-
   clear.addEventListener('click', () => {
     clearFileIcon(label);
-    input.value = '';
+    label.dataset.useFavicon = '1';
     setIconStatus(label, 'Using the site favicon.');
-    input.focus();
   });
 
   const chooseFile = () => fileInput.click();
@@ -297,7 +268,10 @@ function createIconField() {
   fileInput.addEventListener('click', event => event.stopPropagation());
   fileInput.addEventListener('change', () => {
     const file = fileInput.files?.[0];
-    if (file) selectIconFile(label, file);
+    if (file) {
+      delete label.dataset.useFavicon;
+      selectIconFile(label, file);
+    }
     fileInput.value = '';
   });
 
@@ -318,7 +292,10 @@ function createIconField() {
   }
   dropzone.addEventListener('drop', event => {
     const file = event.dataTransfer?.files?.[0];
-    if (file) selectIconFile(label, file);
+    if (file) {
+      delete label.dataset.useFavicon;
+      selectIconFile(label, file);
+    }
   });
 
   return label;
@@ -327,7 +304,7 @@ function createIconField() {
 function showIconFieldWhenReady(attempt = 0) {
   const dialog = document.querySelector('.item-dialog');
   if (!dialog?.open) {
-    if (attempt < 12) setTimeout(() => showIconFieldWhenReady(attempt + 1), 20);
+    if (attempt < 20) setTimeout(() => showIconFieldWhenReady(attempt + 1), 20);
     return;
   }
 
@@ -341,16 +318,15 @@ function showIconFieldWhenReady(attempt = 0) {
     urlInput.closest('label')?.after(field);
   }
 
-  const input = field.querySelector('#itemIcon');
-  const current = currentIconForEditing();
   clearFileIcon(field);
+  delete field.dataset.useFavicon;
   setIconStatus(field, '');
+  const current = currentIconForEditing();
   if (isImageIcon(current)) {
     field.dataset.fileIcon = current;
-    if (input) input.value = '';
     setImagePreview(field, current, 'Current custom image icon');
-  } else if (input) {
-    input.value = current;
+  } else if (current) {
+    setIconStatus(field, 'This item has a legacy symbol icon. Upload an image or choose Use favicon to replace it.');
   }
 }
 
@@ -374,14 +350,18 @@ function setEditingFromTarget(target) {
 function armPendingSave() {
   const dialog = document.querySelector('.item-dialog');
   const field = dialog?.querySelector('.item-icon-field');
-  const input = field?.querySelector('#itemIcon');
-  if (!editing || !field || !input) return;
+  if (!editing || !field) return;
 
   const normalizedUrl = normalizeEnteredUrl(dialog.querySelector('#itemUrl')?.value || '');
   const enteredTitle = dialog.querySelector('#itemTitle')?.value.trim() || '';
+  const current = currentIconForEditing();
+  const icon = field.dataset.useFavicon === '1'
+    ? ''
+    : field.dataset.fileIcon || (isImageIcon(current) ? current : '');
+
   pendingIconSave = {
     ...editing,
-    icon: field.dataset.fileIcon || input.value.trim(),
+    icon,
     expectedUrl: normalizedUrl,
     expectedTitle: enteredTitle || normalizedUrl
   };
@@ -419,9 +399,7 @@ async function applyPendingIconSave(modelFromChange) {
     } else if (pending.kind === 'new-favorite') {
       const candidates = model.favorites || [];
       const item = [...candidates].reverse().find(candidate =>
-        candidate?.type === 'tab' &&
-        candidate.url === pending.expectedUrl &&
-        candidate.title === pending.expectedTitle
+        candidate?.type === 'tab' && candidate.url === pending.expectedUrl && candidate.title === pending.expectedTitle
       ) || candidates.at(-1);
       changed = applyIconValue(item, pending.icon);
     } else if (pending.kind === 'pinned') {
@@ -438,9 +416,7 @@ async function applyPendingIconSave(modelFromChange) {
       const space = model.spaces?.find(candidate => candidate.id === spaceId) || model.spaces?.[0];
       const roots = space?.children || [];
       const item = [...roots].reverse().find(candidate =>
-        candidate?.type === 'tab' &&
-        candidate.url === pending.expectedUrl &&
-        candidate.title === pending.expectedTitle
+        candidate?.type === 'tab' && candidate.url === pending.expectedUrl && candidate.title === pending.expectedTitle
       ) || [...roots].reverse().find(candidate => candidate?.type === 'tab');
       changed = applyIconValue(item, pending.icon);
     }
@@ -474,10 +450,6 @@ addPinnedButton?.addEventListener('click', () => {
 document.addEventListener('click', event => {
   if (event.target?.id !== 'itemSave') return;
   armPendingSave();
-  // Editing an existing item may not cause the base editor to write the model
-  // when title/URL are unchanged. Apply the icon directly as a fallback so an
-  // icon-only edit is still persisted. New items continue to wait for the base
-  // editor's model write, because their node does not exist yet at click time.
   setTimeout(() => {
     applyPendingExistingIconSave().catch(error => {
       console.warn('Arc Sidebar: custom icon save fallback failed', error);
