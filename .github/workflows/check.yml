@@ -12,3 +12,4 @@ jobs:
           node-version: '20'
       - run: npm test
       - run: npm run check
+      - run: python3 tests/browser-overlay.py --require-browser

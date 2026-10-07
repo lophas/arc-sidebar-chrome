@@ -269,9 +269,22 @@
     // overlay instance. Observe only document/root children, not the page subtree.
     let observedRoot = null;
     let suspended = false;
-    const rootObserver = new MutationObserver(() => ensureHost());
-    const documentObserver = new MutationObserver(() => ensureHost());
-    const hostObserver = new MutationObserver(() => ensureHost());
+    let repairTimer = null;
+    let styleSignature = '';
+    let normalizedHostStyle = '';
+    const observeHost = () => hostObserver.observe(host, { attributes: true, attributeFilter: ['style', 'hidden', 'id'] });
+    // Yield to the page's event loop; never repair recursively in the mutation
+    // microtask checkpoint, even if the page continuously changes this host.
+    const scheduleHostRepair = () => {
+      if (suspended || repairTimer !== null) return;
+      repairTimer = setTimeout(() => {
+        repairTimer = null;
+        ensureHost();
+      }, 0);
+    };
+    const rootObserver = new MutationObserver(scheduleHostRepair);
+    const documentObserver = new MutationObserver(scheduleHostRepair);
+    const hostObserver = new MutationObserver(scheduleHostRepair);
     const ensureHost = () => {
       if (suspended) return;
       const root = document.documentElement;
@@ -291,30 +304,34 @@
         forceClosePanel();
         root.append(host);
       }
-      if (host.id !== 'arc-sidebar-overlay-host') host.id = 'arc-sidebar-overlay-host';
-      const properties = {
-        all: 'initial', display: sidebarMode === OVERLAY_MODE ? 'block' : 'none',
-        position: 'fixed', top: '0px', right: '0px', width: '0px', height: '0px',
-        overflow: 'visible', visibility: 'visible', opacity: '1',
-        transform: 'none', 'pointer-events': 'auto', 'z-index': '2147483647'
-      };
-      for (const [name, value] of Object.entries(properties)) {
-        if (host.style.getPropertyValue(name) !== value || host.style.getPropertyPriority(name) !== 'important') {
-          host.style.setProperty(name, value, 'important');
+      // Disconnect while changing observed attributes. CSS shorthands such as
+      // `all` / `overflow` can serialize differently from the input and used to
+      // trigger an endless observer -> style write -> observer microtask chain.
+      hostObserver.disconnect();
+      try {
+        if (host.id !== 'arc-sidebar-overlay-host') host.id = 'arc-sidebar-overlay-host';
+        const signature = [sidebarMode, currentTheme()].join(':');
+        if (styleSignature !== signature || host.style.cssText !== normalizedHostStyle) {
+          host.style.cssText = `all: initial !important; display: ${sidebarMode === OVERLAY_MODE ? 'block' : 'none'} !important; position: fixed !important; top: 0px !important; right: 0px !important; width: 0px !important; height: 0px !important; overflow: visible !important; visibility: visible !important; opacity: 1 !important; transform: none !important; pointer-events: auto !important; z-index: 2147483647 !important; color-scheme: ${currentTheme()} !important;`;
+          styleSignature = signature;
+          normalizedHostStyle = host.style.cssText;
         }
+        if (host.hidden) host.hidden = false;
+      } finally {
+        if (!suspended) observeHost();
       }
-      if (host.hidden) host.hidden = false;
     };
     const resume = () => {
       suspended = false;
       documentObserver.observe(document, { childList: true });
-      hostObserver.observe(host, { attributes: true, attributeFilter: ['style', 'hidden', 'id'] });
       ensureHost();
       chrome.runtime.sendMessage({ type: 'arc-native-sidepanel-is-open' })
         .then(response => setNativePanelOpen(response?.open)).catch(() => {});
     };
     window.addEventListener('pagehide', () => {
       suspended = true;
+      if (repairTimer !== null) clearTimeout(repairTimer);
+      repairTimer = null;
       clearTimers();
       rootObserver.disconnect();
       documentObserver.disconnect();

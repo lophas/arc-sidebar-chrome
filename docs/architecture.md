@@ -20,7 +20,7 @@ The page-local trigger and DOM-repair observers remain lightweight. The extensio
 
 An idle overlay iframe is unloaded when its webpage tab becomes hidden. An open editor or resize interaction retains the iframe, so an unfinished edit survives a tab switch. Each active sidebar reloads its model, UI state and bindings from a queued snapshot before rendering. The native Side Panel uses the same state clients and tab actions.
 
-Scroll writes capture the original Space before a switch and update that Space alone. Programmatic restoration does not trigger saves. DOM repair reattaches the existing overlay host instead of creating duplicate sidebar listeners.
+Scroll writes capture the original Space before a switch and update that Space alone. Programmatic restoration does not trigger saves. DOM repair reattaches the existing overlay host instead of creating duplicate sidebar listeners. Mutation callbacks coalesce repairs into a timer, yielding to webpage loading. Host attribute observation is disconnected during repairs; styles are restored as a cached, browser-normalized declaration instead of repeatedly comparing CSS shorthand values.
 
 ## Validation
 
@@ -29,6 +29,7 @@ Run with Node.js 20 or newer, without installing dependencies:
 ```sh
 npm test
 npm run check
+python3 tests/browser-overlay.py --require-browser
 ```
 
 Tests use Chrome API and DOM fakes. They cover concurrent editors, order/content merges, conflict rejection, import/pin batches, binding removal/replacement/recovery, duplicate opens, Space reveal, overlay lazy loading and DOM repair, editor retention, lifecycle messaging and scroll memory. Source checks validate syntax and relative imports.
@@ -46,3 +47,5 @@ Manual Chrome regression checklist:
 - Arc import, backup/restore, Chrome Sync and reset; restart Chrome with bound tabs.
 
 These browser checks require an actual Chrome installation; mock tests do not establish real-site compatibility.
+
+The browser regression runs in real headless Chrome on CI. It checks page load and timer progress in both modes, repeated observer activity, host removal and style/hidden repair. It uses mocked extension APIs, so it does not replace full extension integration or Gmail/Facebook testing.
