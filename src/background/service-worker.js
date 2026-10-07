@@ -1,3 +1,4 @@
+import { orderNativeGroups } from './native-group-order.js';
 import { pruneGroupMap } from './native-group-map.js';
 import './tab-actions.js';
 import './persistent-bindings.js';
@@ -419,6 +420,7 @@ async function syncNativeGroupsNow() {
     const liveKeys = new Set(desired.keys());
     const mapChanged = await pruneGroupMap(groupMap, liveKeys, model, FAVORITES_GROUP);
     if (mapChanged || desired.size) await saveSessionGroupMap(groupMap);
+    await orderNativeGroups(model, groupMap, FAVORITES_GROUP);
   } finally {
     groupSyncRunning = false;
     if (groupSyncPending) {

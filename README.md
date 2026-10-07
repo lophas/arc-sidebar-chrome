@@ -26,7 +26,7 @@ All features from v1.0.0 remain available:
 
 - two sidebar modes: Autohide overlay and Native Chrome Side Panel;
 - Arc-style Spaces, folders, persistent pinned links and global Favorites;
-- native Chrome tab grouping by Space and Favorites, with group tab order following the sidebar hierarchy;
+- native Chrome tab grouping by Space and Favorites, with Favorites first, Space groups in sidebar order, and group tab order following the sidebar hierarchy;
 - drag-and-drop reordering for Spaces, folders, Favorites and pinned items;
 - moving pinned items between folders, out to Space root, and across Spaces;
 - folder moves across Spaces through the folder editor;
