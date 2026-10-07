@@ -9,6 +9,7 @@
   <link rel="stylesheet" href="item-icons.css">
   <link rel="stylesheet" href="space-icons.css">
   <link rel="stylesheet" href="responsive.css">
+  <link rel="stylesheet" href="command-bar.css">
 </head>
 <body>
   <header class="topbar">
@@ -22,6 +23,7 @@
     </label>
   </header>
 
+  <button id="openCommandBar" class="command-launch" type="button">Search or enter URL… <span>⌘⇧K / Ctrl⇧K</span></button>
   <div class="search-wrap">
     <input id="search" type="search" placeholder="Search pinned and open tabs…" autocomplete="off">
     <button id="addFavorite" class="add-favorite-button" type="button" title="Add Favorite" aria-label="Add Favorite">+</button>
@@ -80,5 +82,6 @@
   <script type="module" src="enter-save.js"></script>
   <script type="module" src="memory-controls.js"></script>
   <script type="module" src="scroll-memory.js"></script>
+  <script type="module" src="command-bar.js"></script>
 </body>
 </html>

@@ -320,3 +320,21 @@ Manifest numeric version: **1.0.0**
 ## License
 
 See [LICENSE](LICENSE).
+
+### Command bar
+
+Press **Command+Shift+K** on macOS or **Ctrl+Shift+K** on Windows/Linux,
+including when the sidebar is closed. A compact command window searches open
+tabs across windows, Favorites, pinned links, folders and Spaces. The sidebar
+also has a **Search or enter URL** button for an inline dialog.
+
+Use Up/Down and Enter to select, or Escape to dismiss. Enter a URL to open it,
+or choose the Google search result. Search ignores accents and matches all
+entered words. Pinned results reuse their bound tab; folder results switch
+Space and expand parent folders. From the command window, folder/Space
+navigation opens the native sidebar.
+
+Chrome reserves Command+T/Ctrl+T for new tabs, so the extension does not
+claim that shortcut or replace the New Tab page. Configure the command bar
+shortcut at `chrome://extensions/shortcuts` if the default conflicts with
+another extension. Reload this extension after updating its files.

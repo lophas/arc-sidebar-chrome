@@ -1,3 +1,4 @@
+import './command-bar.js';
 import './context-menu.js';
 
 const STORAGE_KEY = 'arcSidebarModel';
