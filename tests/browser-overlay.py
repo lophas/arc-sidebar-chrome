@@ -11,6 +11,7 @@ import threading
 parser = argparse.ArgumentParser()
 parser.add_argument('--require-browser', action='store_true')
 parser.add_argument('--source', default='src/overlay/overlay.js')
+parser.add_argument('--regression-ref', help='Prove that the known faulty commit fails the same real-browser check')
 args = parser.parse_args()
 browser = next((shutil.which(name) for name in ('google-chrome', 'chromium', 'chromium-browser') if shutil.which(name)), None)
 if not browser:
@@ -70,5 +71,12 @@ with tempfile.TemporaryDirectory() as folder:
             if result.returncode or f'PASS {mode} page loaded' not in result.stdout:
                 raise SystemExit(f'{mode} browser regression FAILED:\n{result.stdout}\n{result.stderr[-2000:]}')
             print(f'PASS real Chromium: {mode} page load, event-loop progress and DOM repair')
+        if args.regression_ref:
+            old_source = subprocess.check_output(['git','show',args.regression_ref+':src/overlay/overlay.js'],text=True)
+            (root/'overlay.js').write_text(old_source)
+            result=subprocess.run(['node','tests/browser-overlay-driver.mjs',browser,f'http://127.0.0.1:{server.server_port}/index.html?mode=overlay'],capture_output=True,text=True,timeout=25)
+            if not result.returncode or 'Observer starvation' not in result.stdout:
+                raise SystemExit('Known-bad baseline did not reproduce observer starvation:\n'+result.stdout+'\n'+result.stderr)
+            print('PASS real Chromium: known-bad baseline reproduced '+result.stdout.strip())
     finally:
         server.shutdown()

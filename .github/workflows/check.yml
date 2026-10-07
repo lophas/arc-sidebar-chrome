@@ -7,10 +7,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
       - run: npm test
       - run: npm run check
       - run: npm install --no-save --package-lock=false --ignore-scripts playwright-core@1.56.1
-      - run: python3 tests/browser-overlay.py --require-browser
+      - run: python3 tests/browser-overlay.py --require-browser --regression-ref=0a7248abf3b70cc393ccfd091daecfd275e012cc
