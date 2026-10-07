@@ -14,7 +14,16 @@ function render() {
     const row = document.createElement('div'); row.id = `command-result-${index}`; row.className = 'command-result'; row.setAttribute('role', 'option'); row.setAttribute('aria-selected', String(index === selected));
     const text = document.createElement('div'), title = document.createElement('strong'), detail = document.createElement('small'), kind = document.createElement('span');
     title.textContent = item.title; detail.textContent = item.detail || item.url || ''; kind.textContent = item.kind;
-    text.append(title, detail); row.append(text, kind); row.addEventListener('click', () => execute(item)); list.append(row);
+    const icon = document.createElement('span'); icon.className = 'command-icon'; icon.setAttribute('aria-hidden', 'true');
+    icon.textContent = item.kind === 'Folder' ? '▱' : item.kind === 'Space' ? '◉' : item.kind === 'Search' ? '⌕' : '🌐';
+    if (item.url && item.kind !== 'Search') {
+      const img = document.createElement('img'); img.alt = ''; img.width = 20; img.height = 20;
+      const favicon = new URL(chrome.runtime.getURL('/_favicon/'));
+      favicon.searchParams.set('pageUrl', item.url); favicon.searchParams.set('size', '32');
+      img.src = favicon.href;
+      img.addEventListener('load', () => icon.replaceChildren(img), { once: true });
+    }
+    text.append(title, detail); row.append(icon, text, kind); row.addEventListener('click', () => execute(item)); list.append(row);
   });
   input.setAttribute('aria-activedescendant', results.length ? `command-result-${selected}` : '');
   list.children[selected]?.scrollIntoView({ block: 'nearest' });
@@ -30,7 +39,7 @@ async function refresh() {
       if (node.type === 'folder') {
         data.push({ kind: 'Folder', id: node.id, spaceId: space.id, ancestors, title: node.title || 'Untitled folder', detail: [space.title, ...path].join(' / ') });
         walk(node.children, space, [...ancestors, node.id], [...path, node.title]);
-      } else if (node.type === 'tab' && node.url) data.push({ ...node, kind: space.id ? 'Pinned' : 'Favorite', spaceId: space.id, title: node.title || node.url, detail: [space.title, ...path, node.url].join(' / ') });
+      } else if (node.type === 'tab' && node.url) data.push({ ...node, kind: space.id ? 'Pinned' : 'Favorite', spaceId: space.id, ancestors, title: node.title || node.url, detail: [space.title, ...path, node.url].join(' / ') });
     }
   };
   walk(model?.favorites, { title: 'Favorites' });

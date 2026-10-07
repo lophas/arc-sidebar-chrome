@@ -340,3 +340,7 @@ Chrome reserves Command+T/Ctrl+T for new tabs, so the extension does not
 claim that shortcut or replace the New Tab page. Configure the command bar
 shortcut at `chrome://extensions/shortcuts` if the default conflicts with
 another extension. Reload this extension after updating its files.
+
+The command ID was migrated to `arc-command-bar-v2` so updates register the
+new Option+K / Alt+K default instead of keeping the old three-key binding.
+Results display cached Chrome favicons, with a generic icon when unavailable.

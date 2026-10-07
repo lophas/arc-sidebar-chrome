@@ -14,3 +14,6 @@
 .command-help { padding: 10px 16px; color: var(--muted); border-top: 1px solid var(--border); font-size: 11px; }
 .command-error:not(:empty) { padding: 10px 16px; color: #d44; }
 .command-page .command-dialog { margin: 12px auto; }
+
+.command-result > .command-icon { width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 20px; }
+.command-icon img { display: block; object-fit: contain; border-radius: 3px; }
