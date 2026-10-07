@@ -1,16 +1,25 @@
-## Arc Sidebar for Chrome 1.1.0
+## Arc Sidebar for Chrome 1.2.0
 
-This release adds an Arc-style command bar to the existing Spaces, Favorites and pinned-link workflow.
+Spaces now show your complete browsing workflow: saved links and the additional tabs opened in their Chrome groups, together in the sidebar.
 
-- Open with **Command+K** on macOS or **Ctrl+K** on Windows/Linux, or use the sidebar search button.
-- Browse recent open tabs, most recently accessed first; New Tab, blank and internal browser pages are excluded.
-- Search tabs across windows, Favorites, pinned links, folders and Spaces, with website favicons.
-- Enter a URL or launch a Google search; navigate with Up/Down, Enter and Escape.
-- Opening a pinned item or its bound live tab switches the sidebar to the correct Space and expands its parent folders.
-- One sidebar search control, with **Add Favorite** retained.
+### New features
+
+- **Space open tabs:** non-pinned group tabs appear below pinned links, with favicons, click-to-focus and a close button. Tabs in other windows are marked **Other window**.
+- **Drag to pin:** drop an open Space tab between pinned links, into a folder or into an empty Space. The existing browser tab becomes the saved link’s live tab.
+- **Close a complete Space:** close every tab in all of the Space’s Chrome groups, including non-pinned tabs and tabs in other windows, while keeping saved links and folders.
+- **Matching group order:** Favorites first, followed by Space groups in sidebar order, including groups opened later.
+
+### Improvements
+
+- More consistent sidebar state across tabs and windows.
+- More efficient autohide behavior and reliable page loading.
+- Improved recovery of open Favorites and pinned tabs after Chrome restarts, including tabs that have navigated away from their saved URL.
+- A rewritten README with the project mission, main features and detailed usage guide.
+
+The **Command+K / Ctrl+K** search popup, Favorites, folders, custom icons, Arc import, Chrome Sync and backups are all included.
 
 ### Install or update
 
-Download `arc-sidebar-chrome-v1.1.0.zip` and extract it. Load the folder containing `manifest.json` through **chrome://extensions → Developer mode → Load unpacked**.
+Download `arc-sidebar-chrome-v1.2.0.zip` and extract it. Open **chrome://extensions → Developer mode → Load unpacked**, then select the folder containing `manifest.json`.
 
-For an existing installation, replace its files and click **Reload**. Existing sidebar data is retained. If the shortcut conflicts with another extension, configure it at `chrome://extensions/shortcuts`.
+For an existing installation, replace the files in its current folder and click **Reload**. Your saved sidebar organization is retained.
