@@ -355,3 +355,5 @@ section { margin-bottom: 15px; }
 /* Avoid exposing a cached Space while a resumed overlay reloads its snapshot. */
 .sidebar-loading > main, .sidebar-loading > #spaces, .sidebar-loading > #favoritesSection { visibility: hidden; }
 .sidebar-save-error { padding: 10px 12px; background: var(--panel); color: #d44; border-top: 1px solid var(--border); font-size: 12px; }
+
+.other-window-label { font-size: 10px; opacity: .65; white-space: nowrap; margin-left: auto; }

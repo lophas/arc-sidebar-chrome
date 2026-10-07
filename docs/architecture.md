@@ -58,3 +58,7 @@ The Space context menu uses background `space-close-info` and `close-space` acti
 `native-group-map.js` retains valid group associations while Chrome still has a group, even when its last pinned tab has closed. Stale associations, deleted Spaces and groups with a mismatched window/title are discarded. Only bindings for successfully closed tabs are removed; partial failures show an error and retain retryable bindings. Folder-only close and individual tab close keep their existing behavior.
 
 Additional regression tests cover non-pinned workflow tabs, multiple windows, workflow-only groups, changed membership, stale/deleted associations and partial close failures.
+
+## Space workflow rows
+
+`shared/space-tabs.js` resolves group membership for both the Space live-tab list and bulk close. The list excludes saved bindings across all Spaces/Favorites and orders rows by browser position, with the sidebar's current window first. It refreshes on tab/group events and native group-map changes; hidden sidebar views keep their lifecycle pause. Workflow rows have stable Chrome tab IDs so right-click pinning selects the correct tab despite search, ordering or cross-window display.

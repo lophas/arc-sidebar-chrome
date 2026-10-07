@@ -1,3 +1,4 @@
+import { spaceWorkflowTabs } from '../shared/space-tabs.js';
 import { isSidebarActive } from './lifecycle.js';
 import { sidebarTabAction } from './tab-actions.js';
 import { createStorageClient } from '../shared/storage-client.js';
@@ -5,6 +6,7 @@ const sidebarStorage = createStorageClient({ isActive: isSidebarActive });
 const STORAGE_KEY = 'arcSidebarModel';
 const STATE_KEY = 'arcSidebarState';
 const BINDINGS_KEY = 'arcSidebarBindings';
+const GROUP_MAP_KEY = 'arcSidebarNativeGroups';
 const OPEN_TABS_SPACE_ID = '__open_tabs__';
 const TAB_ID_NONE = -1;
 const TAB_REFRESH_DELAY = 50;
@@ -29,6 +31,9 @@ let state = { currentSpaceId: null, collapsedFolders: {} };
 let bindings = {};
 let openTabs = [];
 let allTabs = [];
+let nativeGroups = [];
+let nativeGroupMap = {};
+let currentWindowId = null;
 let tabsById = new Map();
 let refreshTimer = null;
 let refreshRunning = false;
@@ -185,11 +190,12 @@ function normalizeState() {
 
 async function loadData() {
   const { local: stored, session } = await sidebarStorage.snapshot({
-    local: [STORAGE_KEY, STATE_KEY], session: [BINDINGS_KEY]
+    local: [STORAGE_KEY, STATE_KEY], session: [BINDINGS_KEY, GROUP_MAP_KEY]
   });
   model = stored[STORAGE_KEY] || null;
   state = { currentSpaceId: null, collapsedFolders: {}, ...(stored[STATE_KEY] || {}) };
   bindings = session[BINDINGS_KEY] || {};
+  nativeGroupMap = session[GROUP_MAP_KEY] || {};
   normalizeState();
 }
 
@@ -223,10 +229,14 @@ async function refreshOpenTabsNow() {
   }
   refreshRunning = true;
   try {
-    [openTabs, allTabs] = await Promise.all([
+    let windowInfo;
+    [openTabs, allTabs, nativeGroups, windowInfo] = await Promise.all([
       chrome.tabs.query({ currentWindow: true }),
-      chrome.tabs.query({})
+      chrome.tabs.query({}),
+      chrome.tabGroups.query({}),
+      chrome.windows.getCurrent()
     ]);
+    currentWindowId = windowInfo.id;
     tabsById = new Map(allTabs.filter(tab => tab.id != null).map(tab => [tab.id, tab]));
     render();
   } finally {
@@ -274,6 +284,7 @@ function createTabRow(item, { live = false, active = false, boundTab = null } = 
   const row = document.createElement('div');
   row.className = `row${active ? ' active' : ''}${boundTab ? ' has-binding' : ''}`;
   row.title = item.url || item.title || '';
+  if (live && item.id != null) row.dataset.liveTabId = String(item.id);
 
   const favicon = document.createElement('img');
   favicon.className = 'favicon';
@@ -495,19 +506,26 @@ function renderPinned() {
 
 function renderOpenTabs() {
   const isOpenSpace = state.currentSpaceId === OPEN_TABS_SPACE_ID;
-  els.openSection.classList.toggle('hidden', !isOpenSpace);
-  if (!isOpenSpace) return;
-
+  const tabs = isOpenSpace ? openTabs : spaceWorkflowTabs(model, currentSpace(), bindings, allTabs, nativeGroupMap, nativeGroups, currentWindowId);
   els.openTabs.replaceChildren();
+  els.openSection.classList.toggle('hidden', !isOpenSpace && !tabs.length);
+  if (!isOpenSpace && !tabs.length) return;
+
   const q = els.search.value.trim().toLowerCase();
-  const visibleTabs = openTabs.filter(tab => {
+  const visibleTabs = tabs.filter(tab => {
     if (!tab.url || tab.url.startsWith('chrome-extension://')) return false;
-    if (!q) return true;
-    return `${tab.title || ''} ${tab.url || ''}`.toLowerCase().includes(q);
+    return !q || `${tab.title || ''} ${tab.url || ''}`.toLowerCase().includes(q);
   });
-  els.openCount.textContent = `(${openTabs.length})`;
+  els.openCount.textContent = `(${tabs.length})`;
   for (const tab of visibleTabs) {
-    els.openTabs.append(createTabRow(tab, { live: true, active: Boolean(tab.active) }));
+    const row = createTabRow(tab, { live: true, active: Boolean(tab.active && tab.windowId === currentWindowId) });
+    if (!isOpenSpace && tab.windowId !== currentWindowId) {
+      const label = document.createElement('span');
+      label.className = 'other-window-label';
+      label.textContent = 'Other window';
+      row.querySelector('.close-tab').before(label);
+    }
+    els.openTabs.append(row);
   }
 }
 
@@ -563,7 +581,7 @@ els.search.addEventListener('input', scheduleRender);
 chrome.tabs.onCreated.addListener(() => scheduleTabRefresh());
 chrome.tabs.onRemoved.addListener(() => scheduleTabRefresh(0));
 chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
-  if (!changeInfo.url && !changeInfo.title && !changeInfo.favIconUrl && changeInfo.status !== 'complete') return;
+  if (changeInfo.groupId === undefined && !changeInfo.url && !changeInfo.title && !changeInfo.favIconUrl && changeInfo.status !== 'complete') return;
   scheduleTabRefresh();
 });
 chrome.tabs.onActivated.addListener(() => scheduleTabRefresh(0));
@@ -571,6 +589,9 @@ chrome.tabs.onMoved.addListener(() => scheduleTabRefresh());
 chrome.tabs.onAttached.addListener(() => scheduleTabRefresh());
 chrome.tabs.onDetached.addListener(() => scheduleTabRefresh());
 chrome.tabs.onReplaced.addListener(() => scheduleTabRefresh(0));
+chrome.tabGroups.onCreated.addListener(() => scheduleTabRefresh());
+chrome.tabGroups.onUpdated.addListener(() => scheduleTabRefresh());
+chrome.tabGroups.onRemoved.addListener(() => scheduleTabRefresh(0));
 
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area === 'local') {
@@ -582,8 +603,9 @@ chrome.storage.onChanged.addListener((changes, area) => {
     }
   }
 
-  if (area === 'session' && changes[BINDINGS_KEY]) {
-    bindings = changes[BINDINGS_KEY].newValue || {};
+  if (area === 'session' && (changes[BINDINGS_KEY] || changes[GROUP_MAP_KEY])) {
+    if (changes[BINDINGS_KEY]) bindings = changes[BINDINGS_KEY].newValue || {};
+    if (changes[GROUP_MAP_KEY]) nativeGroupMap = changes[GROUP_MAP_KEY].newValue || {};
     scheduleTabRefresh(0);
   }
 });

@@ -1,3 +1,4 @@
+import { savedItemIds, spaceGroupIds } from '../shared/space-tabs.js';
 import { bindingsReady } from './persistent-bindings.js';
 import { serializeState } from './state-controller.js';
 const MODEL = 'arcSidebarModel', STATE = 'arcSidebarState', BINDINGS = 'arcSidebarBindings';
@@ -66,13 +67,6 @@ export async function closeSavedItems(itemIds) {
     await Promise.allSettled([...tabs].map(id => chrome.tabs.remove(id)));
   });
 }
-function savedItemIds(nodes, out = []) {
-  for (const node of nodes || []) {
-    if (node.type === 'tab') out.push(node.id);
-    if (node.type === 'folder') savedItemIds(node.children, out);
-  }
-  return out;
-}
 async function spaceCloseTargets(spaceId) {
   const [local, session, tabs] = await Promise.all([
     chrome.storage.local.get(MODEL),
@@ -82,23 +76,12 @@ async function spaceCloseTargets(spaceId) {
   const space = local[MODEL]?.spaces?.find(space => space.id === spaceId);
   if (!space) throw new Error('This Space no longer exists.');
   const bindings = session[BINDINGS] || {};
-  const byId = new Map(tabs.map(tab => [tab.id, tab]));
-  const groupIds = new Set(), tabIds = new Set();
-  for (const id of savedItemIds(space.children)) {
-    const tab = byId.get(Number(bindings[id]));
-    if (!tab) continue;
-    tabIds.add(tab.id);
-    if (tab.groupId != null && tab.groupId !== -1) groupIds.add(tab.groupId);
-  }
-  // Keep workflow-only groups reachable even after their last pinned tab closes.
-  for (const [key, groupId] of Object.entries(session.arcSidebarNativeGroups || {})) {
-    const colon = key.indexOf(':');
-    if (key.slice(colon + 1) !== spaceId || colon < 0) continue;
-    try {
-      const group = await chrome.tabGroups.get(groupId);
-      if (group.windowId === Number(key.slice(0, colon)) && group.title === space.title) groupIds.add(groupId);
-    } catch {}
-  }
+  const groupMap = session.arcSidebarNativeGroups || {};
+  const results = await Promise.allSettled([...new Set(Object.values(groupMap))].map(id => chrome.tabGroups.get(id)));
+  const groups = results.filter(result => result.status === 'fulfilled').map(result => result.value);
+  const groupIds = spaceGroupIds(space, bindings, tabs, groupMap, groups);
+  const live = new Set(tabs.map(tab => tab.id));
+  const tabIds = new Set(savedItemIds(space.children).map(id => Number(bindings[id])).filter(id => live.has(id)));
   for (const tab of tabs) if (groupIds.has(tab.groupId)) tabIds.add(tab.id);
   return { tabIds: [...tabIds], bindings, groupCount: groupIds.size };
 }

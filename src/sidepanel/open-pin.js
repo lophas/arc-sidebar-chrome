@@ -7,7 +7,6 @@ const LAST_SPACE_KEY = 'arcSidebarLastPinSpaceId';
 
 const openTabsEl = document.querySelector('#openTabs');
 const openSection = document.querySelector('#openSection');
-const searchEl = document.querySelector('#search');
 
 let dialog = null;
 
@@ -165,29 +164,20 @@ async function openPinDialog(tab) {
   }, 0);
 }
 
-async function currentVisibleTabs() {
-  const tabs = await chrome.tabs.query({ currentWindow: true });
-  const q = searchEl?.value.trim().toLowerCase() || '';
-  return tabs.filter(tab => {
-    if (!tab.url || tab.url.startsWith('chrome-extension://')) return false;
-    if (!q) return true;
-    return `${tab.title || ''} ${tab.url || ''}`.toLowerCase().includes(q);
-  });
-}
-
 async function decorateOpenTabs() {
   if (!isSidebarActive()) return;
   if (!openTabsEl || openSection?.classList.contains('hidden')) return;
 
   const [tabs, session] = await Promise.all([
-    currentVisibleTabs(),
+    chrome.tabs.query({}),
     sidebarStorage.session.get(BINDINGS_KEY)
   ]);
   const boundTabIds = new Set(Object.values(session[BINDINGS_KEY] || {}).map(Number));
   const rows = [...openTabsEl.querySelectorAll('.row')];
 
-  rows.forEach((row, index) => {
-    const tab = tabs[index];
+  const byId = new Map(tabs.map(tab => [tab.id, tab]));
+  rows.forEach(row => {
+    const tab = byId.get(Number(row.dataset.liveTabId));
     if (!tab || row.dataset.openPinManaged === '1') return;
     row.dataset.openPinManaged = '1';
     const alreadyPinned = tab.id != null && boundTabIds.has(Number(tab.id));

@@ -122,7 +122,9 @@ Folder drag-and-drop only changes folder order inside the current Space. Cross-S
 
 ### Open tabs
 
-A dedicated **Open tabs** Space shows the live tabs in the current Chrome window and can pin an already-open page without opening a duplicate.
+Each regular Space shows its non-pinned workflow tabs below the pinned items. The list follows that Space’s Chrome groups, including workflow-only groups and tabs in other windows (marked **Other window**). Already bound pinned links and Favorites are excluded to avoid duplicate rows. Live rows show favicons, activate their tab on click, close with ×, and support right-click pinning.
+
+A dedicated **Open tabs** Space continues to show all live tabs in the current Chrome window and can pin an already-open page without opening a duplicate.
 
 ### Native Chrome Tab Groups
 
