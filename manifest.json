@@ -53,10 +53,10 @@
     "default_title": "Open Arc Sidebar"
   },
   "commands": {
-    "arc-command-bar-v2": {
+    "arc-command-bar-v3": {
       "suggested_key": {
-        "default": "Alt+K",
-        "mac": "Alt+K"
+        "default": "Ctrl+K",
+        "mac": "Command+K"
       },
       "description": "Open Arc command bar"
     }

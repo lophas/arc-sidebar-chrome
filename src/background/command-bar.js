@@ -1,5 +1,33 @@
+async function revealPinnedSpace(tabId, savedId) {
+  const [stored, session] = await Promise.all([
+    chrome.storage.local.get(['arcSidebarModel', 'arcSidebarState']),
+    chrome.storage.session.get('arcSidebarBindings')
+  ]);
+  const bindings = session.arcSidebarBindings || {};
+  const walk = (nodes, ancestors = []) => {
+    for (const node of nodes || []) {
+      if (node.type === 'tab' && (savedId ? node.id === savedId : Number(bindings[node.id]) === tabId)) return ancestors;
+      if (node.type === 'folder') {
+        const found = walk(node.children, [...ancestors, node.id]);
+        if (found) return found;
+      }
+    }
+    return null;
+  };
+  for (const space of stored.arcSidebarModel?.spaces || []) {
+    const ancestors = walk(space.children);
+    if (!ancestors) continue;
+    const state = stored.arcSidebarState || {};
+    state.currentSpaceId = space.id;
+    state.collapsedFolders = { ...state.collapsedFolders };
+    for (const id of ancestors) state.collapsedFolders[id] = false;
+    await chrome.storage.local.set({ arcSidebarState: state });
+    return;
+  }
+}
+
 chrome.commands.onCommand.addListener(async (command, tab) => {
-  if (command !== 'arc-command-bar-v2') return;
+  if (command !== 'arc-command-bar-v3') return;
   try {
     const source = tab?.windowId != null ? await chrome.windows.get(tab.windowId) : await chrome.windows.getLastFocused({ windowTypes: ['normal'] });
     const width = Math.min(640, source.width || 640), height = Math.min(520, source.height || 520);
@@ -18,6 +46,7 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
       if (tab.groupId !== -1) await chrome.tabGroups.update(tab.groupId, { collapsed: false });
       await chrome.tabs.update(tab.id, { active: true });
       await chrome.windows.update(tab.windowId, { focused: true });
+      await revealPinnedSpace(tab.id);
     } else if (['Pinned', 'Favorite', 'URL', 'Search'].includes(item.kind)) {
       const windowId = message.windowId;
       const stored = await chrome.storage.session.get('arcSidebarBindings');
@@ -37,14 +66,7 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
         if (item.id) await chrome.storage.session.set({ arcSidebarBindings: { ...bindings, [item.id]: tab.id } });
         await chrome.windows.update(windowId, { focused: true });
       }
-      if (item.kind === 'Pinned' && item.spaceId) {
-        const storedState = await chrome.storage.local.get('arcSidebarState');
-        const state = storedState.arcSidebarState || {};
-        state.currentSpaceId = item.spaceId;
-        state.collapsedFolders = { ...state.collapsedFolders };
-        for (const id of item.ancestors || []) state.collapsedFolders[id] = false;
-        await chrome.storage.local.set({ arcSidebarState: state });
-      }
+      if (item.kind === 'Pinned') await revealPinnedSpace(tab.id, item.id);
     } else if (['Folder', 'Space'].includes(item.kind)) {
       const stored = await chrome.storage.local.get('arcSidebarState');
       const state = stored.arcSidebarState || {};

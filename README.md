@@ -323,7 +323,7 @@ See [LICENSE](LICENSE).
 
 ### Command bar
 
-Press **Option+K** on macOS or **Alt+K** on Windows/Linux,
+Press **Command+K** on macOS or **Ctrl+K** on Windows/Linux,
 including when the sidebar is closed. A compact command window searches open
 tabs across windows, Favorites, pinned links, folders and Spaces. The sidebar
 also has a **Search or enter URL** button for an inline dialog.
@@ -341,6 +341,6 @@ claim that shortcut or replace the New Tab page. Configure the command bar
 shortcut at `chrome://extensions/shortcuts` if the default conflicts with
 another extension. Reload this extension after updating its files.
 
-The command ID was migrated to `arc-command-bar-v2` so updates register the
-new Option+K / Alt+K default instead of keeping the old three-key binding.
-Results display cached Chrome favicons, with a generic icon when unavailable.
+Command ID v3 registers Command+K / Ctrl+K. Empty-query results exclude
+New Tab and internal browser pages. Activating an open tab bound to a pinned
+item switches the sidebar to its Space and expands its parent folders.
