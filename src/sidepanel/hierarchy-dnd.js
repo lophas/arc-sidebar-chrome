@@ -65,14 +65,13 @@ async function reorderFolder(sourceId, targetId, after) {
   const space = model.spaces.find(candidate => candidate.id === state.currentSpaceId);
   if (!space?.children?.length) return;
 
-  // Folder drag is deliberately limited to the root of the current Space.
-  // Moving a folder between Spaces remains an explicit editor/context action.
+  // Reorder root folders among both links and folders in the current Space.
   const sourceIndex = space.children.findIndex(node => node?.type === 'folder' && node.id === sourceId);
-  const targetIndex = space.children.findIndex(node => node?.type === 'folder' && node.id === targetId);
+  const targetIndex = space.children.findIndex(node => node.id === targetId);
   if (sourceIndex < 0 || targetIndex < 0) return;
 
   const [moved] = space.children.splice(sourceIndex, 1);
-  let insertAt = space.children.findIndex(node => node?.type === 'folder' && node.id === targetId);
+  let insertAt = space.children.findIndex(node => node.id === targetId);
   if (insertAt < 0) return;
   if (after) insertAt += 1;
   space.children.splice(insertAt, 0, moved);
@@ -158,6 +157,12 @@ async function decorateFolderReordering() {
   const folderEls = [...pinnedEl.children]
     .filter(element => element.classList?.contains('folder'));
 
+  // Root link rows are valid insertion targets too. Nested rows remain link
+  // drop targets; a folder is not implicitly nested by this reorder gesture.
+  for (const row of pinnedEl.querySelectorAll(':scope > .row[data-saved-node-id]')) {
+    decorateFolderDropTarget(row, row, row.dataset.savedNodeId);
+  }
+
   folderEls.forEach((folderEl, index) => {
     const folder = visibleRootFolders[index];
     const header = folderEl.querySelector(':scope > .folder-header');
@@ -188,35 +193,42 @@ async function decorateFolderReordering() {
       clearFolderDropIndicators();
     });
 
-    header.addEventListener('dragover', event => {
-      const sourceId = event.dataTransfer?.getData(FOLDER_DRAG_TYPE) || draggedFolderId;
-      const targetId = header.dataset.folderReorderId;
-      if (!sourceId || !targetId || sourceId === targetId) return;
-      event.preventDefault();
-      event.stopPropagation();
-      event.dataTransfer.dropEffect = 'move';
-      clearFolderDropIndicators();
-      const rect = header.getBoundingClientRect();
-      folderEl.classList.add(event.clientY >= rect.top + rect.height / 2 ? 'folder-reorder-after' : 'folder-reorder-before');
-    });
+    decorateFolderDropTarget(header, folderEl, folderId);
+  });
+}
 
-    header.addEventListener('dragleave', event => {
-      if (!folderEl.contains(event.relatedTarget)) {
-        folderEl.classList.remove('folder-reorder-before', 'folder-reorder-after');
-      }
-    });
+function decorateFolderDropTarget(element, indicator, targetId) {
+  element.dataset.folderReorderTargetId = targetId;
+  if (element.dataset.folderDropManaged === '1') return;
+  element.dataset.folderDropManaged = '1';
+  element.addEventListener('dragover', event => {
+    const sourceId = event.dataTransfer?.getData(FOLDER_DRAG_TYPE) || draggedFolderId;
+    const targetId = element.dataset.folderReorderTargetId;
+    if (!sourceId || !targetId || sourceId === targetId) return;
+    event.preventDefault();
+    event.stopPropagation();
+    event.dataTransfer.dropEffect = 'move';
+    clearFolderDropIndicators();
+    const rect = element.getBoundingClientRect();
+    indicator.classList.add(event.clientY >= rect.top + rect.height / 2 ? 'folder-reorder-after' : 'folder-reorder-before');
+  });
 
-    header.addEventListener('drop', async event => {
-      const sourceId = event.dataTransfer?.getData(FOLDER_DRAG_TYPE) || draggedFolderId;
-      const targetId = header.dataset.folderReorderId;
-      if (!sourceId || !targetId || sourceId === targetId) return;
-      event.preventDefault();
-      event.stopPropagation();
-      const rect = header.getBoundingClientRect();
-      const after = event.clientY >= rect.top + rect.height / 2;
-      clearFolderDropIndicators();
-      await reorderFolder(sourceId, targetId, after);
-    });
+  element.addEventListener('dragleave', event => {
+    if (!indicator.contains(event.relatedTarget)) {
+      indicator.classList.remove('folder-reorder-before', 'folder-reorder-after');
+    }
+  });
+
+  element.addEventListener('drop', async event => {
+    const sourceId = event.dataTransfer?.getData(FOLDER_DRAG_TYPE) || draggedFolderId;
+    const targetId = element.dataset.folderReorderTargetId;
+    if (!sourceId || !targetId || sourceId === targetId) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const rect = element.getBoundingClientRect();
+    const after = event.clientY >= rect.top + rect.height / 2;
+    clearFolderDropIndicators();
+    await reorderFolder(sourceId, targetId, after);
   });
 }
 
