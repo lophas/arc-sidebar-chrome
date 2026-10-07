@@ -346,6 +346,7 @@ favoriteDropTarget(favoritesEl);
 if (addFavoriteButton) favoriteDropTarget(addFavoriteButton);
 
 function clearFavoritePinnedIndicators() {
+  pinnedSection?.classList.remove('favorite-pinned-before', 'favorite-pinned-after', 'favorite-pinned-into');
   pinnedSection?.querySelectorAll('.favorite-pinned-before, .favorite-pinned-after, .favorite-pinned-into').forEach(el => {
     el.classList.remove('favorite-pinned-before', 'favorite-pinned-after', 'favorite-pinned-into');
   });
