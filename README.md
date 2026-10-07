@@ -1,362 +1,191 @@
 # Arc Sidebar for Chrome
 
-**Bring the useful parts of Arc’s sidebar workflow into Google Chrome.**
+## Mission
 
-Arc Sidebar for Chrome is a Manifest V3 extension for people who like Arc’s **Spaces, Favorites, folders, pinned tabs and sidebar-first workflow**, but want Chrome’s compatibility and extension ecosystem underneath.
+Bring Arc’s organized, sidebar-first browsing experience to Google Chrome. Keep your everyday sites close, arrange your work into Spaces and folders, and open only the tabs you need.
 
-It is not a full visual clone of Arc. The goal is to preserve the browsing model while keeping normal Chrome tabs as the execution layer.
+Your saved links stay in the sidebar when their browser tabs close. Click a saved item to open it or return to its existing tab, including after navigating away from the saved URL.
 
-> This project is independent and is not affiliated with, endorsed by, or sponsored by The Browser Company or Arc.
+## Main features
 
-## 1.1.0
+- **Spaces** — separate projects and activities, with their own pinned links, folders and open tabs.
+- **Global Favorites** — keep frequently used sites accessible from every Space.
+- **Persistent pinned links** — save pages without keeping their tabs open; return to the same live tab when you need it.
+- **Search popup** — press **⌘K / Ctrl+K** to find recent tabs, Favorites, pinned links, folders and Spaces, open a URL or search Google.
+- **Folders and drag-and-drop** — organize links, choose their exact order, and move them between folders and Spaces.
+- **Open tabs within each Space** — see the Space’s additional browser tabs below its pinned links and drag them into the pinned list to save them.
+- **Matching Chrome groups** — Favorites first, then Space groups in sidebar order, with pinned tabs ordered by the sidebar hierarchy.
+- **Two sidebar modes** — an autohide overlay at the right edge or Chrome’s native Side Panel.
+- **Live indicators and bulk close** — see what is open and close a Favorite, pinned tab, folder or an entire Space’s open tabs.
+- **Personalized appearance** — website favicons, uploaded icons, searchable Space emojis and adjustable Favorite tile sizes.
+- **Remembered layout** — return to your previous scroll position in each Space and the Open tabs view.
+- **Arc import, Chrome Sync and backups** — bring your existing organization with you and keep it available across computers.
+- **Pin from any webpage** — save the current page or a link through Chrome’s right-click menu.
 
-**v1.1.0 adds an Arc-style command bar to the stable sidebar.**
+## Documentation
 
-- **Command+K** on macOS / **Ctrl+K** on Windows and Linux;
-- recent open tabs shown first when the search is empty;
-- search open tabs across windows, Favorites, pinned links, folders and Spaces;
-- website favicons beside results;
-- open a URL or start a Google search;
-- Up/Down navigation, Enter to open and Escape to dismiss;
-- selecting a pinned link or its live tab switches the sidebar to its Space and expands parent folders;
-- New Tab, blank and internal browser pages excluded from the open-tab results;
-- one sidebar search control, with the Add Favorite button retained.
+### Installation and updates
 
-All features from v1.0.0 remain available:
+1. Download the extension ZIP from [GitHub Releases](https://github.com/lophas/arc-sidebar-chrome/releases).
+2. Extract it to a permanent folder.
+3. Open `chrome://extensions` and enable **Developer mode**.
+4. Click **Load unpacked** and select the folder containing `manifest.json`.
+5. Pin the extension’s toolbar button for quick access.
 
-- two sidebar modes: Autohide overlay and Native Chrome Side Panel;
-- Arc-style Spaces, folders, persistent pinned links and global Favorites;
-- native Chrome tab grouping by Space and Favorites, with Favorites first, Space groups in sidebar order, and group tab order following the sidebar hierarchy;
-- drag-and-drop reordering for Spaces, folders, Favorites and pinned items;
-- moving pinned items between folders, out to Space root, and across Spaces;
-- folder moves across Spaces through the folder editor;
-- red live-state indicators and bulk-close actions for folders and Spaces;
-- responsive Favorite drawer with five size presets: 80%, 90%, 100%, 110%, 120%;
-- custom uploaded icons for Favorites, pinned links and Spaces;
-- searchable Space emoji picker with a curated compatibility-safe set, country flags, country-name search and common ASCII emoticon aliases;
-- per-Space and Open-tabs scroll-position memory;
-- Chrome Sync, backup/restore and full reset;
-- right-click webpage pinning;
-- stable extension ID across unpacked installs;
-- overlay editing lock: the autohide sidebar stays open while an editor dialog is active.
+To use the latest changes on `main`, download the repository through **Code → Download ZIP**, extract it and load the folder containing `manifest.json` in the same way.
 
-## Core model
+To update an existing installation, replace its files with the new contents, then click **Reload** on the extension’s card at `chrome://extensions`. Keep the installation folder in place while using the extension.
 
-Arc Sidebar deliberately separates **persistent sidebar items** from **live Chrome tabs**:
+### Getting started
 
-- a saved sidebar item remains until you remove it;
-- a live Chrome tab exists only when you open that item;
-- reopening the item focuses the existing live tab instead of creating a duplicate;
-- closing the live tab does not delete the saved sidebar item.
+1. Open the sidebar using the extension’s toolbar button, or move the pointer to the right edge of a webpage in Autohide mode.
+2. Create a Space for a project or activity.
+3. Add pinned links and folders to that Space.
+4. Add your everyday sites to Favorites using the **+** button beside the search control.
+5. Use **⌘K / Ctrl+K** to jump between pages and Spaces.
 
-This makes it practical to keep hundreds of organized links without keeping hundreds of renderer processes alive.
+The sidebar keeps search and Favorites at the top, the Space switcher at the bottom, and the current Space’s contents in the scrollable middle area.
 
-## Features
+### Search popup
 
-### Search popup (Command bar)
+Press **Command+K** on macOS or **Ctrl+K** on Windows/Linux to open search, including when the sidebar is closed. The sidebar’s **Search or enter URL** control opens the same search inside the sidebar.
 
-- open with **Command+K** on macOS or **Ctrl+K** on Windows/Linux, even when the sidebar is closed;
-- open the same search from the sidebar’s **Search or enter URL** button, beside **Add Favorite**;
-- see recently accessed open tabs first when the search is empty;
-- search open tabs across windows, Favorites, pinned links, folders and Spaces;
-- identify websites by their favicons;
-- enter a URL to open it, or choose a Google search;
-- use Up/Down to select, Enter to open and Escape to dismiss;
-- match all entered words with accent-insensitive search;
-- reuse an existing bound tab when opening a pinned link;
-- automatically switch to the correct Space and expand parent folders when selecting a pinned item or its bound open tab;
-- switch Space and expand folders from folder/Space results;
-- exclude New Tab, blank and internal browser pages from open-tab results.
+With an empty query, search shows recently accessed open tabs. Type to find:
 
-The shortcut opens a compact popup window; the sidebar button opens an inline dialog. Folder/Space navigation from the popup opens the native sidebar.
+- open tabs across Chrome windows;
+- Favorites and pinned links;
+- folders and Spaces.
 
-Configure the shortcut at `chrome://extensions/shortcuts` if it conflicts with another extension. Chrome’s Command+T/Ctrl+T continues to open a new tab.
+Results show website favicons. Search matches all entered words and ignores differences in accents. Open-tab results include webpages and file URLs.
+
+Enter a URL to open it, or choose a Google search. Use **↑ / ↓** to select a result, **Enter** to open it, and **Escape** to dismiss search.
+
+Selecting a saved link returns to its existing live tab when available. Selecting a pinned link or its bound open tab also switches the sidebar to the correct Space and expands its parent folders. Folder and Space results navigate to the selected location; navigation from the standalone popup opens the native sidebar.
+
+Change the shortcut at `chrome://extensions/shortcuts`.
 
 ### Spaces
 
-- Arc-like Spaces with title and icon;
-- emoji picker with search by name/keyword, country name and common emoticon aliases such as `:)`, `:D`, `<3`;
-- custom SVG/PNG/WebP/JPEG icon upload by click or drag-and-drop;
-- drag-and-drop Space reordering;
-- red live-state dot when the Space contains open bound tabs;
-- right-click to edit the Space or close every open tab in all Chrome groups associated with it, including non-pinned workflow tabs across windows;
-- the close action shows the full live tab count and keeps saved pinned links/folders;
-- workflow-only Chrome groups remain closable even after their last pinned tab has closed.
+Use Spaces to separate different projects, interests or activities. Each Space contains its own pinned links, folders and additional open tabs.
+
+- Select a Space from the switcher at the bottom of the sidebar.
+- Drag Spaces to change their order.
+- Right-click a Space to edit its name and icon or choose **Close open tabs**.
+- A red indicator shows when the Space has open pinned tabs.
+
+**Close open tabs** closes every tab in all Chrome groups associated with that Space, including additional non-pinned tabs and tabs in other windows. The menu shows the number of tabs that will close. Saved links and folders remain available.
 
 ### Favorites
 
-Favorites are global across Spaces.
+Favorites are shared across all Spaces. Use them for sites you visit throughout the day.
 
-- click to open/focus the bound Chrome tab;
-- red live-state dot when open;
-- click the red dot to close the live tab while preserving the Favorite;
-- drag-and-drop Favorite reordering;
-- use the site favicon or upload a custom SVG/PNG/WebP/JPEG icon;
-- responsive drawer that adapts to available sidebar width;
-- five local tile-size presets: 80%, 90%, 100%, 110%, 120%.
+- Use the **+** button beside search to add a Favorite.
+- Click a Favorite to open it or focus its existing tab.
+- Click its red live indicator to close the tab while keeping the Favorite.
+- Drag Favorites to change their order.
+- Edit a Favorite to change its title, URL or icon.
+
+The Favorite grid adapts to the sidebar’s width. Choose a tile size of **80%, 90%, 100%, 110% or 120%** in the extension’s options.
 
 ### Pinned links
 
-Pinned items are persistent sidebar entries rather than permanently open browser tabs.
+Pinned links remain in their Space until you remove them, whether their browser tabs are open or closed.
 
-- click to open/focus;
-- red live-state dot when open;
-- click the dot to close/reset the live tab while keeping the saved URL;
-- right-click to edit title, URL and custom icon;
-- use the site favicon or upload a custom SVG/PNG/WebP/JPEG icon;
-- drag within the Space root, within folders, between folders, from a folder back to root, or onto another Space.
+Click a pinned link to open it or return to its existing tab. A red indicator marks an open tab; click the indicator to close it and keep the saved link. The next opening uses the saved URL.
 
-Pinned rows show the saved title without repeating the URL/domain beside it.
+Right-click a pinned link to edit its title, URL or icon. Drag links to place them:
+
+- before or after another link;
+- inside a folder;
+- between folders or back at the Space’s root;
+- in another Space by dropping onto that Space.
 
 ### Folders
 
-- collapse/expand;
-- rename;
-- reorder by drag inside the current Space;
-- move a complete folder to another Space through the folder editor;
-- remove a folder without deleting its contents;
-- red live-state dot when the folder contains open bound tabs;
-- right-click to close all live tabs in that folder.
+Folders organize pinned links within a Space. Click a folder heading to expand or collapse it.
 
-Folder drag-and-drop only changes folder order inside the current Space. Cross-Space folder moves remain an explicit editor action.
+Use the folder editor to rename it or move the complete folder to another Space. Drag folders to reorder them within their current Space. Removing a folder keeps its links.
+
+A red indicator shows when a folder contains open pinned tabs. Right-click the folder to close those tabs together while keeping its saved contents.
 
 ### Open tabs
 
-Each regular Space shows its non-pinned workflow tabs below the pinned items. The list follows that Space’s Chrome groups, including workflow-only groups and tabs in other windows (marked **Other window**). Already bound pinned links and Favorites are excluded to avoid duplicate rows. Live rows show favicons, activate their tab on click, close with ×, and support right-click pinning. Drag a Space workflow tab into the pinned list to save it at that exact position, including inside folders or an empty Space. The existing Chrome tab is reused and disappears from the non-pinned list.
+**Within a Space:** additional tabs in its Chrome groups appear below the pinned links. These rows show favicons, open the tab when clicked and close it with **×**. Tabs in another window are marked **Other window**.
 
-A dedicated **Open tabs** Space continues to show all live tabs in the current Chrome window and can pin an already-open page without opening a duplicate.
+To save an open tab, drag it into the pinned list at the desired position. You can drop it between links, inside a folder or into an empty Space. The same browser tab becomes the pinned item’s live tab. You can also pin it through its right-click menu.
 
-### Native Chrome Tab Groups
+**Open tabs view:** the dedicated **Open tabs** Space shows all live tabs in the current Chrome window. Use it to find a page or save an already-open tab.
 
-Live pinned tabs are grouped by Space in normal Chrome tab groups. Favorites use a separate Favorites group.
+### Chrome tab groups
 
-The tab order inside each native Chrome group follows the sidebar hierarchy.
+Favorites use a **Favorites** Chrome group. Each Space uses its own Chrome group in every window where its tabs are open.
 
-## Sidebar modes
+The groups follow the sidebar: **Favorites first**, then Spaces in their configured order. Newly opened groups take their place in that order. Reordering Spaces updates the group order too.
 
-Choose the mode under **Extension options → Sidebar mode**.
+Within a group, pinned tabs follow the sidebar’s folder and link order. Additional tabs opened during your work remain part of the Space and appear below its pinned links in the sidebar.
 
-### Autohide overlay
+### Sidebar modes and layout
 
-- Arc-style overlay on normal webpages;
-- appears when the pointer reaches the right edge;
-- closes automatically after leaving it;
-- floats above the page instead of narrowing the viewport;
-- resizable and remembered locally;
-- supports a narrow compact layout;
-- stays open while an edit dialog is active, and resumes autohide after Save/Cancel.
+Choose **Extension options → Sidebar mode**.
 
-If Chrome’s native Side Panel is manually opened or closed while Autohide overlay mode is active, the current HTTP/HTTPS page reloads once so the overlay trigger/state is rebuilt cleanly.
+**Autohide overlay** appears when the pointer reaches the right edge of a webpage and closes after the pointer leaves. It floats over the page. Resize it to suit your workflow; its width is remembered. While an editor is open, the sidebar stays visible until you save or cancel.
 
-### Native Chrome Side Panel
+**Native Chrome Side Panel** opens through the extension’s toolbar button and sits alongside the page.
 
-- uses Chrome’s built-in Side Panel;
-- open it by clicking the extension toolbar button;
-- no edge trigger is used;
-- the overlay UI is not created;
-- Chrome controls the native panel’s minimum width.
+Each Space and the Open tabs view remember their own scroll position. Returning to a view brings you back to where you left it.
 
-The selected sidebar mode is local to each computer and is not synced.
+### Icons and appearance
 
-When the mode itself changes, existing normal webpages are marked for a one-time deferred refresh. Each affected tab reloads when you next activate it instead of reloading every open tab immediately.
+Favorites and pinned links can use their website favicon or an uploaded **SVG, PNG, WebP or JPEG** image. Upload an image by clicking the upload area or dragging a file onto it.
 
-## Layout
+Spaces support uploaded images, pasted emojis and a searchable emoji picker. Search by name or keyword, country name/code for flags, or familiar aliases such as `:)`, `:D` and `<3`.
 
-The search/Favorites area remains fixed at the top. The Space switcher remains fixed at the bottom. The middle pinned/open-tab area scrolls independently.
+Custom icons are included in backups and Chrome Sync.
 
-The current vertical scroll position is remembered separately for each Space and for the Open tabs view, so reopening the sidebar returns to the same place instead of jumping to the top.
+### Pin a page or link
 
-The Favorite drawer is responsive rather than fixed at four columns, and can collapse to fewer columns as sidebar width decreases.
+Right-click a webpage or link and choose **Pin to Arc Sidebar**, then select the destination Space.
 
-## Custom icons
+Pinning the current page keeps its existing browser tab connected to the saved item.
 
-Favorites and pinned links can use:
+### Import from Arc
 
-- the website favicon;
-- a custom SVG/PNG/WebP/JPEG icon uploaded by click or drag-and-drop.
+Open the extension’s options and import Arc’s `StorableSidebar.json` to bring over Spaces, Favorites, pinned links and folders. Import replaces the current sidebar contents, so download a backup first if you want to keep them.
 
-Spaces can use:
+Typical file locations:
 
-- a searchable emoji from the built-in compatibility-safe set;
-- a country flag searchable by country name/code;
-- a pasted emoji;
-- a custom SVG/PNG/WebP/JPEG icon uploaded by click or drag-and-drop.
-
-Uploaded image icons are resized/compressed before storage. Custom icons are part of the persistent sidebar model, so they are included in Backup/Restore and Chrome Sync.
-
-## Arc import
-
-The extension can import Arc’s `StorableSidebar.json` and convert:
-
-- Spaces;
-- Favorites;
-- pinned tabs;
-- folders.
-
-Import replaces the current Arc Sidebar model. Arc Archive/history data is not imported.
-
-### Typical Arc file locations
-
-macOS:
+**macOS**
 
 ```text
 ~/Library/Application Support/Arc/StorableSidebar.json
 ```
 
-Windows commonly uses a path under:
+**Windows**
 
 ```text
 %LOCALAPPDATA%\Packages\TheBrowserCompany.Arc_*\LocalCache\Local\Arc\StorableSidebar.json
 ```
 
-## Right-click page pinning
+### Chrome Sync
 
-Chrome’s webpage context menu contains **Pin to Arc Sidebar**.
+Enable Chrome Sync in the extension’s options to synchronize Spaces, Favorites, folders, pinned links, their order and custom icons across computers.
 
-- right-click the page background to pin the current page;
-- right-click a link to pin that URL;
-- choose the destination Space;
-- when pinning the current page, the existing live tab is bound where possible instead of creating a duplicate.
+Each computer keeps its own open tabs, current Space, collapsed folders, scroll positions, sidebar mode, overlay width and Favorite tile size.
 
-## Chrome Sync
+If different computers change the sidebar, the most recently updated sidebar becomes the synchronized version.
 
-Chrome Sync is optional and disabled until explicitly enabled.
+### Backup, restore and reset
 
-Synced persistent data includes:
+The extension’s options provide:
 
-- Spaces and their order;
-- Space names/icons;
-- Favorites;
-- custom Favorite/pinned/Space icons;
-- folders and folder order;
-- pinned links and hierarchy.
+- **Download backup** — save your Spaces, Favorites, folders, pinned links and custom icons as a JSON file.
+- **Restore backup** — replace the current sidebar contents with a saved backup.
+- **Reset all extension data** — clear the extension’s saved organization and settings, including synchronized data. Your Chrome tabs stay open.
 
-Machine-specific/session data remains local, including:
-
-- currently open Chrome tabs;
-- live item ↔ tab bindings;
-- collapsed-folder state;
-- per-Space/Open-tabs scroll positions;
-- overlay width;
-- sidebar mode;
-- Favorite tile size;
-- other session/UI state.
-
-Synchronization is whole-model with timestamp-based conflict resolution: the newer model wins.
-
-### Stable extension ID
-
-Current unpacked builds use a fixed manifest key so the extension ID stays the same across machines:
-
-```text
-clfmokcejlbebjlmohfjkffeoocffjdn
-```
-
-This is required for consistent `chrome.storage.sync` namespacing.
-
-## Backup, restore and reset
-
-Extension Options provides:
-
-- **Download backup** — exports the persistent sidebar model as JSON;
-- **Restore backup** — replaces the current persistent model from a backup;
-- **Reset all extension data** — clears local, session and sync extension state for clean testing/recovery.
-
-Reset does not close ordinary Chrome tabs.
-
-A useful restore test is:
-
-1. Download backup.
-2. Reset all extension data.
-3. Confirm the sidebar is empty.
-4. Restore the backup.
-
-## Installation
-
-Arc Sidebar for Chrome is distributed as an unpacked extension ZIP from GitHub Releases.
-
-1. Download the latest release ZIP.
-2. Extract it to a permanent folder.
-3. Open `chrome://extensions`.
-4. Enable **Developer mode**.
-5. Click **Load unpacked**.
-6. Select the folder that directly contains `manifest.json`.
-7. Optionally pin the extension toolbar button.
-
-Do not delete or move that folder while Chrome is using the unpacked extension.
-
-### Updating
-
-For an existing unpacked installation:
-
-1. replace the files with the new release contents;
-2. open `chrome://extensions`;
-3. click **Reload** on Arc Sidebar for Chrome.
-
-## Architecture
-
-The extension is local-first and built on Chrome’s Manifest V3 APIs:
-
-- Side Panel;
-- Tabs;
-- Tab Groups;
-- Storage;
-- Context Menus;
-- favicon API;
-- Commands API.
-
-The background entry point is `src/background/service-worker.js`. Native group creation/synchronization lives in the service worker, while group ordering and native-panel reload handling are loaded through background feature modules.
-
-The persistent sidebar model lives in `chrome.storage.local`. If Chrome Sync is enabled, a chunked mirror is stored in `chrome.storage.sync`. Live item-to-tab bindings use session storage with persistent recovery metadata for Chrome restart recovery.
-
-Sidebar state changes and saved-tab actions are coordinated by one background controller. Independent edits from different sidebar views are merged; conflicting edits show an error instead of overwriting newer data. Opening a pinned item reuses its live tab and reveals its Space.
-
-The autohide iframe loads only on first hover. Closed views pause background UI work, and idle hidden-tab overlays release their iframe. Open editors remain available across tab switches. Each sidebar reads a fresh shared state snapshot when activated.
-
-See [state and lifecycle architecture](docs/architecture.md) for the implementation plan, transaction limits and regression checklist. Run `npm test` and `npm run check` for automated checks.
-
-The extension does not require an Arc account or its own cloud backend.
-
-## Known platform limitations
-
-Chrome restricts extensions on privileged pages such as `chrome://` pages, the Chrome Web Store and some browser interstitial/error pages. The injected overlay cannot operate there; the native Side Panel remains available.
-
-Chrome also controls the minimum width of the native Side Panel. The extension cannot force that browser-owned panel narrower than Chrome allows.
-
-## Out of scope
-
-At present this project does not attempt to reproduce:
-
-- Boosts;
-- Split View;
-- Notes / Easel;
-- Arc AI features;
-- full Arc Archive/history migration;
-- Arc account sync;
-- Arc’s complete browser-chrome UI.
-
-## Release packaging
-
-Tagged releases are built by GitHub Actions and contain only:
-
-- `manifest.json`
-- `src/`
-
-For the stable 1.1 release:
-
-```bash
-git tag v1.1.0
-git push origin v1.1.0
-```
-
-The workflow validates the tag against `manifest.json`, builds `arc-sidebar-chrome-v1.1.0.zip`, and publishes it as a normal GitHub Release.
-
-## Current version
-
-**v1.1.0**
-
-Manifest numeric version: **1.1.0**
+Download a backup before importing, restoring or resetting if you want to preserve your current setup.
 
 ## License
 
 See [LICENSE](LICENSE).
+
+Arc Sidebar for Chrome is an independent project and is not affiliated with The Browser Company or Arc.
