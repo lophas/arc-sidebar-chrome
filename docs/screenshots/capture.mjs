@@ -9,7 +9,7 @@ for(const domain of Object.values(sites)) {
  try {const r=await fetch(`https://www.google.com/s2/favicons?domain=${domain}&sz=64`,{signal:AbortSignal.timeout(10000)});if(r.ok)icons.set(domain,Buffer.from(await r.arrayBuffer()));}catch{}
 }
 const seed=`
-chrome.runtime.getURL=path=>location.origin+'/'+path.replace(/^\/+/, '');
+chrome.runtime.getURL=path=>location.origin+'/'+path.replace(/^[/]+/, '');
 const link=(id,title,url)=>({id,type:'tab',title,url});
 fixture.data.local.arcSidebarModel={favorites:[link('gmail','Gmail','https://mail.google.com'),link('github','GitHub','https://github.com'),link('calendar','Google Calendar','https://calendar.google.com'),link('notion','Notion','https://notion.so')],spaces:[{id:'work',title:'Work',emoji:'💼',children:[link('dashboard','Project dashboard','https://linear.app'),{id:'project',type:'folder',title:'Website redesign',children:[link('brief','Project brief','https://docs.google.com'),link('design','Design files','https://figma.com'),link('repo','Source code','https://github.com/lophas/arc-sidebar-chrome')]},{id:'resources',type:'folder',title:'Resources',children:[link('mdn','MDN Web Docs','https://developer.mozilla.org'),link('drive','Shared files','https://drive.google.com')]}]},{id:'personal',title:'Personal',emoji:'🏡',children:[]},{id:'reading',title:'Reading',emoji:'📚',children:[]}],stats:{spaces:3,folders:2,tabs:6,favorites:4}};
 fixture.data.local.arcSidebarState={currentSpaceId:'work',collapsedFolders:{resources:true}};
