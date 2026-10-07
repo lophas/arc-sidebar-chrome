@@ -118,5 +118,46 @@ try{
  await page.locator('[data-saved-node-id="empty-target"]').dragTo(page.locator('#addFavorite'));
  await page.waitForFunction(()=>fixture.data.local.arcSidebarModel.favorites[0]?.id==='empty-target');
  console.log('PASS real Chrome: native Favorites reorder, nested pinned-to-Favorites preserving tab/icon, empty Favorites drop');
+ // Reverse move: all existing drag handlers remain installed.
+ await page.evaluate(async()=>{
+  const model=fixture.data.local.arcSidebarModel;
+  model.favorites=[{id:'a',type:'tab',title:'Saved A',url:'https://a.test',icon:'custom'},...['edge','into','nested','empty'].map(id=>({id,type:'tab',title:id,url:`https://${id}.test`}))];
+  model.spaces[0].children=[{id:'root',type:'tab',title:'Root',url:'https://root.test'},{id:'destination',type:'folder',title:'Destination',children:[{id:'child',type:'tab',title:'Child',url:'https://child.test'}]},{id:'blank',type:'folder',title:'Blank',children:[]}];
+  await fixture.write('local',{arcSidebarModel:model});
+ });
+ await page.waitForFunction(()=>document.querySelector('[data-favorite-id="a"]')?.draggable);
+ await page.locator('[data-favorite-id="a"]').dragTo(page.locator('[data-saved-node-id="root"]'),{targetPosition:{x:35,y:2}});
+ await page.waitForFunction(()=>fixture.data.local.arcSidebarModel.spaces[0].children[0]?.id==='a');
+ assert.equal(await page.evaluate(()=>fixture.data.session.arcSidebarBindings.a),10);
+ assert.equal(await page.evaluate(()=>fixture.data.local.arcSidebarModel.spaces[0].children[0].icon),'custom');
+ async function dragFavorite(id,selector,fraction,indicator) {
+  await page.waitForFunction(id=>document.querySelector(`[data-favorite-id="${id}"]`)?.draggable,id);
+  await page.evaluate(({id,selector,fraction,indicator})=>{
+   const source=document.querySelector(`[data-favorite-id="${id}"]`),target=document.querySelector(selector),transfer=new DataTransfer(),rect=target.getBoundingClientRect();
+   const clientY=rect.top+rect.height*fraction;
+   source.dispatchEvent(new DragEvent('dragstart',{bubbles:true,dataTransfer:transfer}));
+   target.dispatchEvent(new DragEvent('dragover',{bubbles:true,cancelable:true,dataTransfer:transfer,clientY}));
+   if(!document.querySelector(`.${indicator}`))throw Error('Missing Favorite-to-pinned indicator');
+   target.dispatchEvent(new DragEvent('drop',{bubbles:true,cancelable:true,dataTransfer:transfer,clientY}));
+   source.dispatchEvent(new DragEvent('dragend',{bubbles:true,dataTransfer:transfer}));
+  },{id,selector,fraction,indicator});
+  await page.waitForFunction(id=>!fixture.data.local.arcSidebarModel.favorites.some(item=>item.id===id),id);
+ }
+ await dragFavorite('edge','[data-folder-node-id="destination"] > .folder-header',.95,'favorite-pinned-after');
+ assert.deepEqual(await page.evaluate(()=>fixture.data.local.arcSidebarModel.spaces[0].children.map(n=>n.id)),['a','root','destination','edge','blank']);
+ await dragFavorite('into','.folder-header[data-folder-node-id="destination"]',.5,'favorite-pinned-into');
+ await dragFavorite('nested','[data-saved-node-id="child"]',.05,'favorite-pinned-before');
+ assert.deepEqual(await page.evaluate(()=>fixture.data.local.arcSidebarModel.spaces[0].children[2].children.map(n=>n.id)),['nested','child','into']);
+ await dragFavorite('empty','.folder-header[data-folder-node-id="blank"]',.5,'favorite-pinned-into');
+ assert.equal(await page.evaluate(()=>fixture.data.local.arcSidebarModel.spaces[0].children[4].children[0].id),'empty');
+ await page.evaluate(async()=>{
+  const model=fixture.data.local.arcSidebarModel;
+  model.favorites=[{id:'empty-space',type:'tab',title:'Empty Space',url:'https://empty-space.test'}];model.spaces[0].children=[];
+  await fixture.write('local',{arcSidebarModel:model});
+ });
+ await dragFavorite('empty-space','#pinnedSection .section-title',.5,'favorite-pinned-into');
+ assert.equal(await page.evaluate(()=>fixture.data.local.arcSidebarModel.spaces[0].children[0].id),'empty-space');
+ assert.equal(await page.locator('.favorite-pinned-before,.favorite-pinned-after,.favorite-pinned-into').count(),0);
+ console.log('PASS real Chrome: Favorite-to-Space native dragging, folder edge/inside/nested/empty Space drops preserving tab/icon');
  assert.deepEqual(errors,[]);console.log('PASS real Chrome: Space workflow rendering, drag-to-pin/pin/activate/close, group changes and Open-tabs view');
 }finally{await browser.close();await new Promise(resolve=>server.close(resolve));}

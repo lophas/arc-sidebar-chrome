@@ -96,7 +96,7 @@ Favorites are shared across all Spaces. Use them for sites you visit throughout 
 - Use the **+** button beside search to add a Favorite.
 - Click a Favorite to open it or focus its existing tab.
 - Click its red live indicator to close the tab while keeping the Favorite.
-- Drag Favorites to change their order. Drag a pinned link from a Space or folder into Favorites to make it available everywhere, keeping its open tab and custom icon. Drop it on **+ Favorite** when the Favorites list is empty.
+- Drag Favorites to change their order. Drag a pinned link from a Space or folder into Favorites to make it available everywhere, keeping its open tab and custom icon. Drop it on **+ Favorite** when the Favorites list is empty. Drag a Favorite back into a Space to place it between pinned links or folders, or inside a folder. Its open tab and custom icon follow the move.
 - Edit a Favorite to change its title, URL or icon.
 
 The Favorite grid adapts to the sidebar’s width. Choose a tile size of **80%, 90%, 100%, 110% or 120%** in the extension’s options.

@@ -1,3 +1,4 @@
+import { moveFavoriteToSpace } from '../shared/favorite-moves.js';
 import { isSidebarActive } from './lifecycle.js';
 import { createStorageClient } from '../shared/storage-client.js';
 const sidebarStorage = createStorageClient({ isActive: isSidebarActive });
@@ -344,6 +345,60 @@ function favoriteDropTarget(target) {
 favoriteDropTarget(favoritesEl);
 if (addFavoriteButton) favoriteDropTarget(addFavoriteButton);
 
+function clearFavoritePinnedIndicators() {
+  pinnedSection?.querySelectorAll('.favorite-pinned-before, .favorite-pinned-after, .favorite-pinned-into').forEach(el => {
+    el.classList.remove('favorite-pinned-before', 'favorite-pinned-after', 'favorite-pinned-into');
+  });
+}
+
+function favoritePinnedTarget(event) {
+  if (!pinnedSection?.dataset.spaceId || pinnedSection.classList.contains('hidden')) return null;
+  const row = event.target.closest('[data-saved-node-id]');
+  if (row) {
+    const rect = row.getBoundingClientRect();
+    return { element: row, targetNodeId: row.dataset.savedNodeId, after: event.clientY >= rect.top + rect.height / 2 };
+  }
+  const header = event.target.closest('.folder-header[data-folder-node-id]');
+  if (header) {
+    const rect = header.getBoundingClientRect();
+    const fraction = (event.clientY - rect.top) / rect.height;
+    if (fraction <= .35 || fraction >= .65) return { element: header.parentElement, targetNodeId: header.dataset.folderNodeId, after: fraction >= .65 };
+    return { element: header, folderId: header.dataset.folderNodeId };
+  }
+  const children = event.target.closest('.folder-children');
+  if (children) return { element: children, folderId: children.parentElement.dataset.folderNodeId };
+  return { element: pinnedSection };
+}
+
+pinnedSection?.addEventListener('dragover', event => {
+  if (!draggedFavoriteId || !event.dataTransfer?.types.includes('application/x-arc-favorite')) return;
+  const target = favoritePinnedTarget(event);
+  if (!target) return;
+  event.preventDefault();
+  event.stopImmediatePropagation();
+  event.dataTransfer.dropEffect = 'move';
+  clearFavoritePinnedIndicators();
+  target.element.classList.add(target.targetNodeId ? target.after ? 'favorite-pinned-after' : 'favorite-pinned-before' : 'favorite-pinned-into');
+}, true);
+
+pinnedSection?.addEventListener('drop', async event => {
+  if (!event.dataTransfer?.types.includes('application/x-arc-favorite')) return;
+  const itemId = event.dataTransfer.getData('application/x-arc-favorite');
+  const target = favoritePinnedTarget(event);
+  if (!target || !itemId || itemId !== draggedFavoriteId) return;
+  event.preventDefault();
+  event.stopImmediatePropagation();
+  clearFavoritePinnedIndicators();
+  const spaceId = pinnedSection.dataset.spaceId;
+  const { element, ...position } = target;
+  const model = await getModel();
+  if (moveFavoriteToSpace(model, itemId, spaceId, position)) await saveModel(model);
+}, true);
+
+pinnedSection?.addEventListener('dragleave', event => {
+  if (!pinnedSection.contains(event.relatedTarget)) clearFavoritePinnedIndicators();
+});
+
 function decorateFavorites() {
   if (!favoritesEl) return;
   favoriteTiles().forEach((tile, index) => {
@@ -363,6 +418,7 @@ function decorateFavorites() {
     tile.addEventListener('dragend', () => {
       tile.classList.remove('dragging');
       draggedFavoriteId = null;
+      clearFavoritePinnedIndicators();
       clearFavoriteDropTargets();
     });
   });
