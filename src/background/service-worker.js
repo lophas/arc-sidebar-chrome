@@ -1,3 +1,4 @@
+import { queueNativeGroupVisibility, watchNativeGroupVisibility } from './native-group-visibility.js';
 import { orderNativeGroups } from './native-group-order.js';
 import { pruneGroupMap } from './native-group-map.js';
 import './tab-actions.js';
@@ -421,6 +422,7 @@ async function syncNativeGroupsNow() {
     const mapChanged = await pruneGroupMap(groupMap, liveKeys, model, FAVORITES_GROUP);
     if (mapChanged || desired.size) await saveSessionGroupMap(groupMap);
     await orderNativeGroups(model, groupMap, FAVORITES_GROUP);
+    queueNativeGroupVisibility();
   } finally {
     groupSyncRunning = false;
     if (groupSyncPending) {
@@ -532,3 +534,5 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 });
+
+watchNativeGroupVisibility();
