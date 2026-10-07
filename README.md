@@ -53,30 +53,24 @@ This makes it practical to keep hundreds of organized links without keeping hund
 
 ## Features
 
-### Command bar
+### Search popup (Command bar)
 
-Results include website favicons.
+- open with **Command+K** on macOS or **Ctrl+K** on Windows/Linux, even when the sidebar is closed;
+- open the same search from the sidebar’s **Search or enter URL** button, beside **Add Favorite**;
+- see recently accessed open tabs first when the search is empty;
+- search open tabs across windows, Favorites, pinned links, folders and Spaces;
+- identify websites by their favicons;
+- enter a URL to open it, or choose a Google search;
+- use Up/Down to select, Enter to open and Escape to dismiss;
+- match all entered words with accent-insensitive search;
+- reuse an existing bound tab when opening a pinned link;
+- automatically switch to the correct Space and expand parent folders when selecting a pinned item or its bound open tab;
+- switch Space and expand folders from folder/Space results;
+- exclude New Tab, blank and internal browser pages from open-tab results.
 
-Press **Command+K** on macOS or **Ctrl+K** on Windows/Linux,
-including when the sidebar is closed. The shortcut opens a compact command window that searches open
-tabs across windows, Favorites, pinned links, folders and Spaces. The sidebar
-also has a **Search or enter URL** button for an inline dialog.
+The shortcut opens a compact popup window; the sidebar button opens an inline dialog. Folder/Space navigation from the popup opens the native sidebar.
 
-With an empty search, only open tabs appear, most recently accessed first.
-The sidebar has one search control beside the Add Favorite button.
-Use Up/Down and Enter to select, or Escape to dismiss. Enter a URL to open it,
-or choose the Google search result. Search ignores accents and matches all
-entered words. Pinned results reuse their bound tab. Selecting a pinned item or its bound open
-tab also switches the sidebar to its Space and expands its parent folders.
-New Tab, blank and internal browser pages are excluded from open-tab results.
-Folder results switch
-Space and expand parent folders. From the command window, folder/Space
-navigation opens the native sidebar.
-
-Chrome reserves Command+T/Ctrl+T for new tabs, so the extension does not
-claim that shortcut or replace the New Tab page. Configure the command bar
-shortcut at `chrome://extensions/shortcuts` if the default conflicts with
-another extension. Reload this extension after updating its files.
+Configure the shortcut at `chrome://extensions/shortcuts` if it conflicts with another extension. Chrome’s Command+T/Ctrl+T continues to open a new tab.
 
 ### Spaces
 
