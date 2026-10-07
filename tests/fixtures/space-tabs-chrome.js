@@ -12,16 +12,19 @@ const tabs=[{id:10,windowId:1,index:0,groupId:2,title:'Saved A',url:'https://a.t
 const changes=event(),calls=[];
 const read=(area,keys)=>Object.fromEntries((typeof keys==='string'?[keys]:keys||Object.keys(data[area])).filter(k=>k in data[area]).map(k=>[k,structuredClone(data[area][k])]));
 const write=async(area,values)=>{const diff={};for(const [key,value]of Object.entries(values)){diff[key]={oldValue:data[area][key],newValue:structuredClone(value)};data[area][key]=structuredClone(value);}changes.emit(diff,area);};
-window.chrome={storage:{local:{get:async keys=>read('local',keys),set:values=>write('local',values)},session:{get:async keys=>read('session',keys)},onChanged:changes},
- windows:{getCurrent:async()=>({id:1})},runtime:{getURL:path=>location.origin+'/'+path,sendMessage:async message=>{
+window.chrome={storage:{local:{get:async keys=>read('local',keys),set:values=>write('local',values)},session:{get:async keys=>read('session',keys),set:values=>write('session',values)},onChanged:changes},
+ windows:{getCurrent:async()=>({id:1})},runtime:{id:'test',onMessage:event(),getURL:path=>location.origin+'/'+path,sendMessage:async message=>{
   calls.push(message);
-  if(message.type==='arc-sidebar-tab-action')return {ok:true};
+  if(message.type==='arc-sidebar-tab-action'){
+   if(message.action==='pin-workflow-tab'){const {pinWorkflowTab}=await import('/src/background/tab-actions.js');return {ok:true,values:await pinWorkflowTab(message)};}
+   return {ok:true};
+  }
   const request=message.request;
   if(request.action==='snapshot')return {ok:true,values:Object.fromEntries(Object.entries(request.areas).map(([area,keys])=>[area,read(area,keys)]))};
   const operations=request.action==='batch'?request.operations:[request];
   for(const op of operations) await write(op.area,Object.fromEntries(op.changes.map(c=>[c.key,c.after])));
   return {ok:true,values:request.action==='batch'?data:read(request.area)};
- }},tabs:{query:async query=>structuredClone(query.currentWindow?tabs.filter(t=>t.windowId===1):tabs),remove:async id=>{tabs.splice(tabs.findIndex(t=>t.id===id),1);chrome.tabs.onRemoved.emit(id);},
+ }},tabs:{get:async id=>{const tab=tabs.find(t=>t.id===id);if(!tab)throw Error('No tab');return structuredClone(tab);},query:async query=>structuredClone(query.currentWindow?tabs.filter(t=>t.windowId===1):tabs),remove:async id=>{tabs.splice(tabs.findIndex(t=>t.id===id),1);chrome.tabs.onRemoved.emit(id);},
  onCreated:event(),onRemoved:event(),onUpdated:event(),onActivated:event(),onMoved:event(),onAttached:event(),onDetached:event(),onReplaced:event()},
- tabGroups:{query:async()=>[{id:2,windowId:1,title:'Work'},{id:3,windowId:2,title:'Work'},{id:4,windowId:1,title:'Other'},{id:5,windowId:2,title:'Other'}],onCreated:event(),onUpdated:event(),onRemoved:event()}};
+ tabGroups:{get:async id=>({id,windowId:id===3||id===5?2:1,title:id===2||id===3?'Work':'Other'}),query:async()=>[{id:2,windowId:1,title:'Work'},{id:3,windowId:2,title:'Work'},{id:4,windowId:1,title:'Other'},{id:5,windowId:2,title:'Other'}],onCreated:event(),onUpdated:event(),onRemoved:event()}};
 window.fixture={data,tabs,calls,write};

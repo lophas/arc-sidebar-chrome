@@ -62,3 +62,5 @@ Additional regression tests cover non-pinned workflow tabs, multiple windows, wo
 ## Space workflow rows
 
 `shared/space-tabs.js` resolves group membership for both the Space live-tab list and bulk close. The list excludes saved bindings across all Spaces/Favorites and orders rows by browser position, with the sidebar's current window first. It refreshes on tab/group events and native group-map changes; hidden sidebar views keep their lifecycle pause. Workflow rows have stable Chrome tab IDs so right-click pinning selects the correct tab despite search, ordering or cross-window display.
+
+Workflow drag-to-pin uses a dedicated drag MIME type and stable rendered item/folder IDs. Root drops append; row-edge drops insert before/after; folder centers append inside the folder. The background validates the live Space membership and current destination under the shared queue, creates one saved item and binds the existing tab. Repeated concurrent requests reuse the saved binding. Deleted targets or tabs that moved/closed during a drag fail without inserting an item.

@@ -122,7 +122,7 @@ Folder drag-and-drop only changes folder order inside the current Space. Cross-S
 
 ### Open tabs
 
-Each regular Space shows its non-pinned workflow tabs below the pinned items. The list follows that Space’s Chrome groups, including workflow-only groups and tabs in other windows (marked **Other window**). Already bound pinned links and Favorites are excluded to avoid duplicate rows. Live rows show favicons, activate their tab on click, close with ×, and support right-click pinning.
+Each regular Space shows its non-pinned workflow tabs below the pinned items. The list follows that Space’s Chrome groups, including workflow-only groups and tabs in other windows (marked **Other window**). Already bound pinned links and Favorites are excluded to avoid duplicate rows. Live rows show favicons, activate their tab on click, close with ×, and support right-click pinning. Drag a Space workflow tab into the pinned list to save it at that exact position, including inside folders or an empty Space. The existing Chrome tab is reused and disappears from the non-pinned list.
 
 A dedicated **Open tabs** Space continues to show all live tabs in the current Chrome window and can pin an already-open page without opening a duplicate.
 

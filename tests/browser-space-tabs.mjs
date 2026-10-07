@@ -5,7 +5,7 @@ import { resolve, extname } from 'node:path';
 import { chromium } from 'playwright-core';
 const root=process.cwd();
 let html=await readFile('src/sidepanel/index.html','utf8');
-html=html.replace(/<script[^>]*>[\s\S]*?<\/script>/g,'').replace('</body>',`<script src="/tests/fixtures/space-tabs-chrome.js"></script><script type="module" src="index.js"></script><script type="module" src="open-pin.js"></script></body>`);
+html=html.replace(/<script[^>]*>[\s\S]*?<\/script>/g,'').replace('</body>',`<script src="/tests/fixtures/space-tabs-chrome.js"></script><script type="module" src="index.js"></script><script type="module" src="open-pin.js"></script><script type="module" src="workflow-pin-dnd.js"></script></body>`);
 const server=createServer(async(req,res)=>{
  const pathname=new URL(req.url,'http://localhost').pathname;
  if(pathname==='/src/sidepanel/index.html'){res.setHeader('Content-Type','text/html');res.end(html);return;}
@@ -29,14 +29,27 @@ try{
  await page.locator('#openPinSave').click();
  await page.waitForFunction(()=>!document.querySelector('[data-live-tab-id="12"]'));
  assert.deepEqual(await ids(),[11,21]);
- await page.locator('[data-live-tab-id="11"] .close-tab').click();
+ await page.evaluate(()=>{
+  const source=document.querySelector('[data-live-tab-id="11"]'), target=document.querySelector('[data-saved-node-id="a"]');
+  const transfer=new DataTransfer();source.dispatchEvent(new DragEvent('dragstart',{bubbles:true,dataTransfer:transfer}));
+  const rect=target.getBoundingClientRect();
+  target.dispatchEvent(new DragEvent('dragover',{bubbles:true,cancelable:true,dataTransfer:transfer,clientY:rect.top+1}));
+  if(!target.classList.contains('workflow-drop-before'))throw Error('No drag insertion indicator');
+  target.dispatchEvent(new DragEvent('drop',{bubbles:true,cancelable:true,dataTransfer:transfer,clientY:rect.top+1}));
+  source.dispatchEvent(new DragEvent('dragend',{bubbles:true,dataTransfer:transfer}));
+ });
  await page.waitForFunction(()=>!document.querySelector('[data-live-tab-id="11"]'));
+ assert.equal(await page.evaluate(()=>fixture.data.local.arcSidebarModel.spaces[0].children[0].title),'Workflow 11');
+ assert.equal(await page.evaluate(()=>fixture.data.session.arcSidebarBindings[fixture.data.local.arcSidebarModel.spaces[0].children[0].id]),11);
+ assert.equal(await page.evaluate(()=>fixture.tabs.some(tab=>tab.id===11)),true);
  await page.evaluate(()=>{fixture.tabs.find(t=>t.id===21).groupId=5;chrome.tabs.onUpdated.emit(21,{groupId:5});});
  await page.waitForFunction(()=>document.querySelector('#openSection').classList.contains('hidden'));
  await page.locator('[data-space-id="other"]').click();
  await page.waitForFunction(()=>document.querySelectorAll('#openTabs .row').length===2);
  assert.deepEqual(await ids(),[30,21]);
+ await page.locator('[data-live-tab-id="30"] .close-tab').click();
+ await page.waitForFunction(()=>!document.querySelector('[data-live-tab-id="30"]'));
  await page.locator('[data-space-id="__open_tabs__"]').click();
  await page.waitForFunction(()=>document.querySelectorAll('#openTabs .row').length===4);
- assert.deepEqual(errors,[]);console.log('PASS real Chrome: Space workflow rendering, pin/activate/close, group changes and Open-tabs view');
+ assert.deepEqual(errors,[]);console.log('PASS real Chrome: Space workflow rendering, drag-to-pin/pin/activate/close, group changes and Open-tabs view');
 }finally{await browser.close();await new Promise(resolve=>server.close(resolve));}

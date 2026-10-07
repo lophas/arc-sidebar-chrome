@@ -1,3 +1,4 @@
+import { recalcModelStats } from '../shared/state-merge.js';
 import { savedItemIds, spaceGroupIds } from '../shared/space-tabs.js';
 import { bindingsReady } from './persistent-bindings.js';
 import { serializeState } from './state-controller.js';
@@ -105,6 +106,48 @@ export async function closeSpaceTabs(spaceId) {
     if (results.some(result => result.status === 'rejected')) throw new Error('Some tabs could not be closed. Reopen the Space menu to try again.');
   });
 }
+function findNodeLocation(nodes, id) {
+  for (let index = 0; index < (nodes || []).length; index++) {
+    const node = nodes[index];
+    if (node.id === id) return { node, parent: nodes, index };
+    if (node.type === 'folder') { const found = findNodeLocation(node.children, id); if (found) return found; }
+  }
+  return null;
+}
+export async function pinWorkflowTab({ tabId, spaceId, targetNodeId, folderId, after = false }) {
+  await bindingsReady;
+  return serializeState(async () => {
+    const { tabIds, bindings } = await spaceCloseTargets(spaceId);
+    const local = await chrome.storage.local.get(MODEL);
+    const model = local[MODEL];
+    const saved = savedItemIds(model?.favorites);
+    for (const space of model?.spaces || []) savedItemIds(space.children, saved);
+    const existing = saved.find(id => Number(bindings[id]) === tabId);
+    if (existing) return existing; // Concurrent drag/pin requests are idempotent.
+    if (!tabIds.includes(tabId)) throw new Error('This tab is no longer in the Space.');
+    const tab = await chrome.tabs.get(tabId);
+    const url = tab.pendingUrl || tab.url;
+    if (!url || !/^(https?:|file:)/i.test(url)) throw new Error('This page cannot be saved as a pinned link.');
+    const space = model.spaces.find(space => space.id === spaceId);
+    let parent = space.children ||= [], index = parent.length;
+    if (targetNodeId) {
+      const target = findNodeLocation(parent, targetNodeId);
+      if (!target) throw new Error('The drop target changed. Drag the tab again.');
+      parent = target.parent; index = target.index + (after ? 1 : 0);
+    } else if (folderId) {
+      const folder = findNodeLocation(parent, folderId)?.node;
+      if (folder?.type !== 'folder') throw new Error('The folder no longer exists.');
+      parent = folder.children ||= []; index = parent.length;
+    }
+    const item = { id: crypto.randomUUID(), type: 'tab', title: tab.title || url, url };
+    parent.splice(index, 0, item);
+    bindings[item.id] = tab.id;
+    // Both values are resolved inside the shared queue; no stale UI model is saved.
+    await chrome.storage.local.set({ [MODEL]: recalcModelStats(model) });
+    await chrome.storage.session.set({ [BINDINGS]: bindings });
+    return item.id;
+  });
+}
 function updateTabBinding(removed, added) {
   return serializeState(async () => {
     const session = await chrome.storage.session.get(BINDINGS);
@@ -124,7 +167,7 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
   if (message?.type !== 'arc-sidebar-tab-action') return;
   if (sender.id !== chrome.runtime.id || !sender.url?.startsWith(chrome.runtime.getURL(''))) { respond({ ok: false, error: 'Invalid sidebar sender' }); return; }
   const action = message.action;
-  const task = action === 'open' ? openSavedItem(message.itemId, message.windowId) : action === 'activate' ? activateTab(message.tabId) : action === 'close' ? closeSavedItems(message.itemIds || []) : action === 'space-close-info' ? getSpaceCloseInfo(message.spaceId) : action === 'close-space' ? closeSpaceTabs(message.spaceId) : Promise.reject(new Error('Unknown tab action'));
+  const task = action === 'open' ? openSavedItem(message.itemId, message.windowId) : action === 'activate' ? activateTab(message.tabId) : action === 'close' ? closeSavedItems(message.itemIds || []) : action === 'space-close-info' ? getSpaceCloseInfo(message.spaceId) : action === 'close-space' ? closeSpaceTabs(message.spaceId) : action === 'pin-workflow-tab' ? pinWorkflowTab(message) : Promise.reject(new Error('Unknown tab action'));
   task.then(values => respond({ ok: true, values })).catch(error => respond({ ok: false, error: error.message }));
   return true;
 });

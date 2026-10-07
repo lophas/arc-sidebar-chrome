@@ -282,6 +282,7 @@ function matchesSearch(node, q) {
 
 function createTabRow(item, { live = false, active = false, boundTab = null } = {}) {
   const row = document.createElement('div');
+  if (!live && item.id) row.dataset.savedNodeId = item.id;
   row.className = `row${active ? ' active' : ''}${boundTab ? ' has-binding' : ''}`;
   row.title = item.url || item.title || '';
   if (live && item.id != null) row.dataset.liveTabId = String(item.id);
@@ -352,10 +353,12 @@ function renderNode(node, q) {
 
   const folder = document.createElement('div');
   folder.className = 'folder';
+  folder.dataset.folderNodeId = node.id;
   if (state.collapsedFolders[node.id] && !q) folder.classList.add('collapsed');
 
   const header = document.createElement('div');
   header.className = 'folder-header';
+  header.dataset.folderNodeId = node.id;
   const caret = document.createElement('span');
   caret.className = 'folder-caret';
   caret.textContent = folder.classList.contains('collapsed') ? '▶' : '▼';
@@ -478,10 +481,11 @@ function renderSpaces() {
 function renderPinned() {
   const isOpenSpace = state.currentSpaceId === OPEN_TABS_SPACE_ID;
   els.pinnedSection.classList.toggle('hidden', isOpenSpace);
-  if (isOpenSpace) return;
+  if (isOpenSpace) { els.pinnedSection.dataset.spaceId = ''; return; }
 
   els.pinned.replaceChildren();
   const space = currentSpace();
+  els.pinnedSection.dataset.spaceId = isOpenSpace ? '' : space?.id || '';
   if (!space) {
     els.pinned.append(els.emptyTemplate.content.cloneNode(true));
     return;
@@ -519,6 +523,8 @@ function renderOpenTabs() {
   els.openCount.textContent = `(${tabs.length})`;
   for (const tab of visibleTabs) {
     const row = createTabRow(tab, { live: true, active: Boolean(tab.active && tab.windowId === currentWindowId) });
+    row.draggable = !isOpenSpace;
+    if (!isOpenSpace) row.title += '\nDrag into pinned items to save this tab';
     if (!isOpenSpace && tab.windowId !== currentWindowId) {
       const label = document.createElement('span');
       label.className = 'other-window-label';

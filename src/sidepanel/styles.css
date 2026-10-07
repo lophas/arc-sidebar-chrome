@@ -357,3 +357,10 @@ section { margin-bottom: 15px; }
 .sidebar-save-error { padding: 10px 12px; background: var(--panel); color: #d44; border-top: 1px solid var(--border); font-size: 12px; }
 
 .other-window-label { font-size: 10px; opacity: .65; white-space: nowrap; margin-left: auto; }
+.workflow-dragging { opacity: .45; }
+.workflow-drop-before, .workflow-drop-after { position: relative; }
+.workflow-drop-before::before, .workflow-drop-after::after { content: ''; position: absolute; left: 4px; right: 4px; height: 2px; background: var(--text); pointer-events: none; z-index: 5; }
+.workflow-drop-before::before { top: -1px; }
+.workflow-drop-after::after { bottom: -1px; }
+.workflow-drop-into { outline: 1px dashed var(--text); outline-offset: -2px; }
+#pinned { min-height: 28px; }
