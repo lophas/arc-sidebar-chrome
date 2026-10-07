@@ -29,6 +29,7 @@ Run with Node.js 20 or newer, without installing dependencies:
 ```sh
 npm test
 npm run check
+npm install --no-save --package-lock=false --ignore-scripts playwright-core@1.56.1
 python3 tests/browser-overlay.py --require-browser
 ```
 

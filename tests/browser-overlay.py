@@ -66,8 +66,7 @@ with tempfile.TemporaryDirectory() as folder:
     threading.Thread(target=server.serve_forever,daemon=True).start()
     try:
         for mode in ('overlay','native'):
-            profile=root/('profile-'+mode)
-            result=subprocess.run([browser,'--headless','--no-sandbox','--disable-gpu','--no-first-run',f'--user-data-dir={profile}','--virtual-time-budget=1500','--dump-dom',f'http://127.0.0.1:{server.server_port}/index.html?mode={mode}'],capture_output=True,text=True,timeout=20)
+            result=subprocess.run(['node','tests/browser-overlay-driver.mjs',browser,f'http://127.0.0.1:{server.server_port}/index.html?mode={mode}'],capture_output=True,text=True,timeout=25)
             if result.returncode or f'PASS {mode} page loaded' not in result.stdout:
                 raise SystemExit(f'{mode} browser regression FAILED:\n{result.stdout}\n{result.stderr[-2000:]}')
             print(f'PASS real Chromium: {mode} page load, event-loop progress and DOM repair')
