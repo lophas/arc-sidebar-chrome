@@ -91,7 +91,8 @@ try{
   await fixture.write('local',{arcSidebarModel:model});
  });
  await page.waitForFunction(()=>document.querySelector('[data-favorite-id="f1"]')?.draggable);
- await page.locator('[data-favorite-id="f1"]').dragTo(page.locator('[data-favorite-id="f2"]'),{targetPosition:{x:45,y:20}});
+ const favoriteTarget = await page.locator('[data-favorite-id="f2"]').boundingBox();
+ await page.locator('[data-favorite-id="f1"]').dragTo(page.locator('[data-favorite-id="f2"]'),{targetPosition:{x:favoriteTarget.width-5,y:20}});
  await page.waitForFunction(()=>fixture.data.local.arcSidebarModel.favorites[1]?.id==='f1');
  await page.waitForFunction(()=>document.querySelector('[data-saved-node-id="a"]')?.draggable);
  await page.evaluate(()=>{
