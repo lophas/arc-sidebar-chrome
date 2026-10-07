@@ -8,11 +8,21 @@ It is not a full visual clone of Arc. The goal is to preserve the browsing model
 
 > This project is independent and is not affiliated with, endorsed by, or sponsored by The Browser Company or Arc.
 
-## 1.0.0
+## 1.1.0
 
-**v1.0.0 is the first stable release.**
+**v1.1.0 adds an Arc-style command bar to the stable sidebar.**
 
-It includes the full RC feature set plus the final fixes and UI refinements from real-world testing:
+- **Command+K** on macOS / **Ctrl+K** on Windows and Linux;
+- recent open tabs shown first when the search is empty;
+- search open tabs across windows, Favorites, pinned links, folders and Spaces;
+- website favicons beside results;
+- open a URL or start a Google search;
+- Up/Down navigation, Enter to open and Escape to dismiss;
+- selecting a pinned link or its live tab switches the sidebar to its Space and expands parent folders;
+- New Tab, blank and internal browser pages excluded from the open-tab results;
+- one sidebar search control, with the Add Favorite button retained.
+
+All features from v1.0.0 remain available:
 
 - two sidebar modes: Autohide overlay and Native Chrome Side Panel;
 - Arc-style Spaces, folders, persistent pinned links and global Favorites;
@@ -42,6 +52,31 @@ Arc Sidebar deliberately separates **persistent sidebar items** from **live Chro
 This makes it practical to keep hundreds of organized links without keeping hundreds of renderer processes alive.
 
 ## Features
+
+### Command bar
+
+Results include website favicons.
+
+Press **Command+K** on macOS or **Ctrl+K** on Windows/Linux,
+including when the sidebar is closed. The shortcut opens a compact command window that searches open
+tabs across windows, Favorites, pinned links, folders and Spaces. The sidebar
+also has a **Search or enter URL** button for an inline dialog.
+
+With an empty search, only open tabs appear, most recently accessed first.
+The sidebar has one search control beside the Add Favorite button.
+Use Up/Down and Enter to select, or Escape to dismiss. Enter a URL to open it,
+or choose the Google search result. Search ignores accents and matches all
+entered words. Pinned results reuse their bound tab. Selecting a pinned item or its bound open
+tab also switches the sidebar to its Space and expands its parent folders.
+New Tab, blank and internal browser pages are excluded from open-tab results.
+Folder results switch
+Space and expand parent folders. From the command window, folder/Space
+navigation opens the native sidebar.
+
+Chrome reserves Command+T/Ctrl+T for new tabs, so the extension does not
+claim that shortcut or replace the New Tab page. Configure the command bar
+shortcut at `chrome://extensions/shortcuts` if the default conflicts with
+another extension. Reload this extension after updating its files.
 
 ### Spaces
 
@@ -269,7 +304,8 @@ The extension is local-first and built on Chrome’s Manifest V3 APIs:
 - Tab Groups;
 - Storage;
 - Context Menus;
-- favicon API.
+- favicon API;
+- Commands API.
 
 The background entry point is `src/background/service-worker.js`. Native group creation/synchronization lives in the service worker, while group ordering and native-panel reload handling are loaded through background feature modules.
 
@@ -293,7 +329,7 @@ At present this project does not attempt to reproduce:
 - Arc AI features;
 - full Arc Archive/history migration;
 - Arc account sync;
-- Arc’s complete command-bar/browser-chrome UI.
+- Arc’s complete browser-chrome UI.
 
 ## Release packaging
 
@@ -302,45 +338,21 @@ Tagged releases are built by GitHub Actions and contain only:
 - `manifest.json`
 - `src/`
 
-For the stable 1.0 release:
+For the stable 1.1 release:
 
 ```bash
-git tag v1.0.0
-git push origin v1.0.0
+git tag v1.1.0
+git push origin v1.1.0
 ```
 
-The workflow validates the tag against `manifest.json`, builds `arc-sidebar-chrome-v1.0.0.zip`, and publishes it as a normal GitHub Release.
+The workflow validates the tag against `manifest.json`, builds `arc-sidebar-chrome-v1.1.0.zip`, and publishes it as a normal GitHub Release.
 
 ## Current version
 
-**v1.0.0**
+**v1.1.0**
 
-Manifest numeric version: **1.0.0**
+Manifest numeric version: **1.1.0**
 
 ## License
 
 See [LICENSE](LICENSE).
-
-### Command bar
-
-Press **Command+K** on macOS or **Ctrl+K** on Windows/Linux,
-including when the sidebar is closed. A compact command window searches open
-tabs across windows, Favorites, pinned links, folders and Spaces. The sidebar
-also has a **Search or enter URL** button for an inline dialog.
-
-With an empty search, only open tabs appear, most recently accessed first.
-The sidebar has one search control beside the Add Favorite button.
-Use Up/Down and Enter to select, or Escape to dismiss. Enter a URL to open it,
-or choose the Google search result. Search ignores accents and matches all
-entered words. Pinned results reuse their bound tab; folder results switch
-Space and expand parent folders. From the command window, folder/Space
-navigation opens the native sidebar.
-
-Chrome reserves Command+T/Ctrl+T for new tabs, so the extension does not
-claim that shortcut or replace the New Tab page. Configure the command bar
-shortcut at `chrome://extensions/shortcuts` if the default conflicts with
-another extension. Reload this extension after updating its files.
-
-Command ID v3 registers Command+K / Ctrl+K. Empty-query results exclude
-New Tab and internal browser pages. Activating an open tab bound to a pinned
-item switches the sidebar to its Space and expands its parent folders.
