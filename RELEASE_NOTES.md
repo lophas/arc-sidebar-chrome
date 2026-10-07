@@ -1,25 +1,20 @@
-## Arc Sidebar for Chrome 1.2.0
+## Arc Sidebar for Chrome 1.2.1
 
-Spaces now show your complete browsing workflow: saved links and the additional tabs opened in their Chrome groups, together in the sidebar.
+A clearer Chrome tab bar that follows what you are viewing.
 
-### New features
+### New feature
 
-- **Space open tabs:** non-pinned group tabs appear below pinned links, with favicons, click-to-focus and a close button. Tabs in other windows are marked **Other window**.
-- **Drag to pin:** drop an open Space tab between pinned links, into a folder or into an empty Space. The existing browser tab becomes the saved link’s live tab.
-- **Close a complete Space:** close every tab in all of the Space’s Chrome groups, including non-pinned tabs and tabs in other windows, while keeping saved links and folders.
-- **Matching group order:** Favorites first, followed by Space groups in sidebar order, including groups opened later.
+- **Automatic group collapse:** in each Chrome window, only the active tab’s Space or Favorites group stays expanded. Switching tabs opens the relevant group and collapses the others. When viewing a tab outside those groups, they all collapse. The tabs stay open.
 
-### Improvements
+### Documentation
 
-- More consistent sidebar state across tabs and windows.
-- More efficient autohide behavior and reliable page loading.
-- Improved recovery of open Favorites and pinned tabs after Chrome restarts, including tabs that have navigated away from their saved URL.
-- A rewritten README with the project mission, main features and detailed usage guide.
+- **Seamless Arc migration** now has its own main feature: import all your Spaces, Favorites, pinned links and folders in one step, with Space emojis and website icons.
+- **Chrome Sync and backups** are listed separately, with their own usage documentation.
 
-The **Command+K / Ctrl+K** search popup, Favorites, folders, custom icons, Arc import, Chrome Sync and backups are all included.
+All features from 1.2.0 are included: Space open tabs, drag-to-pin, complete Space closing, sidebar-aligned Chrome group order, the search popup and improved restart recovery.
 
 ### Install or update
 
-Download `arc-sidebar-chrome-v1.2.0.zip` and extract it. Open **chrome://extensions → Developer mode → Load unpacked**, then select the folder containing `manifest.json`.
+Download `arc-sidebar-chrome-v1.2.1.zip` and extract it. Open **chrome://extensions → Developer mode → Load unpacked**, then select the folder containing `manifest.json`.
 
 For an existing installation, replace the files in its current folder and click **Reload**. Your saved sidebar organization is retained.

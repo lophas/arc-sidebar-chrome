@@ -20,7 +20,8 @@ Your saved links stay in the sidebar when their browser tabs close. Click a save
 - **Live indicators and bulk close** — see what is open and close a Favorite, pinned tab, folder or an entire Space’s open tabs.
 - **Personalized appearance** — website favicons, uploaded icons, searchable Space emojis and adjustable Favorite tile sizes.
 - **Remembered layout** — return to your previous scroll position in each Space and the Open tabs view.
-- **Arc import, Chrome Sync and backups** — bring your existing organization with you and keep it available across computers.
+- **Seamless Arc migration** — import all your Spaces, Favorites, pinned links and folders from Arc in one step, with Space emojis and website icons, keeping your existing organization ready to use in Chrome.
+- **Chrome Sync and backups** — keep your sidebar organization available across computers and save or restore it whenever you need.
 - **Pin from any webpage** — save the current page or a link through Chrome’s right-click menu.
 
 ## Documentation
@@ -153,7 +154,9 @@ Pinning the current page keeps its existing browser tab connected to the saved i
 
 ### Import from Arc
 
-Open the extension’s options and import Arc’s `StorableSidebar.json` to bring over Spaces, Favorites, pinned links and folders. Import replaces the current sidebar contents, so download a backup first if you want to keep them.
+Seamlessly move your existing Arc organization to Chrome in one import: all your Spaces, Favorites, pinned links and folders, with Space emojis and website favicons.
+
+Open the extension’s options and import Arc’s `StorableSidebar.json`. Import replaces the current sidebar contents, so download a backup first if you want to keep them.
 
 Typical file locations:
 
