@@ -133,12 +133,13 @@ async function showSpaceMenu(button, x, y) {
   const space = model?.spaces?.find(candidate => candidate.id === spaceId);
   if (!space) return;
 
-  const liveIds = liveItemIdsForNodes(space.children || [], bindings);
+  const info = await sidebarTabAction('space-close-info', { spaceId });
   const el = ensureMenu();
   el.replaceChildren();
   addMenuButton('Edit Space…', () => replayExistingContextMenu(button, x, y));
-  if (liveIds.length) {
-    addMenuButton(`Close ${liveIds.length} open tab${liveIds.length === 1 ? '' : 's'}`, () => closeBoundItems(liveIds), { danger: true });
+  if (info.count) {
+    addMenuButton(`Close ${info.count} open tab${info.count === 1 ? '' : 's'} (entire Chrome groups)`,
+      () => sidebarTabAction('close-space', { spaceId }), { danger: true });
   }
   positionMenu(x, y);
 }

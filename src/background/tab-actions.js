@@ -66,6 +66,62 @@ export async function closeSavedItems(itemIds) {
     await Promise.allSettled([...tabs].map(id => chrome.tabs.remove(id)));
   });
 }
+function savedItemIds(nodes, out = []) {
+  for (const node of nodes || []) {
+    if (node.type === 'tab') out.push(node.id);
+    if (node.type === 'folder') savedItemIds(node.children, out);
+  }
+  return out;
+}
+async function spaceCloseTargets(spaceId) {
+  const [local, session, tabs] = await Promise.all([
+    chrome.storage.local.get(MODEL),
+    chrome.storage.session.get([BINDINGS, 'arcSidebarNativeGroups']),
+    chrome.tabs.query({})
+  ]);
+  const space = local[MODEL]?.spaces?.find(space => space.id === spaceId);
+  if (!space) throw new Error('This Space no longer exists.');
+  const bindings = session[BINDINGS] || {};
+  const byId = new Map(tabs.map(tab => [tab.id, tab]));
+  const groupIds = new Set(), tabIds = new Set();
+  for (const id of savedItemIds(space.children)) {
+    const tab = byId.get(Number(bindings[id]));
+    if (!tab) continue;
+    tabIds.add(tab.id);
+    if (tab.groupId != null && tab.groupId !== -1) groupIds.add(tab.groupId);
+  }
+  // Keep workflow-only groups reachable even after their last pinned tab closes.
+  for (const [key, groupId] of Object.entries(session.arcSidebarNativeGroups || {})) {
+    const colon = key.indexOf(':');
+    if (key.slice(colon + 1) !== spaceId || colon < 0) continue;
+    try {
+      const group = await chrome.tabGroups.get(groupId);
+      if (group.windowId === Number(key.slice(0, colon)) && group.title === space.title) groupIds.add(groupId);
+    } catch {}
+  }
+  for (const tab of tabs) if (groupIds.has(tab.groupId)) tabIds.add(tab.id);
+  return { tabIds: [...tabIds], bindings, groupCount: groupIds.size };
+}
+export async function getSpaceCloseInfo(spaceId) {
+  await bindingsReady;
+  return serializeState(async () => {
+    const targets = await spaceCloseTargets(spaceId);
+    return { count: targets.tabIds.length, groupCount: targets.groupCount };
+  });
+}
+export async function closeSpaceTabs(spaceId) {
+  await bindingsReady;
+  return serializeState(async () => {
+    // Refresh membership when clicked: include tabs opened since the menu and
+    // leave tabs that have since moved out of the Space's groups untouched.
+    const { tabIds, bindings } = await spaceCloseTargets(spaceId);
+    const results = await Promise.allSettled(tabIds.map(id => chrome.tabs.remove(id)));
+    const closed = new Set(tabIds.filter((_, i) => results[i].status === 'fulfilled'));
+    for (const [id, tabId] of Object.entries(bindings)) if (closed.has(Number(tabId))) delete bindings[id];
+    await chrome.storage.session.set({ [BINDINGS]: bindings });
+    if (results.some(result => result.status === 'rejected')) throw new Error('Some tabs could not be closed. Reopen the Space menu to try again.');
+  });
+}
 function updateTabBinding(removed, added) {
   return serializeState(async () => {
     const session = await chrome.storage.session.get(BINDINGS);
@@ -85,7 +141,7 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
   if (message?.type !== 'arc-sidebar-tab-action') return;
   if (sender.id !== chrome.runtime.id || !sender.url?.startsWith(chrome.runtime.getURL(''))) { respond({ ok: false, error: 'Invalid sidebar sender' }); return; }
   const action = message.action;
-  const task = action === 'open' ? openSavedItem(message.itemId, message.windowId) : action === 'activate' ? activateTab(message.tabId) : action === 'close' ? closeSavedItems(message.itemIds || []) : Promise.reject(new Error('Unknown tab action'));
-  task.then(() => respond({ ok: true })).catch(error => respond({ ok: false, error: error.message }));
+  const task = action === 'open' ? openSavedItem(message.itemId, message.windowId) : action === 'activate' ? activateTab(message.tabId) : action === 'close' ? closeSavedItems(message.itemIds || []) : action === 'space-close-info' ? getSpaceCloseInfo(message.spaceId) : action === 'close-space' ? closeSpaceTabs(message.spaceId) : Promise.reject(new Error('Unknown tab action'));
+  task.then(values => respond({ ok: true, values })).catch(error => respond({ ok: false, error: error.message }));
   return true;
 });

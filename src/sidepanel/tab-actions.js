@@ -6,4 +6,5 @@ export async function sidebarTabAction(action, values = {}) {
     window.dispatchEvent(new CustomEvent('arc-sidebar-save-error', { detail: { message: error.message } }));
     throw error;
   }
+  return response.values;
 }

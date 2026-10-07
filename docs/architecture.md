@@ -50,3 +50,11 @@ Manual Chrome regression checklist:
 These browser checks require an actual Chrome installation; mock tests do not establish real-site compatibility.
 
 The browser regression runs in real headless Chrome on CI. It checks page load and timer progress in both modes, repeated observer activity, host removal and style/hidden repair. It uses mocked extension APIs, so it does not replace full extension integration or Gmail/Facebook testing.
+
+## Closing a Space workflow
+
+The Space context menu uses background `space-close-info` and `close-space` actions. Both resolve the latest saved model, bindings, Chrome tabs and native group mappings. Closing unions all live tabs bound to that Space with every tab in its associated Chrome groups, across windows; duplicate tab IDs are removed. Tabs that joined a group after the menu opened are included when clicked. Saved links, folders and icons remain unchanged.
+
+`native-group-map.js` retains valid group associations while Chrome still has a group, even when its last pinned tab has closed. Stale associations, deleted Spaces and groups with a mismatched window/title are discarded. Only bindings for successfully closed tabs are removed; partial failures show an error and retain retryable bindings. Folder-only close and individual tab close keep their existing behavior.
+
+Additional regression tests cover non-pinned workflow tabs, multiple windows, workflow-only groups, changed membership, stale/deleted associations and partial close failures.

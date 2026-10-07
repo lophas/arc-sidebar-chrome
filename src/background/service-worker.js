@@ -1,3 +1,4 @@
+import { pruneGroupMap } from './native-group-map.js';
 import './tab-actions.js';
 import './persistent-bindings.js';
 import { createStorageClient } from '../shared/storage-client.js';
@@ -416,13 +417,7 @@ async function syncNativeGroupsNow() {
     }
 
     const liveKeys = new Set(desired.keys());
-    let mapChanged = false;
-    for (const key of Object.keys(groupMap)) {
-      if (!liveKeys.has(key)) {
-        delete groupMap[key];
-        mapChanged = true;
-      }
-    }
+    const mapChanged = await pruneGroupMap(groupMap, liveKeys, model, FAVORITES_GROUP);
     if (mapChanged || desired.size) await saveSessionGroupMap(groupMap);
   } finally {
     groupSyncRunning = false;

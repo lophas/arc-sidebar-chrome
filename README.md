@@ -79,7 +79,9 @@ Configure the shortcut at `chrome://extensions/shortcuts` if it conflicts with a
 - custom SVG/PNG/WebP/JPEG icon upload by click or drag-and-drop;
 - drag-and-drop Space reordering;
 - red live-state dot when the Space contains open bound tabs;
-- right-click to edit the Space or close all live tabs belonging to it.
+- right-click to edit the Space or close every open tab in all Chrome groups associated with it, including non-pinned workflow tabs across windows;
+- the close action shows the full live tab count and keeps saved pinned links/folders;
+- workflow-only Chrome groups remain closable even after their last pinned tab has closed.
 
 ### Favorites
 
