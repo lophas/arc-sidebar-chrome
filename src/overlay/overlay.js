@@ -121,7 +121,7 @@
     applyInitializedMode = mode => {
       sidebarMode = mode === NATIVE_MODE ? NATIVE_MODE : OVERLAY_MODE;
       const overlayActive = sidebarMode === OVERLAY_MODE;
-      host.style.display = overlayActive ? '' : 'none';
+      host.style.setProperty('display', overlayActive ? 'block' : 'none', 'important');
       if (!overlayActive) forceClosePanel();
       refreshEdgeState();
     };
@@ -253,6 +253,83 @@
       resizeHandle.addEventListener('pointerup', finishResize);
       resizeHandle.addEventListener('pointercancel', finishResize);
     });
+
+    // SPA renderers can remove extension-owned nodes without destroying this
+    // content-script context. Restore the SAME host and listeners, not another
+    // overlay instance. Observe only document/root children, not the page subtree.
+    let observedRoot = null;
+    let suspended = false;
+    const rootObserver = new MutationObserver(() => ensureHost());
+    const documentObserver = new MutationObserver(() => ensureHost());
+    const hostObserver = new MutationObserver(() => ensureHost());
+    const ensureHost = () => {
+      if (suspended) return;
+      const root = document.documentElement;
+      if (!root) return;
+      if (observedRoot !== root) {
+        rootObserver.disconnect();
+        observedRoot = root;
+        rootObserver.observe(root, { childList: true });
+      }
+      if (host.parentNode !== root) {
+        // Reconnecting an iframe creates a new browsing context; discard stale
+        // editor/resize locks so the edge cannot stay disabled indefinitely.
+        editorActive = false;
+        isResizing = false;
+        panel.classList.remove('resizing');
+        resizeHandle.classList.remove('resizing');
+        forceClosePanel();
+        root.append(host);
+      }
+      if (host.id !== 'arc-sidebar-overlay-host') host.id = 'arc-sidebar-overlay-host';
+      const properties = {
+        all: 'initial', display: sidebarMode === OVERLAY_MODE ? 'block' : 'none',
+        position: 'fixed', top: '0px', right: '0px', width: '0px', height: '0px',
+        overflow: 'visible', visibility: 'visible', opacity: '1',
+        transform: 'none', 'pointer-events': 'auto', 'z-index': '2147483647'
+      };
+      for (const [name, value] of Object.entries(properties)) {
+        if (host.style.getPropertyValue(name) !== value || host.style.getPropertyPriority(name) !== 'important') {
+          host.style.setProperty(name, value, 'important');
+        }
+      }
+      if (host.hidden) host.hidden = false;
+    };
+    const resume = () => {
+      suspended = false;
+      documentObserver.observe(document, { childList: true });
+      hostObserver.observe(host, { attributes: true, attributeFilter: ['style', 'hidden', 'id'] });
+      ensureHost();
+      chrome.runtime.sendMessage({ type: 'arc-native-sidepanel-is-open' })
+        .then(response => setNativePanelOpen(response?.open)).catch(() => {});
+    };
+    window.addEventListener('pagehide', () => {
+      suspended = true;
+      clearTimers();
+      rootObserver.disconnect();
+      documentObserver.disconnect();
+      hostObserver.disconnect();
+      observedRoot = null;
+    });
+    window.addEventListener('pageshow', resume);
+    window.addEventListener('focus', resume);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') resume();
+    });
+    // Capture fallback also works when a webpage's own overlay covers the edge.
+    document.addEventListener('pointermove', event => {
+      if (sidebarMode !== OVERLAY_MODE || nativePanelOpen || suspended) return;
+      if (event.clientX >= window.innerWidth - EDGE_WIDTH) {
+        ensureHost();
+        scheduleOpen();
+      } else if (isOpen && event.clientX < window.innerWidth - currentWidth - RESIZE_HANDLE_WIDTH) {
+        scheduleClose();
+      } else if (!isOpen && showTimer) {
+        clearTimeout(showTimer);
+        showTimer = null;
+      }
+    }, { capture: true, passive: true });
+    resume();
 
     window.addEventListener('resize', () => applyWidth(currentWidth));
     document.addEventListener('keydown', event => {
