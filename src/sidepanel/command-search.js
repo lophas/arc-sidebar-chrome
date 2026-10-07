@@ -11,6 +11,7 @@ export function navigationUrl(value) {
 const normalize = text => String(text || '').normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
 export function buildResults(data, value) {
   const text = value.trim(), q = normalize(text), tokens = q.split(/\s+/).filter(Boolean);
+  if (!text) return data.filter(item => item.kind === 'Open tab').sort((a, b) => (b.lastAccessed || 0) - (a.lastAccessed || 0)).slice(0, 30);
   const results = data.filter(item => tokens.every(token => normalize(`${item.title} ${item.url || ''} ${item.detail || ''}`).includes(token)))
     .map((item, index) => ({ item, index, score: normalize(item.title) === q ? 3 : normalize(item.title).startsWith(q) ? 2 : 1 }))
     .sort((a, b) => b.score - a.score || a.index - b.index).slice(0, 30).map(x => x.item);

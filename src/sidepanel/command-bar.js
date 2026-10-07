@@ -23,7 +23,7 @@ async function refresh() {
   const token = ++generation;
   const [stored, tabs] = await Promise.all([chrome.storage.local.get('arcSidebarModel'), chrome.tabs.query({})]);
   if (token !== generation) return;
-  data = tabs.filter(tab => tab.id != null && !tab.url?.startsWith(chrome.runtime.getURL(''))).map(tab => ({ kind: 'Open tab', tabId: tab.id, title: tab.title || tab.url || 'Untitled tab', url: tab.url || '', detail: tab.url || '' }));
+  data = tabs.filter(tab => tab.id != null && !tab.url?.startsWith(chrome.runtime.getURL(''))).map(tab => ({ kind: 'Open tab', tabId: tab.id, lastAccessed: tab.lastAccessed || 0, title: tab.title || tab.url || 'Untitled tab', url: tab.url || '', detail: tab.url || '' }));
   const model = stored.arcSidebarModel;
   const walk = (nodes, space, ancestors = [], path = []) => {
     for (const node of nodes || []) {
@@ -63,7 +63,7 @@ input.addEventListener('keydown', event => {
 dialog.addEventListener('close', () => { if (standalone) window.close(); });
 dialog.addEventListener('click', event => { if (event.target === dialog) { const r = dialog.getBoundingClientRect(); if (event.clientX < r.left || event.clientX > r.right || event.clientY < r.top || event.clientY > r.bottom) dialog.close(); } });
 document.querySelector('#openCommandBar')?.addEventListener('click', open);
-document.addEventListener('keydown', event => { if ((event.metaKey || event.ctrlKey) && event.shiftKey && event.key.toLowerCase() === 'k') { event.preventDefault(); open(); } });
+document.addEventListener('keydown', event => { if (event.altKey && !event.metaKey && !event.ctrlKey && !event.shiftKey && event.code === 'KeyK') { event.preventDefault(); open(); } });
 chrome.storage.onChanged.addListener(changes => { if (dialog.open && changes.arcSidebarModel) refresh().catch(e => { error.textContent = e.message; }); });
-for (const event of [chrome.tabs.onCreated, chrome.tabs.onRemoved, chrome.tabs.onUpdated]) event.addListener(() => { if (dialog.open) refresh().catch(() => {}); });
+for (const event of [chrome.tabs.onCreated, chrome.tabs.onRemoved, chrome.tabs.onUpdated, chrome.tabs.onActivated]) event.addListener(() => { if (dialog.open) refresh().catch(() => {}); });
 if (standalone) open();

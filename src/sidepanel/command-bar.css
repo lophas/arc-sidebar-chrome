@@ -1,4 +1,4 @@
-.command-launch { margin: 8px 12px 0; padding: 9px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--panel); color: var(--muted); cursor: pointer; text-align: left; }
+.command-launch { margin: 0; flex: 1; min-width: 0; padding: 9px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--panel); color: var(--muted); cursor: pointer; text-align: left; }
 .command-launch span { float: right; font-size: 10px; }
 .command-dialog { width: min(600px, calc(100vw - 24px)); max-height: calc(100vh - 24px); padding: 0; border: 1px solid var(--border); border-radius: 16px; background: var(--panel); color: var(--text); box-shadow: 0 20px 70px #0005; }
 .command-dialog::backdrop { background: #0005; backdrop-filter: blur(4px); }

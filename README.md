@@ -323,11 +323,13 @@ See [LICENSE](LICENSE).
 
 ### Command bar
 
-Press **Command+Shift+K** on macOS or **Ctrl+Shift+K** on Windows/Linux,
+Press **Option+K** on macOS or **Alt+K** on Windows/Linux,
 including when the sidebar is closed. A compact command window searches open
 tabs across windows, Favorites, pinned links, folders and Spaces. The sidebar
 also has a **Search or enter URL** button for an inline dialog.
 
+With an empty search, only open tabs appear, most recently accessed first.
+The sidebar has one search control beside the Add Favorite button.
 Use Up/Down and Enter to select, or Escape to dismiss. Enter a URL to open it,
 or choose the Google search result. Search ignores accents and matches all
 entered words. Pinned results reuse their bound tab; folder results switch
