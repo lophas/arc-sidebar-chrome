@@ -57,7 +57,7 @@
       </style>
       <div class="edge" aria-hidden="true"></div>
       <div class="resize-handle" title="Drag to resize sidebar" aria-hidden="true"></div>
-      <div class="panel" role="complementary" aria-label="Arc Sidebar"><iframe title="Arc Sidebar" src="${sidebarUrl.href}"></iframe></div>`;
+      <div class="panel" role="complementary" aria-label="Arc Sidebar"><iframe title="Arc Sidebar" data-sidebar-src="${sidebarUrl.href}"></iframe></div>`;
 
     const edge = shadow.querySelector('.edge');
     const panel = shadow.querySelector('.panel');
@@ -80,7 +80,13 @@
       try { iframe.contentWindow?.postMessage({ type: 'arc-sidebar-theme', theme }, '*'); } catch {}
     };
 
-    iframe.addEventListener('load', sendTheme);
+    const notifyVisibility = () => {
+      try { iframe.contentWindow?.postMessage({ type: 'arc-sidebar-overlay-visibility', open: isOpen && sidebarMode === OVERLAY_MODE && !nativePanelOpen && document.visibilityState !== 'hidden' }, '*'); } catch {}
+    };
+    const ensureSidebarLoaded = () => {
+      if (!iframe.hasAttribute('src')) iframe.src = sidebarUrl.href;
+    };
+    iframe.addEventListener('load', () => { sendTheme(); notifyVisibility(); });
     themeMedia.addEventListener('change', sendTheme);
     sendTheme();
 
@@ -112,6 +118,7 @@
       isOpen = false;
       panel.classList.remove('open');
       resizeHandle.classList.remove('open');
+      notifyVisibility();
     };
 
     const refreshEdgeState = () => {
@@ -135,11 +142,13 @@
     const openPanel = () => {
       if (sidebarMode !== OVERLAY_MODE || nativePanelOpen) return;
       cancelClose();
+      ensureSidebarLoaded();
       sendTheme();
       if (isOpen) return;
       isOpen = true;
       panel.classList.add('open');
       resizeHandle.classList.add('open');
+      notifyVisibility();
     };
 
     const closePanel = () => {
@@ -150,6 +159,7 @@
       isOpen = false;
       panel.classList.remove('open');
       resizeHandle.classList.remove('open');
+      notifyVisibility();
     };
 
     const scheduleOpen = () => {
@@ -312,9 +322,15 @@
       observedRoot = null;
     });
     window.addEventListener('pageshow', resume);
-    window.addEventListener('focus', resume);
+    window.addEventListener('focus', () => { resume(); notifyVisibility(); });
     document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible') resume();
+      if (document.visibilityState === 'visible') { resume(); notifyVisibility(); }
+      else if (!editorActive && !isResizing) {
+        forceClosePanel();
+        // Release inactive tabs' DOM, listeners and tab/storage subscriptions.
+        // Keep the iframe element itself so host recovery and width work unchanged.
+        iframe.removeAttribute('src');
+      } else notifyVisibility();
     });
     // Capture fallback also works when a webpage's own overlay covers the edge.
     document.addEventListener('pointermove', event => {

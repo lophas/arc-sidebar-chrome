@@ -1,3 +1,6 @@
+import { isSidebarActive } from './lifecycle.js';
+import { createStorageClient } from '../shared/storage-client.js';
+const sidebarStorage = createStorageClient({ isActive: isSidebarActive });
 const STORAGE_KEY = 'arcSidebarModel';
 const STATE_KEY = 'arcSidebarState';
 const OPEN_TABS_SPACE_ID = '__open_tabs__';
@@ -12,7 +15,7 @@ let draggedSpaceId = null;
 let draggedFolderId = null;
 
 async function getData() {
-  return chrome.storage.local.get([STORAGE_KEY, STATE_KEY]);
+  return sidebarStorage.local.get([STORAGE_KEY, STATE_KEY]);
 }
 
 function matchesSearch(node, q) {
@@ -36,7 +39,7 @@ function clearFolderDropIndicators() {
 
 async function reorderSpace(sourceId, targetId, after) {
   if (!sourceId || !targetId || sourceId === targetId) return;
-  const stored = await chrome.storage.local.get(STORAGE_KEY);
+  const stored = await sidebarStorage.local.get(STORAGE_KEY);
   const model = stored[STORAGE_KEY];
   if (!model?.spaces?.length) return;
 
@@ -49,7 +52,7 @@ async function reorderSpace(sourceId, targetId, after) {
   if (insertAt < 0) return;
   if (after) insertAt += 1;
   model.spaces.splice(insertAt, 0, moved);
-  await chrome.storage.local.set({ [STORAGE_KEY]: model });
+  await sidebarStorage.local.set({ [STORAGE_KEY]: model });
 }
 
 async function reorderFolder(sourceId, targetId, after) {
@@ -73,7 +76,7 @@ async function reorderFolder(sourceId, targetId, after) {
   if (insertAt < 0) return;
   if (after) insertAt += 1;
   space.children.splice(insertAt, 0, moved);
-  await chrome.storage.local.set({ [STORAGE_KEY]: model });
+  await sidebarStorage.local.set({ [STORAGE_KEY]: model });
 }
 
 function decorateSpaceReordering() {

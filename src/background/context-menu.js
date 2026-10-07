@@ -1,3 +1,6 @@
+import { createStorageClient } from '../shared/storage-client.js';
+import { commitStorage } from './state-controller.js';
+const sidebarStorage = createStorageClient({ transact: commitStorage });
 import './group-order.js';
 import './native-panel-reload.js';
 
@@ -60,7 +63,7 @@ function createMenuItem(options) {
 async function rebuildPinContextMenu() {
   try {
     await chrome.contextMenus.removeAll();
-    const stored = await chrome.storage.local.get(STORAGE_KEY);
+    const stored = await sidebarStorage.local.get(STORAGE_KEY);
     const model = stored[STORAGE_KEY];
     const spaces = model?.spaces || [];
 
@@ -91,7 +94,7 @@ async function pinFromContextMenu(info, tab) {
   const spaceId = spaceIdFromMenuId(info.menuItemId);
   if (!spaceId) return;
 
-  const stored = await chrome.storage.local.get(STORAGE_KEY);
+  const stored = await sidebarStorage.local.get(STORAGE_KEY);
   const model = stored[STORAGE_KEY];
   const space = model?.spaces?.find(candidate => candidate.id === spaceId);
   if (!space) return;
@@ -115,16 +118,16 @@ async function pinFromContextMenu(info, tab) {
   space.children.push(item);
   recalcStats(model);
 
-  const writes = [chrome.storage.local.set({ [STORAGE_KEY]: model })];
+  const writes = { local: { [STORAGE_KEY]: model } };
 
   if (isCurrentPage && tab?.id != null) {
-    const session = await chrome.storage.session.get(BINDINGS_KEY);
+    const session = await sidebarStorage.session.get(BINDINGS_KEY);
     const bindings = session[BINDINGS_KEY] || {};
     bindings[item.id] = tab.id;
-    writes.push(chrome.storage.session.set({ [BINDINGS_KEY]: bindings }));
+    writes.session = { [BINDINGS_KEY]: bindings };
   }
 
-  await Promise.all(writes);
+  await sidebarStorage.transaction(writes);
 }
 
 chrome.runtime.onInstalled.addListener(() => {

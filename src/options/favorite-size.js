@@ -1,3 +1,5 @@
+import { createStorageClient } from '../shared/storage-client.js';
+const sidebarStorage = createStorageClient();
 const FAVORITE_SIZE_KEY = 'arcSidebarFavoriteSizePercent';
 const ALLOWED_SIZES = new Set([80, 90, 100, 110, 120]);
 const DEFAULT_SIZE = 100;
@@ -11,7 +13,7 @@ function normalizeSize(value) {
 }
 
 async function loadFavoriteSize() {
-  const stored = await chrome.storage.local.get(FAVORITE_SIZE_KEY);
+  const stored = await sidebarStorage.local.get(FAVORITE_SIZE_KEY);
   const size = normalizeSize(stored[FAVORITE_SIZE_KEY]);
   select.value = String(size);
   status.textContent = size === DEFAULT_SIZE ? 'Using the original Favorite size.' : `Favorite size set to ${size}%.`;
@@ -21,7 +23,7 @@ select.addEventListener('change', async () => {
   const size = normalizeSize(select.value);
   select.disabled = true;
   try {
-    await chrome.storage.local.set({ [FAVORITE_SIZE_KEY]: size });
+    await sidebarStorage.local.set({ [FAVORITE_SIZE_KEY]: size });
     status.textContent = size === DEFAULT_SIZE ? 'Using the original Favorite size.' : `Favorite size set to ${size}%.`;
   } catch (error) {
     console.error(error);

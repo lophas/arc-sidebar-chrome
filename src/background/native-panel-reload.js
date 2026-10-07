@@ -1,3 +1,6 @@
+import { createStorageClient } from '../shared/storage-client.js';
+import { commitStorage } from './state-controller.js';
+const sidebarStorage = createStorageClient({ transact: commitStorage });
 const SIDEBAR_MODE_KEY = 'arcSidebarMode';
 const OVERLAY_MODE = 'overlay';
 
@@ -11,7 +14,7 @@ function isWebTab(tab) {
 async function reloadActiveWebTabIfOverlay(windowId) {
   if (windowId == null) return;
   try {
-    const stored = await chrome.storage.local.get(SIDEBAR_MODE_KEY);
+    const stored = await sidebarStorage.local.get(SIDEBAR_MODE_KEY);
     const mode = stored[SIDEBAR_MODE_KEY] || OVERLAY_MODE;
     if (mode !== OVERLAY_MODE) return;
 

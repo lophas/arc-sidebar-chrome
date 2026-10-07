@@ -1,3 +1,6 @@
+import { isSidebarActive } from './lifecycle.js';
+import { createStorageClient } from '../shared/storage-client.js';
+const sidebarStorage = createStorageClient({ isActive: isSidebarActive });
 const STORAGE_KEY = 'arcSidebarModel';
 const BINDINGS_KEY = 'arcSidebarBindings';
 const LAST_SPACE_KEY = 'arcSidebarLastPinSpaceId';
@@ -88,8 +91,8 @@ async function openPinDialog(tab) {
   if (!tab?.id || !tab.url) return;
 
   const [stored, session] = await Promise.all([
-    chrome.storage.local.get([STORAGE_KEY, LAST_SPACE_KEY]),
-    chrome.storage.session.get(BINDINGS_KEY)
+    sidebarStorage.local.get([STORAGE_KEY, LAST_SPACE_KEY]),
+    sidebarStorage.session.get(BINDINGS_KEY)
   ]);
 
   const model = stored[STORAGE_KEY];
@@ -149,13 +152,10 @@ async function openPinDialog(tab) {
     recalcStats(model);
     bindings[item.id] = tab.id;
     d.close();
-    await Promise.all([
-      chrome.storage.local.set({
-        [STORAGE_KEY]: model,
-        [LAST_SPACE_KEY]: space.id
-      }),
-      chrome.storage.session.set({ [BINDINGS_KEY]: bindings })
-    ]);
+    await sidebarStorage.transaction({
+      local: { [STORAGE_KEY]: model, [LAST_SPACE_KEY]: space.id },
+      session: { [BINDINGS_KEY]: bindings }
+    });
   };
 
   d.showModal();
@@ -176,11 +176,12 @@ async function currentVisibleTabs() {
 }
 
 async function decorateOpenTabs() {
+  if (!isSidebarActive()) return;
   if (!openTabsEl || openSection?.classList.contains('hidden')) return;
 
   const [tabs, session] = await Promise.all([
     currentVisibleTabs(),
-    chrome.storage.session.get(BINDINGS_KEY)
+    sidebarStorage.session.get(BINDINGS_KEY)
   ]);
   const boundTabIds = new Set(Object.values(session[BINDINGS_KEY] || {}).map(Number));
   const rows = [...openTabsEl.querySelectorAll('.row')];

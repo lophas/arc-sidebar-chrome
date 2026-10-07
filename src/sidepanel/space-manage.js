@@ -1,3 +1,6 @@
+import { isSidebarActive } from './lifecycle.js';
+import { createStorageClient } from '../shared/storage-client.js';
+const sidebarStorage = createStorageClient({ isActive: isSidebarActive });
 const STORAGE_KEY = 'arcSidebarModel';
 const STATE_KEY = 'arcSidebarState';
 const OPEN_TABS_SPACE_ID = '__open_tabs__';
@@ -13,7 +16,7 @@ function uid() {
 }
 
 async function getData() {
-  return chrome.storage.local.get([STORAGE_KEY, STATE_KEY]);
+  return sidebarStorage.local.get([STORAGE_KEY, STATE_KEY]);
 }
 
 function recalcStats(model) {
@@ -38,7 +41,7 @@ function recalcStats(model) {
 
 async function saveData(model, state) {
   recalcStats(model);
-  await chrome.storage.local.set({
+  await sidebarStorage.local.set({
     [STORAGE_KEY]: model,
     [STATE_KEY]: state
   });

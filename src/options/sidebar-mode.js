@@ -1,3 +1,5 @@
+import { createStorageClient } from '../shared/storage-client.js';
+const sidebarStorage = createStorageClient();
 const SIDEBAR_MODE_KEY = 'arcSidebarMode';
 const OVERLAY_MODE = 'overlay';
 const NATIVE_MODE = 'native';
@@ -13,7 +15,7 @@ function applySelection(mode) {
 }
 
 async function loadMode() {
-  const stored = await chrome.storage.local.get(SIDEBAR_MODE_KEY);
+  const stored = await sidebarStorage.local.get(SIDEBAR_MODE_KEY);
   applySelection(stored[SIDEBAR_MODE_KEY]);
 }
 
@@ -21,7 +23,7 @@ async function saveMode(mode) {
   overlay.disabled = true;
   native.disabled = true;
   try {
-    await chrome.storage.local.set({ [SIDEBAR_MODE_KEY]: mode });
+    await sidebarStorage.local.set({ [SIDEBAR_MODE_KEY]: mode });
     applySelection(mode);
     status.textContent = mode === NATIVE_MODE
       ? 'Native mode enabled · no edge trigger is active. Existing web tabs reload once when you next switch to them.'

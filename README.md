@@ -305,6 +305,12 @@ The background entry point is `src/background/service-worker.js`. Native group c
 
 The persistent sidebar model lives in `chrome.storage.local`. If Chrome Sync is enabled, a chunked mirror is stored in `chrome.storage.sync`. Live item-to-tab bindings use session storage with persistent recovery metadata for Chrome restart recovery.
 
+Sidebar state changes and saved-tab actions are coordinated by one background controller. Independent edits from different sidebar views are merged; conflicting edits show an error instead of overwriting newer data. Opening a pinned item reuses its live tab and reveals its Space.
+
+The autohide iframe loads only on first hover. Closed views pause background UI work, and idle hidden-tab overlays release their iframe. Open editors remain available across tab switches. Each sidebar reads a fresh shared state snapshot when activated.
+
+See [state and lifecycle architecture](docs/architecture.md) for the implementation plan, transaction limits and regression checklist. Run `npm test` and `npm run check` for automated checks.
+
 The extension does not require an Arc account or its own cloud backend.
 
 ## Known platform limitations

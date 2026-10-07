@@ -1,3 +1,6 @@
+import { isSidebarActive } from './lifecycle.js';
+import { createStorageClient } from '../shared/storage-client.js';
+const sidebarStorage = createStorageClient({ isActive: isSidebarActive });
 const STORAGE_KEY = 'arcSidebarModel';
 const STATE_KEY = 'arcSidebarState';
 const OPEN_TABS_SPACE_ID = '__open_tabs__';
@@ -35,7 +38,7 @@ function clearRootIndicators() {
 async function movePinnedBesideRootFolder(itemId, targetFolderId, after) {
   if (!itemId || !targetFolderId) return;
 
-  const stored = await chrome.storage.local.get([STORAGE_KEY, STATE_KEY]);
+  const stored = await sidebarStorage.local.get([STORAGE_KEY, STATE_KEY]);
   const model = stored[STORAGE_KEY];
   const state = stored[STATE_KEY] || {};
   if (!model?.spaces?.length || state.currentSpaceId === OPEN_TABS_SPACE_ID) return;
@@ -56,13 +59,13 @@ async function movePinnedBesideRootFolder(itemId, targetFolderId, after) {
   if (targetIndex < 0) return;
 
   space.children.splice(targetIndex + (after ? 1 : 0), 0, moved);
-  await chrome.storage.local.set({ [STORAGE_KEY]: model });
+  await sidebarStorage.local.set({ [STORAGE_KEY]: model });
 }
 
 async function decorateRootFolderDropTargets() {
   if (!pinnedEl) return;
 
-  const stored = await chrome.storage.local.get([STORAGE_KEY, STATE_KEY]);
+  const stored = await sidebarStorage.local.get([STORAGE_KEY, STATE_KEY]);
   const model = stored[STORAGE_KEY];
   const state = stored[STATE_KEY] || {};
   if (!model?.spaces?.length || state.currentSpaceId === OPEN_TABS_SPACE_ID) return;

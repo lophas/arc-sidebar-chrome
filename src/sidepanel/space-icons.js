@@ -1,3 +1,6 @@
+import { isSidebarActive } from './lifecycle.js';
+import { createStorageClient } from '../shared/storage-client.js';
+const sidebarStorage = createStorageClient({ isActive: isSidebarActive });
 const STORAGE_KEY = 'arcSidebarModel';
 const IMAGE_ICON_PREFIX = 'data:image/';
 const MAX_SOURCE_ICON_BYTES = 2 * 1024 * 1024;
@@ -141,7 +144,7 @@ function setImageState(dialog, dataUrl = '', fileName = '') {
 
 async function loadCurrentSpaceIcon(dialog) {
   if (!editingSpaceId) { setImageState(dialog, ''); return; }
-  const stored = await chrome.storage.local.get(STORAGE_KEY);
+  const stored = await sidebarStorage.local.get(STORAGE_KEY);
   const space = stored[STORAGE_KEY]?.spaces?.find(candidate => candidate.id === editingSpaceId);
   if (isImageIcon(space?.icon)) setImageState(dialog, space.icon, 'Current custom image icon');
   else setImageState(dialog, '');
@@ -255,9 +258,10 @@ function enhanceSpaceDialogWhenReady(attempt = 0) {
 }
 
 async function decorateSpaceButtons() {
+  if (!isSidebarActive()) return;
   const nav = document.querySelector('#spaces');
   if (!nav) return;
-  const stored = await chrome.storage.local.get(STORAGE_KEY);
+  const stored = await sidebarStorage.local.get(STORAGE_KEY);
   const spaces = stored[STORAGE_KEY]?.spaces || [];
   const byId = new Map(spaces.map(space => [space.id, space]));
   for (const button of nav.querySelectorAll('.space-button[data-space-id]')) {
@@ -301,13 +305,13 @@ async function applyPendingSpaceIcon(modelFromChange) {
     const oldEmoji = space.emoji || '';
     if (pending.icon) { space.icon = pending.icon; space.emoji = ''; }
     else { delete space.icon; space.emoji = pending.emoji; }
-    if ((space.icon || '') !== oldIcon || (space.emoji || '') !== oldEmoji) await chrome.storage.local.set({ [STORAGE_KEY]: model });
+    if ((space.icon || '') !== oldIcon || (space.emoji || '') !== oldEmoji) await sidebarStorage.local.set({ [STORAGE_KEY]: model }, { before: { [STORAGE_KEY]: modelFromChange } });
   } finally { applyingSpaceIconSave = false; }
 }
 
 async function applyPendingExistingSpaceIcon() {
   if (!pendingSpaceIconSave || pendingSpaceIconSave.adding) return;
-  const stored = await chrome.storage.local.get(STORAGE_KEY);
+  const stored = await sidebarStorage.local.get(STORAGE_KEY);
   if (stored[STORAGE_KEY]) await applyPendingSpaceIcon(stored[STORAGE_KEY]);
 }
 

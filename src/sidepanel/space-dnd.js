@@ -1,3 +1,6 @@
+import { isSidebarActive } from './lifecycle.js';
+import { createStorageClient } from '../shared/storage-client.js';
+const sidebarStorage = createStorageClient({ isActive: isSidebarActive });
 const STORAGE_KEY = 'arcSidebarModel';
 const STATE_KEY = 'arcSidebarState';
 const OPEN_TABS_SPACE_ID = '__open_tabs__';
@@ -75,7 +78,7 @@ function clearHoverTimer() {
 
 async function switchToSpace(spaceId) {
   if (!spaceId || spaceId === OPEN_TABS_SPACE_ID) return;
-  const stored = await chrome.storage.local.get(STATE_KEY);
+  const stored = await sidebarStorage.local.get(STATE_KEY);
   const current = stored[STATE_KEY] || { currentSpaceId: null, collapsedFolders: {} };
   if (current.currentSpaceId === spaceId) return;
 
@@ -85,9 +88,7 @@ async function switchToSpace(spaceId) {
     return;
   }
 
-  await chrome.storage.local.set({
-    [STATE_KEY]: { ...current, currentSpaceId: spaceId }
-  });
+  await sidebarStorage.local.patch(STATE_KEY, { currentSpaceId: spaceId });
 }
 
 function scheduleHoverSwitch(spaceId) {
@@ -104,7 +105,7 @@ function scheduleHoverSwitch(spaceId) {
 async function movePinnedToSpaceRoot(itemId, targetSpaceId) {
   if (!itemId || !targetSpaceId || targetSpaceId === OPEN_TABS_SPACE_ID) return;
 
-  const stored = await chrome.storage.local.get([STORAGE_KEY, STATE_KEY]);
+  const stored = await sidebarStorage.local.get([STORAGE_KEY, STATE_KEY]);
   const model = stored[STORAGE_KEY];
   if (!model?.spaces?.length) return;
 
@@ -119,9 +120,10 @@ async function movePinnedToSpaceRoot(itemId, targetSpaceId) {
   targetSpace.children.push(moved);
   recalcStats(model);
 
-  const state = { ...(stored[STATE_KEY] || {}), currentSpaceId: targetSpace.id };
+  const state = stored[STATE_KEY] || {};
+  state.currentSpaceId = targetSpace.id;
   state.collapsedFolders ||= {};
-  await chrome.storage.local.set({
+  await sidebarStorage.local.set({
     [STORAGE_KEY]: model,
     [STATE_KEY]: state
   });
@@ -130,7 +132,7 @@ async function movePinnedToSpaceRoot(itemId, targetSpaceId) {
 async function crossSpaceDrop(itemId, targetNodeId = null, after = false, targetFolderId = null, toRoot = false) {
   if (!itemId) return false;
 
-  const stored = await chrome.storage.local.get([STORAGE_KEY, STATE_KEY]);
+  const stored = await sidebarStorage.local.get([STORAGE_KEY, STATE_KEY]);
   const model = stored[STORAGE_KEY];
   const state = stored[STATE_KEY] || {};
   if (!model?.spaces?.length || !state.currentSpaceId || state.currentSpaceId === OPEN_TABS_SPACE_ID) return false;
@@ -166,13 +168,13 @@ async function crossSpaceDrop(itemId, targetNodeId = null, after = false, target
   if (!moved) return false;
   targetParent.splice(targetIndex, 0, moved);
   recalcStats(model);
-  await chrome.storage.local.set({ [STORAGE_KEY]: model });
+  await sidebarStorage.local.set({ [STORAGE_KEY]: model });
   return true;
 }
 
 async function decorateSpaceDropTargets() {
   if (!spacesEl) return;
-  const stored = await chrome.storage.local.get(STORAGE_KEY);
+  const stored = await sidebarStorage.local.get(STORAGE_KEY);
   const model = stored[STORAGE_KEY];
   if (!model?.spaces?.length) return;
 
@@ -218,7 +220,7 @@ async function decorateSpaceDropTargets() {
 
 async function decorateFolderIds() {
   if (!pinnedEl) return;
-  const stored = await chrome.storage.local.get([STORAGE_KEY, STATE_KEY]);
+  const stored = await sidebarStorage.local.get([STORAGE_KEY, STATE_KEY]);
   const model = stored[STORAGE_KEY];
   const state = stored[STATE_KEY] || {};
   const space = model?.spaces?.find(candidate => candidate.id === state.currentSpaceId);
@@ -237,7 +239,7 @@ document.addEventListener('drop', async event => {
   const itemId = event.dataTransfer?.getData('text/plain');
   if (!itemId) return;
 
-  const stored = await chrome.storage.local.get([STORAGE_KEY, STATE_KEY]);
+  const stored = await sidebarStorage.local.get([STORAGE_KEY, STATE_KEY]);
   const model = stored[STORAGE_KEY];
   const state = stored[STATE_KEY] || {};
   const source = model ? findSourceSpace(model, itemId) : null;

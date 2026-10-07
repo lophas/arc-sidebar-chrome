@@ -1,3 +1,6 @@
+import { isSidebarActive } from './lifecycle.js';
+import { createStorageClient } from '../shared/storage-client.js';
+const sidebarStorage = createStorageClient({ isActive: isSidebarActive });
 const FAVORITE_SIZE_KEY = 'arcSidebarFavoriteSizePercent';
 const ALLOWED_SIZES = new Set([80, 90, 100, 110, 120]);
 const DEFAULT_SIZE = 100;
@@ -37,7 +40,7 @@ function applyFavoriteSize(value) {
   root.style.setProperty('--favorite-custom-font', px(BASE.customFont, scale));
 }
 
-chrome.storage.local.get(FAVORITE_SIZE_KEY)
+sidebarStorage.local.get(FAVORITE_SIZE_KEY)
   .then(stored => applyFavoriteSize(stored[FAVORITE_SIZE_KEY]))
   .catch(() => applyFavoriteSize(DEFAULT_SIZE));
 

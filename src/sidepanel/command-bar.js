@@ -1,3 +1,6 @@
+import { isSidebarActive } from './lifecycle.js';
+import { createStorageClient } from '../shared/storage-client.js';
+const sidebarStorage = createStorageClient({ isActive: isSidebarActive });
 import { buildResults } from './command-search.js';
 const standalone = document.body.classList.contains('command-page');
 const dialog = document.createElement('dialog');
@@ -30,7 +33,7 @@ function render() {
 }
 async function refresh() {
   const token = ++generation;
-  const [stored, tabs] = await Promise.all([chrome.storage.local.get('arcSidebarModel'), chrome.tabs.query({})]);
+  const [stored, tabs] = await Promise.all([sidebarStorage.local.get('arcSidebarModel'), chrome.tabs.query({})]);
   if (token !== generation) return;
   data = tabs.filter(tab => tab.id != null && /^(https?|file):\/\//i.test(tab.pendingUrl || tab.url || '')).map(tab => ({ kind: 'Open tab', tabId: tab.id, lastAccessed: tab.lastAccessed || 0, title: tab.title || tab.url || 'Untitled tab', url: tab.url || '', detail: tab.url || '' }));
   const model = stored.arcSidebarModel;

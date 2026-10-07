@@ -1,3 +1,7 @@
+import { isSidebarActive } from './lifecycle.js';
+import { sidebarTabAction } from './tab-actions.js';
+import { createStorageClient } from '../shared/storage-client.js';
+const sidebarStorage = createStorageClient({ isActive: isSidebarActive });
 const STORAGE_KEY = 'arcSidebarModel';
 const STATE_KEY = 'arcSidebarState';
 const BINDINGS_KEY = 'arcSidebarBindings';
@@ -170,16 +174,8 @@ function faviconFor(url) {
   return `chrome-extension://${chrome.runtime.id}/_favicon/?pageUrl=${encodeURIComponent(url)}&size=32`;
 }
 
-async function saveModel() {
-  await chrome.storage.local.set({ [STORAGE_KEY]: model });
-}
-
-async function saveState() {
-  await chrome.storage.local.set({ [STATE_KEY]: state });
-}
-
-async function saveBindings() {
-  await chrome.storage.session.set({ [BINDINGS_KEY]: bindings });
+async function saveState(patch = state) {
+  await sidebarStorage.local.patch(STATE_KEY, patch);
 }
 
 function normalizeState() {
@@ -188,10 +184,9 @@ function normalizeState() {
 }
 
 async function loadData() {
-  const [stored, session] = await Promise.all([
-    chrome.storage.local.get([STORAGE_KEY, STATE_KEY]),
-    chrome.storage.session.get(BINDINGS_KEY)
-  ]);
+  const { local: stored, session } = await sidebarStorage.snapshot({
+    local: [STORAGE_KEY, STATE_KEY], session: [BINDINGS_KEY]
+  });
   model = stored[STORAGE_KEY] || null;
   state = { currentSpaceId: null, collapsedFolders: {}, ...(stored[STATE_KEY] || {}) };
   bindings = session[BINDINGS_KEY] || {};
@@ -213,35 +208,15 @@ function collectSavedItemIds() {
   return ids;
 }
 
-async function validateBindings() {
-  const savedIds = collectSavedItemIds();
-  let changed = false;
-  for (const [itemId, tabId] of Object.entries(bindings)) {
-    if (!savedIds.has(itemId) || !tabsById.has(Number(tabId))) {
-      delete bindings[itemId];
-      changed = true;
-    }
-  }
-  if (changed) await saveBindings();
-}
-
 function boundTabFor(itemId) {
   const tabId = bindings[itemId];
   return tabId == null ? null : tabsById.get(Number(tabId)) || null;
 }
 
-async function expandAndActivateTab(tabId) {
-  const tab = tabsById.get(Number(tabId)) || await chrome.tabs.get(Number(tabId));
-  if (tab.groupId != null && tab.groupId !== TAB_ID_NONE) {
-    try { await chrome.tabGroups.update(tab.groupId, { collapsed: false }); } catch {}
-  }
-  await chrome.tabs.update(tab.id, { active: true });
-  if (tab.windowId != null) {
-    try { await chrome.windows.update(tab.windowId, { focused: true }); } catch {}
-  }
-}
+async function expandAndActivateTab(tabId) { await sidebarTabAction('activate', { tabId }); }
 
 async function refreshOpenTabsNow() {
+  if (!isSidebarActive()) return;
   if (refreshRunning) {
     refreshPending = true;
     return;
@@ -253,7 +228,6 @@ async function refreshOpenTabsNow() {
       chrome.tabs.query({})
     ]);
     tabsById = new Map(allTabs.filter(tab => tab.id != null).map(tab => [tab.id, tab]));
-    await validateBindings();
     render();
   } finally {
     refreshRunning = false;
@@ -265,6 +239,7 @@ async function refreshOpenTabsNow() {
 }
 
 function scheduleTabRefresh(delay = TAB_REFRESH_DELAY) {
+  if (!isSidebarActive()) return;
   if (refreshTimer) clearTimeout(refreshTimer);
   refreshTimer = setTimeout(() => {
     refreshTimer = null;
@@ -274,59 +249,13 @@ function scheduleTabRefresh(delay = TAB_REFRESH_DELAY) {
 
 async function focusOrOpen(saved) {
   if (!saved?.id || !saved?.url) return;
-
-  const existing = boundTabFor(saved.id);
-  if (existing?.id != null) {
-    try {
-      await expandAndActivateTab(existing.id);
-      return;
-    } catch {}
-  }
-
-  if (bindings[saved.id] != null) {
-    delete bindings[saved.id];
-    await saveBindings();
-  }
-
-  const created = await chrome.tabs.create({ url: saved.url, active: true });
-  if (created?.id != null) {
-    bindings[saved.id] = created.id;
-    await saveBindings();
-  }
+  await sidebarTabAction('open', { itemId: saved.id });
   scheduleTabRefresh(0);
 }
-
 async function resetSavedTab(saved) {
   if (!saved?.id) return;
-  const tabId = bindings[saved.id];
-  if (tabId == null) return;
-
-  delete bindings[saved.id];
-  await saveBindings();
-  try { await chrome.tabs.remove(Number(tabId)); } catch {}
+  await sidebarTabAction('close', { itemIds: [saved.id] });
   scheduleTabRefresh(0);
-}
-
-async function removeBindingsForTab(tabId) {
-  let changed = false;
-  for (const [itemId, boundTabId] of Object.entries(bindings)) {
-    if (Number(boundTabId) === Number(tabId)) {
-      delete bindings[itemId];
-      changed = true;
-    }
-  }
-  if (changed) await saveBindings();
-}
-
-async function replaceBoundTab(removedTabId, addedTabId) {
-  let changed = false;
-  for (const [itemId, boundTabId] of Object.entries(bindings)) {
-    if (Number(boundTabId) === Number(removedTabId)) {
-      bindings[itemId] = addedTabId;
-      changed = true;
-    }
-  }
-  if (changed) await saveBindings();
 }
 
 function currentSpace() {
@@ -433,7 +362,7 @@ function renderNode(node, q) {
 
   header.addEventListener('click', async () => {
     state.collapsedFolders[node.id] = !folder.classList.contains('collapsed');
-    await saveState();
+    await saveState({ collapsedFolders: { [node.id]: state.collapsedFolders[node.id] } });
     render();
   });
 
@@ -507,7 +436,7 @@ function renderSpaces() {
     button.addEventListener('click', async () => {
       if (state.currentSpaceId === space.id) return;
       state.currentSpaceId = space.id;
-      await saveState();
+      await saveState({ currentSpaceId: space.id });
       render();
     });
     els.spaces.append(button);
@@ -529,7 +458,7 @@ function renderSpaces() {
   openButton.addEventListener('click', async () => {
     if (state.currentSpaceId === OPEN_TABS_SPACE_ID) return;
     state.currentSpaceId = OPEN_TABS_SPACE_ID;
-    await saveState();
+    await saveState({ currentSpaceId: OPEN_TABS_SPACE_ID });
     render();
   });
   els.spaces.append(openButton);
@@ -593,6 +522,7 @@ function renderStats() {
 }
 
 function render() {
+  if (!isSidebarActive()) return;
   renderStats();
   renderFavorites();
   renderSpaces();
@@ -602,6 +532,7 @@ function render() {
 }
 
 function scheduleRender() {
+  if (!isSidebarActive()) return;
   if (renderFrame != null) return;
   renderFrame = requestAnimationFrame(() => {
     renderFrame = null;
@@ -617,7 +548,7 @@ els.arcFile.addEventListener('change', async event => {
     state.currentSpaceId = model.spaces[0]?.id || OPEN_TABS_SPACE_ID;
     state.collapsedFolders = {};
     bindings = {};
-    await Promise.all([saveModel(), saveState(), saveBindings()]);
+    await sidebarStorage.transaction({ local: { [STORAGE_KEY]: model, [STATE_KEY]: state }, session: { [BINDINGS_KEY]: bindings } });
     render();
   } catch (error) {
     console.error(error);
@@ -630,10 +561,7 @@ els.arcFile.addEventListener('change', async event => {
 els.search.addEventListener('input', scheduleRender);
 
 chrome.tabs.onCreated.addListener(() => scheduleTabRefresh());
-chrome.tabs.onRemoved.addListener(async tabId => {
-  await removeBindingsForTab(tabId);
-  scheduleTabRefresh(0);
-});
+chrome.tabs.onRemoved.addListener(() => scheduleTabRefresh(0));
 chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
   if (!changeInfo.url && !changeInfo.title && !changeInfo.favIconUrl && changeInfo.status !== 'complete') return;
   scheduleTabRefresh();
@@ -642,10 +570,7 @@ chrome.tabs.onActivated.addListener(() => scheduleTabRefresh(0));
 chrome.tabs.onMoved.addListener(() => scheduleTabRefresh());
 chrome.tabs.onAttached.addListener(() => scheduleTabRefresh());
 chrome.tabs.onDetached.addListener(() => scheduleTabRefresh());
-chrome.tabs.onReplaced.addListener(async (addedTabId, removedTabId) => {
-  await replaceBoundTab(removedTabId, addedTabId);
-  scheduleTabRefresh(0);
-});
+chrome.tabs.onReplaced.addListener(() => scheduleTabRefresh(0));
 
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area === 'local') {
@@ -663,5 +588,26 @@ chrome.storage.onChanged.addListener((changes, area) => {
   }
 });
 
-await loadData();
-await refreshOpenTabsNow();
+let resumeGeneration = 0;
+async function resumeSidebar() {
+  const token = ++resumeGeneration;
+  document.body.classList.add('sidebar-loading');
+  try {
+    await loadData();
+    if (token !== resumeGeneration || !isSidebarActive()) return;
+    await refreshOpenTabsNow();
+  } finally {
+    if (token === resumeGeneration && isSidebarActive()) document.body.classList.remove('sidebar-loading');
+  }
+}
+window.addEventListener('arc-sidebar-activity', event => {
+  if (event.detail.active) resumeSidebar().catch(console.error);
+  else {
+    ++resumeGeneration;
+    if (refreshTimer) clearTimeout(refreshTimer);
+    refreshTimer = null;
+    if (renderFrame != null) cancelAnimationFrame(renderFrame);
+    renderFrame = null;
+  }
+});
+if (isSidebarActive()) await resumeSidebar();

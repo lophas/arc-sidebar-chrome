@@ -1,3 +1,6 @@
+import { createStorageClient } from '../shared/storage-client.js';
+import { commitStorage } from './state-controller.js';
+const sidebarStorage = createStorageClient({ transact: commitStorage });
 const STORAGE_KEY = 'arcSidebarModel';
 const BINDINGS_KEY = 'arcSidebarBindings';
 const TAB_ID_NONE = -1;
@@ -39,8 +42,8 @@ async function reorderNativeGroupsNow() {
   reorderRunning = true;
   try {
     const [local, session, allTabs] = await Promise.all([
-      chrome.storage.local.get(STORAGE_KEY),
-      chrome.storage.session.get(BINDINGS_KEY),
+      sidebarStorage.local.get(STORAGE_KEY),
+      sidebarStorage.session.get(BINDINGS_KEY),
       chrome.tabs.query({})
     ]);
 

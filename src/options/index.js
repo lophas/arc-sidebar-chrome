@@ -1,3 +1,5 @@
+import { createStorageClient } from '../shared/storage-client.js';
+const sidebarStorage = createStorageClient();
 const STORAGE_KEY = 'arcSidebarModel';
 const STATE_KEY = 'arcSidebarState';
 const LOCAL_MODEL_UPDATED_KEY = 'arcSidebarModelUpdatedAt';
@@ -179,7 +181,7 @@ async function runSyncNow() {
 }
 
 async function load() {
-  const stored = await chrome.storage.local.get(STORAGE_KEY);
+  const stored = await sidebarStorage.local.get(STORAGE_KEY);
   render(stored[STORAGE_KEY]);
   await renderSyncStatus();
 }
@@ -199,8 +201,8 @@ async function resetExtensionData() {
     // Clear the cloud snapshot first so clearing the local model cannot be
     // immediately repopulated by Chrome Sync while testing backup restore.
     await chrome.storage.sync.clear();
-    await chrome.storage.session.clear();
-    await chrome.storage.local.clear();
+    await sidebarStorage.session.clear();
+    await sidebarStorage.local.clear();
 
     render(null);
     await renderSyncStatus();
@@ -219,7 +221,7 @@ arcFile.addEventListener('change', async event => {
   try {
     const model = parseArcSidebar(JSON.parse(await file.text()));
     const now = Date.now();
-    await chrome.storage.local.set({
+    await sidebarStorage.local.set({
       [STORAGE_KEY]: model,
       [STATE_KEY]: { currentSpaceId: model.spaces[0]?.id || null, collapsedFolders: {} },
       [LOCAL_MODEL_UPDATED_KEY]: now
@@ -240,7 +242,7 @@ arcFile.addEventListener('change', async event => {
 
 downloadBackup.addEventListener('click', async () => {
   backupStatus.textContent = '';
-  const stored = await chrome.storage.local.get(STORAGE_KEY);
+  const stored = await sidebarStorage.local.get(STORAGE_KEY);
   const model = stored[STORAGE_KEY];
   if (!isValidSidebarModel(model)) {
     backupStatus.textContent = 'No sidebar data to back up.';
@@ -275,7 +277,7 @@ restoreBackup.addEventListener('change', async event => {
     if (!isValidSidebarModel(model)) throw new Error('Not a valid Arc Sidebar backup.');
 
     const now = Date.now();
-    await chrome.storage.local.set({
+    await sidebarStorage.local.set({
       [STORAGE_KEY]: model,
       [STATE_KEY]: { currentSpaceId: model.spaces[0]?.id || null, collapsedFolders: {} },
       [LOCAL_MODEL_UPDATED_KEY]: now

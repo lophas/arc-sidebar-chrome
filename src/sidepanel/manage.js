@@ -1,3 +1,6 @@
+import { isSidebarActive } from './lifecycle.js';
+import { createStorageClient } from '../shared/storage-client.js';
+const sidebarStorage = createStorageClient({ isActive: isSidebarActive });
 const STORAGE_KEY = 'arcSidebarModel';
 const STATE_KEY = 'arcSidebarState';
 const OPEN_TABS_SPACE_ID = '__open_tabs__';
@@ -18,7 +21,7 @@ function uid() {
 }
 
 async function getModel() {
-  const stored = await chrome.storage.local.get(STORAGE_KEY);
+  const stored = await sidebarStorage.local.get(STORAGE_KEY);
   return stored[STORAGE_KEY] || {
     version: 2,
     favorites: [],
@@ -28,7 +31,7 @@ async function getModel() {
 }
 
 async function getState() {
-  const stored = await chrome.storage.local.get(STATE_KEY);
+  const stored = await sidebarStorage.local.get(STATE_KEY);
   return stored[STATE_KEY] || { currentSpaceId: null, collapsedFolders: {} };
 }
 
@@ -54,7 +57,7 @@ function recalcStats(model) {
 
 async function saveModel(model) {
   recalcStats(model);
-  await chrome.storage.local.set({ [STORAGE_KEY]: model });
+  await sidebarStorage.local.set({ [STORAGE_KEY]: model });
 }
 
 function normalizeEnteredUrl(value) {

@@ -1,3 +1,6 @@
+import { isSidebarActive } from './lifecycle.js';
+import { createStorageClient } from '../shared/storage-client.js';
+const sidebarStorage = createStorageClient({ isActive: isSidebarActive });
 const STORAGE_KEY = 'arcSidebarModel';
 const STATE_KEY = 'arcSidebarState';
 const OPEN_TABS_SPACE_ID = '__open_tabs__';
@@ -92,6 +95,7 @@ function replaceWithCustomIcon(container, icon, className) {
 }
 
 function decorateVisibleIcons() {
+  if (!isSidebarActive()) return;
   const model = cachedModel;
   if (!model) return;
 
@@ -115,7 +119,7 @@ function decorateVisibleIcons() {
 }
 
 async function refreshCache() {
-  const stored = await chrome.storage.local.get([STORAGE_KEY, STATE_KEY]);
+  const stored = await sidebarStorage.local.get([STORAGE_KEY, STATE_KEY]);
   cachedModel = stored[STORAGE_KEY] || null;
   cachedState = { currentSpaceId: null, collapsedFolders: {}, ...(stored[STATE_KEY] || {}) };
   decorateVisibleIcons();
@@ -411,7 +415,7 @@ async function applyPendingIconSave(modelFromChange) {
         }
       }
     } else if (pending.kind === 'new-pinned') {
-      const state = await chrome.storage.local.get(STATE_KEY);
+      const state = await sidebarStorage.local.get(STATE_KEY);
       const spaceId = state[STATE_KEY]?.currentSpaceId;
       const space = model.spaces?.find(candidate => candidate.id === spaceId) || model.spaces?.[0];
       const roots = space?.children || [];
@@ -421,7 +425,7 @@ async function applyPendingIconSave(modelFromChange) {
       changed = applyIconValue(item, pending.icon);
     }
 
-    if (changed) await chrome.storage.local.set({ [STORAGE_KEY]: model });
+    if (changed) await sidebarStorage.local.set({ [STORAGE_KEY]: model }, { before: { [STORAGE_KEY]: modelFromChange } });
   } finally {
     applyingIconSave = false;
   }
@@ -429,7 +433,7 @@ async function applyPendingIconSave(modelFromChange) {
 
 async function applyPendingExistingIconSave() {
   if (!pendingIconSave || !['favorite', 'pinned'].includes(pendingIconSave.kind)) return;
-  const stored = await chrome.storage.local.get(STORAGE_KEY);
+  const stored = await sidebarStorage.local.get(STORAGE_KEY);
   if (stored[STORAGE_KEY]) await applyPendingIconSave(stored[STORAGE_KEY]);
 }
 

@@ -1,3 +1,8 @@
+import './tab-actions.js';
+import './persistent-bindings.js';
+import { createStorageClient } from '../shared/storage-client.js';
+import { commitStorage } from './state-controller.js';
+const sidebarStorage = createStorageClient({ transact: commitStorage });
 import './command-bar.js';
 import './context-menu.js';
 
@@ -59,8 +64,8 @@ async function markWebTabsForModeReload() {
   try {
     const tabs = await chrome.tabs.query({});
     const tabIds = tabs.filter(tab => tab.id != null && isWebTab(tab)).map(tab => tab.id);
-    if (tabIds.length) await chrome.storage.session.set({ [MODE_RELOAD_TABS_KEY]: tabIds });
-    else await chrome.storage.session.remove(MODE_RELOAD_TABS_KEY);
+    if (tabIds.length) await sidebarStorage.session.set({ [MODE_RELOAD_TABS_KEY]: tabIds });
+    else await sidebarStorage.session.remove(MODE_RELOAD_TABS_KEY);
   } catch (error) {
     console.warn('Arc Sidebar: could not mark tabs for sidebar-mode reload', error);
   }
@@ -68,13 +73,13 @@ async function markWebTabsForModeReload() {
 
 async function reloadActivatedTabForMode(tabId) {
   try {
-    const stored = await chrome.storage.session.get(MODE_RELOAD_TABS_KEY);
+    const stored = await sidebarStorage.session.get(MODE_RELOAD_TABS_KEY);
     const pending = Array.isArray(stored[MODE_RELOAD_TABS_KEY]) ? stored[MODE_RELOAD_TABS_KEY] : [];
     if (!pending.includes(tabId)) return;
 
     const next = pending.filter(id => id !== tabId);
-    if (next.length) await chrome.storage.session.set({ [MODE_RELOAD_TABS_KEY]: next });
-    else await chrome.storage.session.remove(MODE_RELOAD_TABS_KEY);
+    if (next.length) await sidebarStorage.session.set({ [MODE_RELOAD_TABS_KEY]: next });
+    else await sidebarStorage.session.remove(MODE_RELOAD_TABS_KEY);
 
     const tab = await chrome.tabs.get(tabId);
     if (isWebTab(tab)) await chrome.tabs.reload(tabId);
@@ -135,7 +140,7 @@ async function writeSyncedModel(model) {
 
   try {
     await chrome.storage.sync.set(values);
-    await chrome.storage.local.set({ [LOCAL_MODEL_UPDATED_KEY]: updatedAt });
+    await sidebarStorage.local.set({ [LOCAL_MODEL_UPDATED_KEY]: updatedAt });
   } catch (error) {
     console.warn('Arc Sidebar: Chrome Sync write failed; local data is unchanged', error);
     return { ok: false, reason: error?.message || 'sync-write-failed' };
@@ -157,16 +162,16 @@ async function applySyncedModel(synced = null) {
   const remote = synced || await readSyncedModel();
   if (!remote?.model) return { ok: false, reason: 'no-remote-model' };
 
-  const local = await chrome.storage.local.get(STORAGE_KEY);
+  const local = await sidebarStorage.local.get(STORAGE_KEY);
   const syncedJson = modelJson(remote.model);
   const updatedAt = Number(remote.meta?.updatedAt) || Date.now();
   if (modelJson(local[STORAGE_KEY]) === syncedJson) {
-    await chrome.storage.local.set({ [LOCAL_MODEL_UPDATED_KEY]: updatedAt });
+    await sidebarStorage.local.set({ [LOCAL_MODEL_UPDATED_KEY]: updatedAt });
     return { ok: true, direction: 'none', updatedAt };
   }
 
   suppressLocalModelJson = syncedJson;
-  await chrome.storage.local.set({
+  await sidebarStorage.local.set({
     [STORAGE_KEY]: remote.model,
     [LOCAL_MODEL_UPDATED_KEY]: updatedAt
   });
@@ -178,7 +183,7 @@ async function reconcileSidebarSync() {
     if (!await isSidebarSyncEnabled()) return { ok: false, reason: 'disabled' };
 
     const [local, synced] = await Promise.all([
-      chrome.storage.local.get([STORAGE_KEY, LOCAL_MODEL_UPDATED_KEY]),
+      sidebarStorage.local.get([STORAGE_KEY, LOCAL_MODEL_UPDATED_KEY]),
       readSyncedModel()
     ]);
 
@@ -188,7 +193,7 @@ async function reconcileSidebarSync() {
     if (synced?.model) {
       const remoteUpdatedAt = Number(synced.meta?.updatedAt) || 0;
       if (modelJson(localModel) === modelJson(synced.model)) {
-        await chrome.storage.local.set({ [LOCAL_MODEL_UPDATED_KEY]: Math.max(localUpdatedAt, remoteUpdatedAt) });
+        await sidebarStorage.local.set({ [LOCAL_MODEL_UPDATED_KEY]: Math.max(localUpdatedAt, remoteUpdatedAt) });
         return { ok: true, direction: 'none', updatedAt: remoteUpdatedAt || localUpdatedAt || null };
       }
 
@@ -213,7 +218,7 @@ function queueModelSyncPush(delay = 350) {
     modelSyncPushTimer = null;
     try {
       if (!await isSidebarSyncEnabled()) return;
-      const local = await chrome.storage.local.get(STORAGE_KEY);
+      const local = await sidebarStorage.local.get(STORAGE_KEY);
       if (local[STORAGE_KEY]) await writeSyncedModel(local[STORAGE_KEY]);
     } catch (error) {
       console.warn('Arc Sidebar: Chrome Sync push failed', error);
@@ -281,12 +286,12 @@ function buildFavoriteIds(model) {
 }
 
 async function getSessionGroupMap() {
-  const stored = await chrome.storage.session.get(GROUP_MAP_KEY);
+  const stored = await sidebarStorage.session.get(GROUP_MAP_KEY);
   return stored[GROUP_MAP_KEY] || {};
 }
 
 async function saveSessionGroupMap(map) {
-  await chrome.storage.session.set({ [GROUP_MAP_KEY]: map });
+  await sidebarStorage.session.set({ [GROUP_MAP_KEY]: map });
 }
 
 function mapKey(windowId, spaceId) {
@@ -363,8 +368,8 @@ async function syncNativeGroupsNow() {
   groupSyncRunning = true;
   try {
     const [local, session, tabs, groupMap] = await Promise.all([
-      chrome.storage.local.get(STORAGE_KEY),
-      chrome.storage.session.get(BINDINGS_KEY),
+      sidebarStorage.local.get(STORAGE_KEY),
+      sidebarStorage.session.get(BINDINGS_KEY),
       chrome.tabs.query({}),
       getSessionGroupMap()
     ]);
@@ -462,7 +467,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
       if (suppressLocalModelJson && nextJson === suppressLocalModelJson) {
         suppressLocalModelJson = null;
       } else if (changes[STORAGE_KEY].newValue) {
-        chrome.storage.local.set({ [LOCAL_MODEL_UPDATED_KEY]: Date.now() }).catch(() => {});
+        sidebarStorage.local.set({ [LOCAL_MODEL_UPDATED_KEY]: Date.now() }).catch(() => {});
         queueModelSyncPush();
       }
     }

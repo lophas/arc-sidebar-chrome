@@ -1,3 +1,7 @@
+import { isSidebarActive } from './lifecycle.js';
+import { sidebarTabAction } from './tab-actions.js';
+import { createStorageClient } from '../shared/storage-client.js';
+const sidebarStorage = createStorageClient({ isActive: isSidebarActive });
 const STORAGE_KEY = 'arcSidebarModel';
 const BINDINGS_KEY = 'arcSidebarBindings';
 
@@ -16,8 +20,8 @@ function collectTabIds(nodes, out = []) {
 
 async function getModelAndBindings() {
   const [local, session] = await Promise.all([
-    chrome.storage.local.get(STORAGE_KEY),
-    chrome.storage.session.get(BINDINGS_KEY)
+    sidebarStorage.local.get(STORAGE_KEY),
+    sidebarStorage.session.get(BINDINGS_KEY)
   ]);
   return {
     model: local[STORAGE_KEY],
@@ -29,28 +33,7 @@ function liveItemIdsForNodes(nodes, bindings) {
   return collectTabIds(nodes || []).filter(itemId => bindings[itemId] != null);
 }
 
-async function closeBoundItems(itemIds) {
-  if (!itemIds?.length) return;
-  const session = await chrome.storage.session.get(BINDINGS_KEY);
-  const bindings = session[BINDINGS_KEY] || {};
-  const tabIds = [];
-  let changed = false;
-
-  for (const itemId of itemIds) {
-    const tabId = bindings[itemId];
-    if (tabId == null) continue;
-    const numericTabId = Number(tabId);
-    if (Number.isInteger(numericTabId)) tabIds.push(numericTabId);
-    delete bindings[itemId];
-    changed = true;
-  }
-
-  if (!changed) return;
-  await chrome.storage.session.set({ [BINDINGS_KEY]: bindings });
-  if (tabIds.length) {
-    try { await chrome.tabs.remove([...new Set(tabIds)]); } catch {}
-  }
-}
+async function closeBoundItems(itemIds) { if (itemIds?.length) await sidebarTabAction('close', { itemIds }); }
 
 function ensureMenu() {
   if (menu) return menu;
@@ -206,6 +189,7 @@ async function decorateMemoryControls() {
 }
 
 function scheduleDecorate() {
+  if (!isSidebarActive()) return;
   decorateImmediateLiveDots();
   if (decorateTimer) clearTimeout(decorateTimer);
   decorateTimer = setTimeout(() => {

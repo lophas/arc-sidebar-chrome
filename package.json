@@ -1,0 +1,6 @@
+{
+  "name": "arc-sidebar-chrome",
+  "private": true,
+  "type": "module",
+  "scripts": { "test": "node --test tests/*.test.js", "check": "node tests/check-sources.js" }
+}

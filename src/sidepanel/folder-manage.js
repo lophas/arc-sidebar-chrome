@@ -1,3 +1,7 @@
+import { isSidebarActive } from './lifecycle.js';
+import { sidebarTabAction } from './tab-actions.js';
+import { createStorageClient } from '../shared/storage-client.js';
+const sidebarStorage = createStorageClient({ isActive: isSidebarActive });
 const STORAGE_KEY = 'arcSidebarModel';
 const STATE_KEY = 'arcSidebarState';
 const BINDINGS_KEY = 'arcSidebarBindings';
@@ -14,7 +18,7 @@ function uid() {
 }
 
 async function getData() {
-  return chrome.storage.local.get([STORAGE_KEY, STATE_KEY]);
+  return sidebarStorage.local.get([STORAGE_KEY, STATE_KEY]);
 }
 
 function recalcStats(model) {
@@ -41,7 +45,7 @@ async function saveData(model, state = null) {
   recalcStats(model);
   const values = { [STORAGE_KEY]: model };
   if (state) values[STATE_KEY] = state;
-  await chrome.storage.local.set(values);
+  await sidebarStorage.local.set(values);
 }
 
 function currentSpace(model, state) {
@@ -85,28 +89,7 @@ function collectTabIds(nodes, out = []) {
   return out;
 }
 
-async function closeFolderTabs(folder, bindings) {
-  const itemIds = new Set(collectTabIds(folder.children || []));
-  if (!itemIds.size) return;
-
-  const tabIds = [];
-  let changed = false;
-  for (const itemId of itemIds) {
-    const tabId = bindings[itemId];
-    if (tabId == null) continue;
-    const numericTabId = Number(tabId);
-    if (Number.isInteger(numericTabId)) tabIds.push(numericTabId);
-    delete bindings[itemId];
-    changed = true;
-  }
-
-  if (!changed) return;
-
-  await chrome.storage.session.set({ [BINDINGS_KEY]: bindings });
-  if (tabIds.length) {
-    try { await chrome.tabs.remove([...new Set(tabIds)]); } catch {}
-  }
-}
+async function closeFolderTabs(folder) { await sidebarTabAction('close', { itemIds: collectTabIds(folder.children || []) }); }
 
 function ensureFolderDialog() {
   if (folderDialog) return folderDialog;
@@ -217,7 +200,7 @@ async function decorateFolders() {
   if (!pinnedEl) return;
   const [stored, session] = await Promise.all([
     getData(),
-    chrome.storage.session.get(BINDINGS_KEY)
+    sidebarStorage.session.get(BINDINGS_KEY)
   ]);
   const model = stored[STORAGE_KEY];
   const state = stored[STATE_KEY] || { currentSpaceId: null, collapsedFolders: {} };
@@ -269,7 +252,7 @@ async function decorateFolders() {
     closeButton.onclick = async event => {
       event.preventDefault();
       event.stopPropagation();
-      const latest = await chrome.storage.session.get(BINDINGS_KEY);
+      const latest = await sidebarStorage.session.get(BINDINGS_KEY);
       await closeFolderTabs(folder, latest[BINDINGS_KEY] || {});
     };
   });

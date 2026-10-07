@@ -1,72 +1,58 @@
-const STATE_KEY = 'arcSidebarState';
-const SCROLL_KEY = 'arcSidebarScrollPositions';
-const OPEN_TABS_SPACE_ID = '__open_tabs__';
-
+import { createStorageClient } from '../shared/storage-client.js';
+import { isSidebarActive } from './lifecycle.js';
+const sidebarStorage = createStorageClient({ isActive: isSidebarActive });
+const STATE_KEY = 'arcSidebarState', SCROLL_KEY = 'arcSidebarScrollPositions';
 const scroller = document.querySelector('main');
-let currentSpaceId = null;
-let positions = {};
-let saveTimer = null;
-let restoreFrame = null;
-
-function normalizedSpaceId(value) {
-  return value || OPEN_TABS_SPACE_ID;
+let currentSpaceId = '__open_tabs__', positions = {}, saveTimer = null, restoreFrame = null;
+let pending = null, restoring = false, restoreGeneration = 0;
+async function flush() {
+  if (saveTimer) clearTimeout(saveTimer);
+  saveTimer = null;
+  if (!pending) return;
+  const value = pending; pending = null;
+  await sidebarStorage.local.patch(SCROLL_KEY, { [value.spaceId]: value.top });
 }
-
 function restoreCurrentScroll() {
-  if (!scroller) return;
+  if (!scroller || !isSidebarActive()) return;
   if (restoreFrame != null) cancelAnimationFrame(restoreFrame);
+  const token = ++restoreGeneration;
+  restoring = true;
   restoreFrame = requestAnimationFrame(() => {
     restoreFrame = null;
-    const key = normalizedSpaceId(currentSpaceId);
-    const saved = Number(positions[key]) || 0;
-    scroller.scrollTop = saved;
+    scroller.scrollTop = Number(positions[currentSpaceId]) || 0;
+    requestAnimationFrame(() => { if (token === restoreGeneration) restoring = false; });
   });
 }
-
 function queueSave() {
-  if (!scroller) return;
-  const key = normalizedSpaceId(currentSpaceId);
-  positions[key] = scroller.scrollTop;
-
+  if (!scroller || !isSidebarActive() || restoring) return;
+  pending = { spaceId: currentSpaceId, top: scroller.scrollTop };
+  positions[currentSpaceId] = pending.top;
   if (saveTimer) clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => {
-    saveTimer = null;
-    chrome.storage.local.set({ [SCROLL_KEY]: positions }).catch(() => {});
-  }, 120);
+  saveTimer = setTimeout(() => flush().catch(console.warn), 120);
 }
-
-async function init() {
-  const stored = await chrome.storage.local.get([STATE_KEY, SCROLL_KEY]);
-  currentSpaceId = stored[STATE_KEY]?.currentSpaceId || null;
-  positions = stored[SCROLL_KEY] && typeof stored[SCROLL_KEY] === 'object'
-    ? { ...stored[SCROLL_KEY] }
-    : {};
+async function refresh() {
+  const stored = await sidebarStorage.local.get([STATE_KEY, SCROLL_KEY]);
+  currentSpaceId = stored[STATE_KEY]?.currentSpaceId || '__open_tabs__';
+  positions = stored[SCROLL_KEY] || {};
   restoreCurrentScroll();
 }
-
 scroller?.addEventListener('scroll', queueSave, { passive: true });
 window.addEventListener('arc-sidebar-rendered', restoreCurrentScroll);
-
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'local') return;
-
+  if (changes[SCROLL_KEY]) {
+    positions = changes[SCROLL_KEY].newValue || {};
+    if (pending) positions = { ...positions, [pending.spaceId]: pending.top };
+  }
   if (changes[STATE_KEY]) {
-    currentSpaceId = changes[STATE_KEY].newValue?.currentSpaceId || null;
+    flush().catch(console.warn); // Captured Space ID, not the newly selected Space.
+    currentSpaceId = changes[STATE_KEY].newValue?.currentSpaceId || '__open_tabs__';
     restoreCurrentScroll();
-  }
-
-  if (changes[SCROLL_KEY] && !saveTimer) {
-    positions = changes[SCROLL_KEY].newValue && typeof changes[SCROLL_KEY].newValue === 'object'
-      ? { ...changes[SCROLL_KEY].newValue }
-      : {};
-  }
+  } else if (changes[SCROLL_KEY] && !pending) restoreCurrentScroll();
 });
-
-window.addEventListener('beforeunload', () => {
-  if (!scroller) return;
-  const key = normalizedSpaceId(currentSpaceId);
-  positions[key] = scroller.scrollTop;
-  chrome.storage.local.set({ [SCROLL_KEY]: positions }).catch(() => {});
-}, { once: true });
-
-init().catch(() => {});
+window.addEventListener('arc-sidebar-activity', event => {
+  if (event.detail.active) refresh().catch(console.warn);
+  else { flush().catch(console.warn); if (restoreFrame != null) cancelAnimationFrame(restoreFrame); restoreFrame = null; ++restoreGeneration; restoring = false; }
+});
+window.addEventListener('pagehide', () => flush().catch(() => {}));
+if (isSidebarActive()) refresh().catch(console.warn);
