@@ -36,3 +36,31 @@ test('rapid activation changes are read again before collapsing a group',async()
  await syncNativeGroupVisibility();
  assert.equal(f.groups.get(2).collapsed,false);
 });
+test('focus synchronization affects only its window, preserving manual layout elsewhere',async()=>{
+ const f=fixture();f.groups.get(5).collapsed=false;
+ await syncNativeGroupVisibility(10);
+ assert.equal(f.groups.get(5).collapsed,false);
+ assert.equal(f.groups.get(4).collapsed,true);
+ assert.equal(f.groups.get(1).collapsed,false);
+});
+test('only tab activation and window focus trigger synchronization; manual changes are respected',async()=>{
+ const {watchNativeGroupVisibility}=await import('../src/background/native-group-visibility.js');
+ const f=fixture();const listeners={};
+ const event=name=>({addListener(fn){listeners[name]=fn;}});
+ chrome.tabs.onActivated=event('activated');chrome.windows={onFocusChanged:event('focused')};
+ watchNativeGroupVisibility();
+ assert.deepEqual(Object.keys(listeners),['activated','focused']);
+ f.groups.get(3).collapsed=false;
+ await new Promise(resolve=>setTimeout(resolve,90));
+ assert.equal(f.updates.length,0,'installing listeners does not overwrite manual state');
+ listeners.activated({windowId:10,tabId:100});
+ await new Promise(resolve=>setTimeout(resolve,90));
+ assert.equal(f.groups.get(3).collapsed,true);
+ f.groups.get(3).collapsed=false;
+ listeners.focused(-1);
+ await new Promise(resolve=>setTimeout(resolve,90));
+ assert.equal(f.groups.get(3).collapsed,false,'losing browser focus preserves manual layout');
+ listeners.focused(10);
+ await new Promise(resolve=>setTimeout(resolve,90));
+ assert.equal(f.groups.get(3).collapsed,true);
+});

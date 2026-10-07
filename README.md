@@ -15,7 +15,7 @@ Your saved links stay in the sidebar when their browser tabs close. Click a save
 - **Folders and drag-and-drop** — organize links, choose their exact order, and move them between folders and Spaces.
 - **Open tabs within each Space** — see the Space’s additional browser tabs below its pinned links and drag them into the pinned list to save them.
 - **Matching Chrome groups** — Favorites first, then Space groups in sidebar order, with pinned tabs ordered by the sidebar hierarchy.
-- **Focused tab bar** — only the active tab’s Space or Favorites group stays expanded in each window.
+- **Focused tab bar** — tab or window focus changes expand the active group and collapse the others; manual group changes remain until focus changes again.
 - **Two sidebar modes** — an autohide overlay at the right edge or Chrome’s native Side Panel.
 - **Live indicators and bulk close** — see what is open and close a Favorite, pinned tab, folder or an entire Space’s open tabs.
 - **Personalized appearance** — website favicons, uploaded icons, searchable Space emojis and adjustable Favorite tile sizes.
@@ -124,7 +124,9 @@ Favorites use a **Favorites** Chrome group. Each Space uses its own Chrome group
 
 The groups follow the sidebar: **Favorites first**, then Spaces in their configured order. Newly opened groups take their place in that order. Reordering Spaces updates the group order too.
 
-Only the group containing the active tab stays expanded in each window. Switching tabs opens the relevant Space or Favorites group and collapses the others. If the active tab is outside these groups, they all collapse. Their tabs stay open.
+When tab or window focus changes, the active tab’s Space or Favorites group expands and the other managed groups in that window collapse. If the active tab is outside these groups, they all collapse. Their tabs stay open.
+
+Between focus changes, you can freely expand or collapse groups yourself. Your manual layout stays in place until the next focus change in that window.
 
 Within a group, pinned tabs follow the sidebar’s folder and link order. Additional tabs opened during your work remain part of the Space and appear below its pinned links in the sidebar.
 
