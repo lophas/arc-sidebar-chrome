@@ -1,5 +1,5 @@
 import { createStorageClient } from '../shared/storage-client.js';
-import { commitStorage } from './state-controller.js';
+import { commitStorage, serializeState } from './state-controller.js';
 const sidebarStorage = createStorageClient({ transact: commitStorage });
 const SESSION_KEY = 'arcSidebarBindings';
 const PERSIST_KEY = 'arcSidebarPersistentBindings';
@@ -10,6 +10,12 @@ let persistentBindings = {};
 let itemByTabId = new Map();
 let initialized = false;
 const snapshotTimers = new Map();
+const closingWindowItems = new Set();
+const recoveryRemovedItems = new Set();
+export function preserveWindowBindings(tabId) {
+  const itemId = itemByTabId.get(Number(tabId));
+  if (itemId) closingWindowItems.add(itemId);
+}
 
 const normalizeUrl = value => {
   if (!value) return '';
@@ -58,7 +64,8 @@ function scheduleSnapshot(itemId, tabId, delay = SNAPSHOT_DELAY) {
   snapshotTimers.set(itemId, setTimeout(async () => {
     snapshotTimers.delete(itemId);
     if (sessionBindings[itemId] !== tabId) return;
-    if (await snapshotBinding(itemId, tabId)) await persistBindings();
+    try { if (await snapshotBinding(itemId, tabId)) await persistBindings(); }
+    catch (error) { console.warn('Arc Sidebar: binding snapshot failed', error); }
   }, delay));
 }
 
@@ -72,13 +79,18 @@ function candidateScore(tab, saved) {
   return score;
 }
 
-async function restoreSessionBindings() {
+// Caller holds the shared state queue: recovery and opening cannot race.
+export async function restoreSessionBindings(fallbackItemId) {
   const tabs = await chrome.tabs.query({});
-  const stored = await sidebarStorage.local.get('arcSidebarModel');
+  const stored = await chrome.storage.local.get('arcSidebarModel');
+  sessionBindings = (await chrome.storage.session.get(SESSION_KEY))[SESSION_KEY] || {};
+  persistentBindings = (await chrome.storage.local.get(PERSIST_KEY))[PERSIST_KEY] || {};
   const ids = new Set();
-  const walk = nodes => { for (const node of nodes || []) { if (node.type === 'tab') ids.add(node.id); if (node.type === 'folder') walk(node.children); } };
+  const savedUrls = {};
+  const walk = nodes => { for (const node of nodes || []) { if (node.type === 'tab') { ids.add(node.id); savedUrls[node.id] = { url: node.url }; } if (node.type === 'folder') walk(node.children); } };
   walk(stored.arcSidebarModel?.favorites);
   for (const space of stored.arcSidebarModel?.spaces || []) walk(space.children);
+  const beforeBindings = { ...sessionBindings };
   const live = new Set(tabs.map(tab => tab.id));
   for (const [id, tabId] of Object.entries(sessionBindings)) if (!ids.has(id) || !live.has(Number(tabId))) delete sessionBindings[id];
   for (const id of Object.keys(persistentBindings)) if (!ids.has(id)) delete persistentBindings[id];
@@ -87,7 +99,11 @@ async function restoreSessionBindings() {
   const claimed = new Set(Object.values(next).map(Number));
   let restored = false;
 
-  for (const [itemId, saved] of Object.entries(persistentBindings)) {
+  const candidates = { ...persistentBindings };
+  // Old versions may already have lost recovery metadata. Only the explicitly
+  // clicked item may fall back to its original URL; never guess a changed URL.
+  if (fallbackItemId && !candidates[fallbackItemId] && savedUrls[fallbackItemId]) candidates[fallbackItemId] = savedUrls[fallbackItemId];
+  for (const [itemId, saved] of Object.entries(candidates)) {
     if (next[itemId] != null) continue;
     let bestTab = null;
     let bestScore = -1;
@@ -109,7 +125,10 @@ async function restoreSessionBindings() {
   {
     sessionBindings = next;
     rebuildReverseIndex();
-    await sidebarStorage.session.set({ [SESSION_KEY]: next });
+    if (JSON.stringify(beforeBindings) !== JSON.stringify(next)) {
+      for (const id of Object.keys(beforeBindings)) if (!(id in next)) recoveryRemovedItems.add(id);
+      await chrome.storage.session.set({ [SESSION_KEY]: next });
+    }
   }
   return restored;
 }
@@ -123,7 +142,8 @@ async function initialize() {
   persistentBindings = local[PERSIST_KEY] || {};
   rebuildReverseIndex();
   initialized = true;
-  await restoreSessionBindings();
+  await serializeState(restoreSessionBindings);
+  for (const [itemId, tabId] of Object.entries(sessionBindings)) scheduleSnapshot(itemId, tabId, 0);
 }
 
 chrome.storage.onChanged.addListener((changes, area) => {
@@ -134,23 +154,33 @@ chrome.storage.onChanged.addListener((changes, area) => {
 
   let removed = false;
   for (const itemId of Object.keys(oldBindings)) {
-    if (!(itemId in sessionBindings) && itemId in persistentBindings) {
+    if (!(itemId in sessionBindings) && itemId in persistentBindings && !recoveryRemovedItems.has(itemId) && !closingWindowItems.has(itemId)) {
       delete persistentBindings[itemId];
       removed = true;
     }
   }
-  if (removed) persistBindings().catch(() => {});
+  for (const id of Object.keys(oldBindings)) if (!(id in sessionBindings)) {
+    closingWindowItems.delete(id);
+    recoveryRemovedItems.delete(id);
+  }
+  if (removed) persistBindings().catch(console.warn);
 
   for (const [itemId, tabId] of Object.entries(sessionBindings)) {
     if (oldBindings[itemId] !== tabId) scheduleSnapshot(itemId, tabId, 0);
   }
 });
 
+function retryRecovery() {
+  bindingsReady.then(() => serializeState(restoreSessionBindings)).catch(console.warn);
+}
+chrome.tabs.onCreated?.addListener(retryRecovery);
+
 chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
   if (!initialized) return;
   if (!changeInfo.url && !changeInfo.title && changeInfo.status !== 'complete') return;
   const itemId = itemByTabId.get(Number(tabId));
-  if (itemId) scheduleSnapshot(itemId, tabId);
+  if (itemId) scheduleSnapshot(itemId, tabId, changeInfo.url ? 0 : SNAPSHOT_DELAY);
+  else retryRecovery();
 });
 
 chrome.tabs.onMoved.addListener(tabId => {

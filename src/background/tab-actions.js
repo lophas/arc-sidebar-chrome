@@ -1,6 +1,6 @@
 import { recalcModelStats } from '../shared/state-merge.js';
 import { savedItemIds, spaceGroupIds } from '../shared/space-tabs.js';
-import { bindingsReady } from './persistent-bindings.js';
+import { bindingsReady, restoreSessionBindings, preserveWindowBindings } from './persistent-bindings.js';
 import { serializeState } from './state-controller.js';
 const MODEL = 'arcSidebarModel', STATE = 'arcSidebarState', BINDINGS = 'arcSidebarBindings';
 function findSaved(model, id) {
@@ -41,6 +41,7 @@ export async function activateTab(tabId) {
 export async function openSavedItem(itemId, windowId) {
   await bindingsReady;
   return serializeState(async () => {
+    await restoreSessionBindings(itemId);
     const [local, session] = await Promise.all([chrome.storage.local.get(MODEL), chrome.storage.session.get(BINDINGS)]);
     const found = findSaved(local[MODEL], itemId);
     if (!found?.item.url) throw new Error('This sidebar item no longer exists.');
@@ -161,7 +162,12 @@ function updateTabBinding(removed, added) {
     if (changed) await chrome.storage.session.set({ [BINDINGS]: bindings });
   });
 }
-chrome.tabs.onRemoved.addListener(id => updateTabBinding(id).catch(console.warn));
+chrome.tabs.onRemoved.addListener((id, info) => {
+  // Chrome emits removals while closing/restoring windows too. Keep the last
+  // URL for restart recovery; explicit sidebar close clears it beforehand.
+  if (info?.isWindowClosing) preserveWindowBindings(id);
+  updateTabBinding(id).catch(console.warn);
+});
 chrome.tabs.onReplaced.addListener((added, removed) => updateTabBinding(removed, added).catch(console.warn));
 chrome.runtime.onMessage.addListener((message, sender, respond) => {
   if (message?.type !== 'arc-sidebar-tab-action') return;

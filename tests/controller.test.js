@@ -22,6 +22,7 @@ mock.data.local.arcSidebarModel=seed();const client=createStorageClient({transac
 stale.spaces[0].children[0].children[0].title='stale';mock.data.local.arcSidebarModel.spaces[0].children[0].children[0].title='latest';
 await assert.rejects(client.local.set({arcSidebarModel:stale,arcSidebarState:{currentSpaceId:'bad'}}),/changed elsewhere/);assert.notEqual(mock.data.local.arcSidebarState?.currentSpaceId,'bad');await client.local.patch('arcSidebarState',{currentSpaceId:'good'});assert.equal(mock.data.local.arcSidebarState.currentSpaceId,'good');});
 test('rapid duplicate opens create one tab and reveal its Space',async()=>{
+mock.tabs.get(10).url='https://unrelated.test/';
 mock.data.local.arcSidebarModel=seed();mock.data.session.arcSidebarBindings={};mock.data.local.arcSidebarState={currentSpaceId:'other',collapsedFolders:{f:true}};
 const before=mock.counts().creates;const ids=await Promise.all([openSavedItem('a',1),openSavedItem('a',1)]);assert.equal(ids[0],ids[1]);assert.equal(mock.counts().creates-before,1);assert.equal(mock.data.local.arcSidebarState.currentSpaceId,'s');assert.equal(mock.data.local.arcSidebarState.collapsedFolders.f,false);});
 test('Open tab activation reveals pinned Space and closure removes binding',async()=>{
