@@ -2,9 +2,11 @@
 
 ## Mission
 
-Bring Arc’s organized, sidebar-first browsing experience to Google Chrome. Keep your everyday sites close, arrange your work into Spaces and folders, and open only the tabs you need.
+Bring Arc Browser’s organized, sidebar-first browsing experience to Google Chrome. Keep your everyday sites close, arrange your work into Spaces and folders, and open only the tabs you need.
 
 Your saved links stay in the sidebar when their browser tabs close. Click a saved item to open it or return to its existing tab, including after navigating away from the saved URL.
+
+> **Disclaimer:** Arc Sidebar for Chrome is an independent extension developed entirely from scratch. It is not affiliated with, endorsed by or sponsored by The Browser Company or Arc Browser.
 
 ## Main features
 
@@ -20,7 +22,7 @@ Your saved links stay in the sidebar when their browser tabs close. Click a save
 - **Live indicators and bulk close** — see what is open and close a Favorite, pinned tab, folder or an entire Space’s open tabs.
 - **Personalized appearance** — website favicons, uploaded icons, searchable Space emojis and adjustable Favorite tile sizes.
 - **Remembered layout** — return to your previous scroll position in each Space and the Open tabs view.
-- **Seamless Arc migration** — import all your Spaces, Favorites, pinned links and folders from Arc in one step, with Space emojis and website icons, keeping your existing organization ready to use in Chrome.
+- **Seamless Arc Browser migration** — import all your Spaces, Favorites, pinned links and folders from Arc Browser in one step, with Space emojis and website icons, keeping your existing organization ready to use in Chrome.
 - **Chrome Sync and backups** — keep your sidebar organization available across computers and save or restore it whenever you need.
 - **Pin from any webpage** — save the current page or a link through Chrome’s right-click menu.
 
@@ -164,11 +166,11 @@ Right-click a webpage or link and choose **Pin to Arc Sidebar**, then select the
 
 Pinning the current page keeps its existing browser tab connected to the saved item.
 
-### Import from Arc
+### Import from Arc Browser
 
-Seamlessly move your existing Arc organization to Chrome in one import: all your Spaces, Favorites, pinned links and folders, with Space emojis and website favicons.
+Seamlessly move your existing Arc Browser organization to Chrome in one import: all your Spaces, Favorites, pinned links and folders, with Space emojis and website favicons.
 
-Open the extension’s options and import Arc’s `StorableSidebar.json`. Import replaces the current sidebar contents, so download a backup first if you want to keep them.
+Open the extension’s options and import Arc Browser’s `StorableSidebar.json`. Import replaces the current sidebar contents, so download a backup first if you want to keep them.
 
 Typical file locations:
 
@@ -205,5 +207,3 @@ Download a backup before importing, restoring or resetting if you want to preser
 ## License
 
 See [LICENSE](LICENSE).
-
-Arc Sidebar for Chrome is an independent project and is not affiliated with The Browser Company or Arc.
