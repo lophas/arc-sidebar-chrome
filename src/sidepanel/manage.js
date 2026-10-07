@@ -12,7 +12,7 @@ const searchEl = document.querySelector('#search');
 const addFavoriteButton = document.querySelector('#addFavorite');
 const addPinnedButton = document.querySelector('#addPinned');
 
-let dragIndex = null;
+let draggedFavoriteId = null;
 let draggedPinnedId = null;
 let dialog = null;
 
@@ -283,43 +283,87 @@ function favoriteTiles() {
   return [...favoritesEl.querySelectorAll('.favorite-tile')];
 }
 
+async function moveToFavorites(itemId, targetId = null, after = false) {
+  if (!itemId || itemId === targetId) return;
+  const model = await getModel();
+  model.favorites ||= [];
+  if (targetId && !model.favorites.some(item => item.id === targetId)) return;
+  let source = model.favorites.findIndex(item => item.id === itemId);
+  let moved;
+  if (source >= 0) [moved] = model.favorites.splice(source, 1);
+  else {
+    for (const space of model.spaces || []) {
+      const location = findNodeLocation(space.children, itemId);
+      if (location?.node.type !== 'tab') continue;
+      [moved] = location.parent.splice(location.index, 1);
+      break;
+    }
+  }
+  if (!moved) return;
+  const index = targetId ? model.favorites.findIndex(item => item.id === targetId) + Number(after) : model.favorites.length;
+  model.favorites.splice(index, 0, moved);
+  await saveModel(model);
+}
+
+function clearFavoriteDropTargets() {
+  document.querySelectorAll('.favorite-drop-before, .favorite-drop-after, .favorite-drop-target').forEach(el => {
+    el.classList.remove('favorite-drop-before', 'favorite-drop-after', 'favorite-drop-target');
+  });
+}
+
+function favoriteDragId(event) {
+  return event.dataTransfer?.getData('application/x-arc-favorite') || draggedFavoriteId || draggedPinnedId;
+}
+
+function favoriteDropTarget(target) {
+  target.addEventListener('dragover', event => {
+    if (!favoriteDragId(event)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    event.dataTransfer.dropEffect = 'move';
+    clearFavoriteDropTargets();
+    const tile = event.target.closest('.favorite-tile');
+    if (tile) tile.classList.add(event.clientX > tile.getBoundingClientRect().left + tile.offsetWidth / 2 ? 'favorite-drop-after' : 'favorite-drop-before');
+    else target.classList.add('favorite-drop-target');
+  });
+  target.addEventListener('dragleave', event => {
+    if (!target.contains(event.relatedTarget)) clearFavoriteDropTargets();
+  });
+  target.addEventListener('drop', async event => {
+    const itemId = favoriteDragId(event);
+    if (!itemId) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const tile = event.target.closest('.favorite-tile');
+    const after = tile && event.clientX > tile.getBoundingClientRect().left + tile.offsetWidth / 2;
+    clearFavoriteDropTargets();
+    await moveToFavorites(itemId, tile?.dataset.favoriteId, after);
+  });
+}
+
+favoriteDropTarget(favoritesEl);
+if (addFavoriteButton) favoriteDropTarget(addFavoriteButton);
+
 function decorateFavorites() {
   if (!favoritesEl) return;
-  const tiles = favoriteTiles();
-  tiles.forEach((tile, index) => {
+  favoriteTiles().forEach((tile, index) => {
     if (tile.dataset.managed === '1') return;
     tile.dataset.managed = '1';
     tile.draggable = true;
-
     tile.addEventListener('contextmenu', event => {
       event.preventDefault();
       openFavoriteEditor(index);
     });
-
     tile.addEventListener('dragstart', event => {
-      dragIndex = favoriteTiles().indexOf(tile);
+      draggedFavoriteId = tile.dataset.favoriteId;
       tile.classList.add('dragging');
       event.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.setData('application/x-arc-favorite', draggedFavoriteId);
     });
-
     tile.addEventListener('dragend', () => {
       tile.classList.remove('dragging');
-      dragIndex = null;
-    });
-
-    tile.addEventListener('dragover', event => {
-      event.preventDefault();
-      event.dataTransfer.dropEffect = 'move';
-    });
-
-    tile.addEventListener('drop', async event => {
-      event.preventDefault();
-      const targetIndex = favoriteTiles().indexOf(tile);
-      if (dragIndex == null || targetIndex < 0 || dragIndex === targetIndex) return;
-      const model = await getModel();
-      const [moved] = model.favorites.splice(dragIndex, 1);
-      model.favorites.splice(targetIndex, 0, moved);
-      await saveModel(model);
+      draggedFavoriteId = null;
+      clearFavoriteDropTargets();
     });
   });
 }
@@ -393,6 +437,7 @@ async function decoratePinned() {
     row.addEventListener('dragend', () => {
       row.classList.remove('dragging');
       draggedPinnedId = null;
+      clearFavoriteDropTargets();
       clearDropTargets();
     });
 

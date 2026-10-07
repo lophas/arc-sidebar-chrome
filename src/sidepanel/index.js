@@ -291,6 +291,7 @@ function createTabRow(item, { live = false, active = false, boundTab = null } = 
   favicon.className = 'favicon';
   favicon.src = live && item.favIconUrl ? item.favIconUrl : boundTab?.favIconUrl || faviconFor(item.url);
   favicon.alt = '';
+    favicon.draggable = false;
   favicon.addEventListener('error', () => {
     const fallback = document.createElement('span');
     fallback.className = 'favicon-fallback';
@@ -393,6 +394,7 @@ function renderFavorites() {
     const tile = document.createElement('button');
     tile.type = 'button';
     tile.className = 'favorite-tile';
+    tile.dataset.favoriteId = item.id;
     tile.title = item.title || item.url;
 
     const matchingTab = boundTabFor(item.id);
@@ -402,6 +404,7 @@ function renderFavorites() {
     const favicon = document.createElement('img');
     favicon.src = matchingTab?.favIconUrl || faviconFor(item.url);
     favicon.alt = '';
+    favicon.draggable = false;
     favicon.addEventListener('error', () => {
       const fallback = document.createElement('span');
       fallback.className = 'favicon-fallback';

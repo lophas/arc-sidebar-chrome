@@ -364,3 +364,7 @@ section { margin-bottom: 15px; }
 .workflow-drop-after::after { bottom: -1px; }
 .workflow-drop-into { outline: 1px dashed var(--text); outline-offset: -2px; }
 #pinned { min-height: 28px; }
+
+.favorite-tile.favorite-drop-before { box-shadow: -3px 0 0 var(--accent, #83a8ff); }
+.favorite-tile.favorite-drop-after { box-shadow: 3px 0 0 var(--accent, #83a8ff); }
+.favorite-drop-target { outline: 2px solid var(--accent, #83a8ff); outline-offset: 2px; }

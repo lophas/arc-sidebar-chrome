@@ -7,6 +7,7 @@ import './native-panel-reload.js';
 const STORAGE_KEY = 'arcSidebarModel';
 const BINDINGS_KEY = 'arcSidebarBindings';
 const MENU_ROOT_ID = 'arc-sidebar-pin-root';
+const MENU_FAVORITES_ID = 'arc-sidebar-pin-favorites';
 const MENU_SPACE_PREFIX = 'arc-sidebar-pin-space:';
 
 function uid() {
@@ -69,10 +70,12 @@ async function rebuildPinContextMenu() {
 
     await createMenuItem({
       id: MENU_ROOT_ID,
-      title: spaces.length ? 'Pin to Arc Sidebar' : 'Pin to Arc Sidebar (no Spaces)',
+      title: 'Pin to Arc Sidebar',
       contexts: ['page', 'link'],
-      enabled: spaces.length > 0
+      enabled: true
     });
+
+    await createMenuItem({ id: MENU_FAVORITES_ID, parentId: MENU_ROOT_ID, title: '★ Favorites', contexts: ['page', 'link'] });
 
     for (const space of spaces) {
       if (!space?.id) continue;
@@ -92,12 +95,13 @@ async function rebuildPinContextMenu() {
 
 async function pinFromContextMenu(info, tab) {
   const spaceId = spaceIdFromMenuId(info.menuItemId);
-  if (!spaceId) return;
+  const isFavorite = info.menuItemId === MENU_FAVORITES_ID;
+  if (!spaceId && !isFavorite) return;
 
   const stored = await sidebarStorage.local.get(STORAGE_KEY);
   const model = stored[STORAGE_KEY];
   const space = model?.spaces?.find(candidate => candidate.id === spaceId);
-  if (!space) return;
+  if (!model || (!isFavorite && !space)) return;
 
   const targetUrl = info.linkUrl || info.pageUrl || tab?.url || '';
   if (!/^https?:\/\//i.test(targetUrl)) return;
@@ -114,8 +118,8 @@ async function pinFromContextMenu(info, tab) {
     url: targetUrl
   };
 
-  space.children ||= [];
-  space.children.push(item);
+  const destination = isFavorite ? (model.favorites ||= []) : (space.children ||= []);
+  destination.push(item);
   recalcStats(model);
 
   const writes = { local: { [STORAGE_KEY]: model } };

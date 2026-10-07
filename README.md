@@ -24,7 +24,7 @@ Your saved links stay in the sidebar when their browser tabs close. Click a save
 - **Remembered layout** — return to your previous scroll position in each Space and the Open tabs view.
 - **Seamless Arc Browser migration** — import all your Spaces, Favorites, pinned links and folders from Arc Browser in one step, with Space emojis and website icons, keeping your existing organization ready to use in Chrome.
 - **Chrome Sync and backups** — keep your sidebar organization available across computers and save or restore it whenever you need.
-- **Pin from any webpage** — save the current page or a link through Chrome’s right-click menu.
+- **Pin from any webpage** — save the current page or a link to Favorites or any Space through Chrome’s right-click menu.
 
 ## Screenshots
 
@@ -96,7 +96,7 @@ Favorites are shared across all Spaces. Use them for sites you visit throughout 
 - Use the **+** button beside search to add a Favorite.
 - Click a Favorite to open it or focus its existing tab.
 - Click its red live indicator to close the tab while keeping the Favorite.
-- Drag Favorites to change their order.
+- Drag Favorites to change their order. Drag a pinned link from a Space or folder into Favorites to make it available everywhere, keeping its open tab and custom icon. Drop it on **+ Favorite** when the Favorites list is empty.
 - Edit a Favorite to change its title, URL or icon.
 
 The Favorite grid adapts to the sidebar’s width. Choose a tile size of **80%, 90%, 100%, 110% or 120%** in the extension’s options.
