@@ -25,13 +25,13 @@ fixture.tabs.push({id:203,windowId:2,index:0,groupId:3,title:'Team planning',url
 fixture.data.session.arcSidebarNativeGroups={'1:work':2,'2:work':3,'1:__favorites__':6};
 `;
 const fixture=await readFile('tests/fixtures/space-tabs-chrome.js','utf8');
-const scripts=['theme-sync.js','index.js','favorite-size.js','folder-manage.js','command-bar.js'];
+const scripts=['theme-sync.js','index.js','favorite-size.js','folder-manage.js','memory-controls.js','command-bar.js'];
 const sidebar=(await readFile('src/sidepanel/index.html','utf8')).replace(/<script[^>]*>[\s\S]*?<\/script>/g,'').replace('</body>',`<script src="/demo.js"></script>${scripts.map(s=>`<script ${s==='theme-sync.js'?'':'type="module"'} src="${s}"></script>`).join('')}</body>`);
 const command=(await readFile('src/sidepanel/command.html','utf8')).replace('<script type="module"', '<script src="/demo.js"></script><script src="theme-sync.js"></script><script type="module"');
 const server=createServer(async(req,res)=>{
  const u=new URL(req.url,'http://localhost');
  if(u.pathname==='/demo.js'){res.setHeader('Content-Type','text/javascript');res.end(fixture+'\n'+seed);return;}
- if(u.pathname==='/_favicon/') {let domain;try{domain=new URL(u.searchParams.get('pageUrl')).hostname;}catch{}const icon=icons.get(domain);if(icon){res.setHeader('Content-Type','image/png');res.end(icon);}else{res.writeHead(404);res.end();}return;}
+ if(u.pathname.replace(/^\/+/, '/')==='/_favicon/') {let domain;try{domain=new URL(u.searchParams.get('pageUrl')).hostname;}catch{}const icon=icons.get(domain);if(icon){res.setHeader('Content-Type','image/png');res.end(icon);}else{res.writeHead(404);res.end();}return;}
  if(u.pathname==='/src/sidepanel/index.html'||u.pathname==='/src/sidepanel/command.html'){res.setHeader('Content-Type','text/html');res.end(u.pathname.endsWith('/command.html')?command:sidebar);return;}
  const file=resolve(root,'.'+u.pathname);if(!file.startsWith(root+'/')){res.writeHead(403);res.end();return;}
  try{res.setHeader('Content-Type',extname(file)==='.js'?'text/javascript':extname(file)==='.css'?'text/css':'application/octet-stream');res.end(await readFile(file));}catch{res.writeHead(404);res.end();}
@@ -40,7 +40,7 @@ await new Promise(r=>server.listen(0,'127.0.0.1',r));
 const browser=await chromium.launch({executablePath:'/usr/bin/google-chrome',headless:true,args:['--no-sandbox']});
 try {
  await mkdir('docs/screenshots/generated',{recursive:true});
- const page=await browser.newPage({viewport:{width:420,height:820},deviceScaleFactor:2,colorScheme:'dark'});
+ const page=await browser.newPage({viewport:{width:420,height:640},deviceScaleFactor:2,colorScheme:'dark'});
  const errors=[];page.on('pageerror',e=>errors.push(e.message));
  const base=`http://127.0.0.1:${server.address().port}`;
  await page.goto(base+'/src/sidepanel/index.html');
