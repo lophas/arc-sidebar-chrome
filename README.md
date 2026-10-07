@@ -24,6 +24,14 @@ Your saved links stay in the sidebar when their browser tabs close. Click a save
 - **Chrome Sync and backups** — keep your sidebar organization available across computers and save or restore it whenever you need.
 - **Pin from any webpage** — save the current page or a link through Chrome’s right-click menu.
 
+## Screenshots
+
+Example workspace with Favorites, folders, pinned links and additional Space tabs.
+
+| Sidebar | Search inside the sidebar |
+| --- | --- |
+| <img src="docs/screenshots/sidebar.png" width="360" alt="Sidebar with global Favorites, folders, pinned links, Space open tabs and the Space switcher"> | <img src="docs/screenshots/sidebar-search.png" width="360" alt="Sidebar search showing open tabs, saved links and Google search results"> |
+
 ## Documentation
 
 ### Installation and updates
@@ -49,6 +57,8 @@ To update an existing installation, replace its files with the new contents, the
 The sidebar keeps search and Favorites at the top, the Space switcher at the bottom, and the current Space’s contents in the scrollable middle area.
 
 ### Search popup
+
+![Search popup with recent tabs, favicons and keyboard navigation](docs/screenshots/search-popup.png)
 
 Press **Command+K** on macOS or **Ctrl+K** on Windows/Linux to open search, including when the sidebar is closed. The sidebar’s **Search or enter URL** control opens the same search inside the sidebar.
 
