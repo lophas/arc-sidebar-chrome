@@ -17,7 +17,14 @@
       <div class="mode-options" role="radiogroup" aria-label="Sidebar mode">
         <label class="mode-option">
           <input id="modeOverlay" type="radio" name="sidebarMode" value="overlay">
-          <span><strong>Autohide · default</strong><small>Opens at the edge selected for Chrome’s side panel and closes automatically.</small></span>
+          <span>
+            <strong>Autohide · default</strong>
+            <small>Opens at the edge selected for Chrome’s side panel and closes automatically.</small>
+            <span class="autohide-warning" role="note">
+              <strong><span aria-hidden="true">⚠</span> Browser pages need a manual click</strong>
+              <span>Autohide does not work on Chrome’s own settings pages or browser error pages. Click the Arc Sidebar extension icon in the toolbar to open the fixed side panel on these pages.</span>
+            </span>
+          </span>
         </label>
         <label class="mode-option">
           <input id="modeNative" type="radio" name="sidebarMode" value="native">
