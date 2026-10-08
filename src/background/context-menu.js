@@ -1,3 +1,4 @@
+import { ensureEmptySidebar } from './empty-sidebar.js';
 import { createStorageClient } from '../shared/storage-client.js';
 import { commitStorage } from './state-controller.js';
 const sidebarStorage = createStorageClient({ transact: commitStorage });
@@ -61,8 +62,14 @@ function createMenuItem(options) {
   });
 }
 
-async function rebuildPinContextMenu() {
+let menuRebuild = Promise.resolve();
+function rebuildPinContextMenu() {
+  menuRebuild = menuRebuild.then(rebuildPinContextMenuNow);
+  return menuRebuild;
+}
+async function rebuildPinContextMenuNow() {
   try {
+    await ensureEmptySidebar();
     await chrome.contextMenus.removeAll();
     const stored = await sidebarStorage.local.get(STORAGE_KEY);
     const model = stored[STORAGE_KEY];
@@ -98,6 +105,7 @@ async function pinFromContextMenu(info, tab) {
   const isFavorite = info.menuItemId === MENU_FAVORITES_ID;
   if (!spaceId && !isFavorite) return;
 
+  await ensureEmptySidebar();
   const stored = await sidebarStorage.local.get(STORAGE_KEY);
   const model = stored[STORAGE_KEY];
   const space = model?.spaces?.find(candidate => candidate.id === spaceId);

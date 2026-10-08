@@ -32,3 +32,14 @@ test('Favorites precedes Spaces, pins current live page and links, and works wit
  await settle(()=>mock.data.local.arcSidebarModel.favorites.length===1);
  assert.equal(mock.data.local.arcSidebarModel.stats.favorites,1);
 });
+
+test('fresh/reset startup initializes Favorites without a Space and context menu can pin immediately',async()=>{
+ await chrome.storage.local.clear();
+ clicked({menuItemId:'arc-sidebar-pin-favorites',pageUrl:'https://a.test'},{id:10,url:'https://a.test',title:'First Favorite'});
+ await settle(()=>mock.data.local.arcSidebarModel?.favorites?.length===1);
+ assert.deepEqual(mock.data.local.arcSidebarModel.spaces,[]);
+ const favorite=mock.data.local.arcSidebarModel.favorites[0];
+ assert.equal(favorite.title,'First Favorite');
+ assert.equal(mock.data.session.arcSidebarBindings[favorite.id],10);
+ await settle(()=>menus.some(menu=>menu.id==='arc-sidebar-pin-favorites'));
+});
