@@ -566,3 +566,8 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
     .then(() => respond({ ok: true })).catch(() => respond({ ok: false }));
   return true;
 });
+
+// Activation is independent of the page's visibility/focus event delivery.
+chrome.tabs.onActivated.addListener(({ tabId }) => {
+  chrome.tabs.sendMessage(tabId, { type: 'arc-sidebar-tab-activated' }).catch(() => {});
+});

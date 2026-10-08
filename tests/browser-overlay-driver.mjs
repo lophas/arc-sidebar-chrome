@@ -11,7 +11,12 @@ try {
   if (result.startsWith('PASS') && new URL(url).searchParams.get('mode') === 'overlay') {
     const report = open => page.evaluate(open=>{const frame=arcTestShadow.querySelector('iframe');window.dispatchEvent(new MessageEvent('message',{source:frame.contentWindow,data:{type:'arc-sidebar-editor-state',open}}));},open);
     const isOpen = () => page.evaluate(()=>arcTestShadow.querySelector('.panel').classList.contains('open'));
-    const hover = () => page.evaluate(()=>arcTestShadow.querySelector('.edge').dispatchEvent(new MouseEvent('mouseenter')));
+    const hover = async () => {
+      const x=await page.evaluate(()=>arcTestShadow.querySelector('.edge').getBoundingClientRect().left+1);
+      await page.mouse.move(600,300);await page.mouse.move(x,300);
+    };
+    await page.evaluate(()=>arcTestShadow.querySelector('.edge').dispatchEvent(new MouseEvent('mouseenter')));
+    await page.waitForTimeout(150);assert.equal(await isOpen(),false,'synthetic enter cannot open a returned tab');
     await report(true);assert.equal(await isOpen(),false,'stale editor signal must not open a closed panel');
     await hover();await page.waitForFunction(()=>arcTestShadow.querySelector('.panel').classList.contains('open'));
     await report(true);

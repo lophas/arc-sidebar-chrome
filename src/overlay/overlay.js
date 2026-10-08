@@ -227,6 +227,11 @@
 
     chrome.runtime.sendMessage({ type: 'arc-native-sidepanel-is-open' }).then(response => setNativePanelOpen(response?.open)).catch(() => {});
     chrome.runtime.onMessage.addListener(message => {
+      if (message?.type === 'arc-sidebar-tab-activated') {
+        cancelResize?.();
+        editorActive = false;
+        forceClosePanel();
+      }
       if (message?.type === 'arc-native-sidepanel-state') setNativePanelOpen(message.open);
       if (message?.type === 'arc-sidebar-editor-state') setEditorActive(message.open);
     });
@@ -236,7 +241,11 @@
       setEditorActive(event.data.open);
     });
 
-    edge.addEventListener('mouseenter', scheduleOpen);
+    // Opening requires pointer movement, never a synthesized enter on tab return.
+    window.addEventListener('blur', () => {
+      if (showTimer) clearTimeout(showTimer);
+      showTimer = null;
+    });
     edge.addEventListener('mouseleave', () => {
       if (!isOpen && showTimer) {
         clearTimeout(showTimer);
@@ -388,7 +397,7 @@
     document.addEventListener('pointermove', event => {
       if (sidebarMode !== OVERLAY_MODE || nativePanelOpen || suspended) return;
       const distanceFromEdge = edgeSide === 'left' ? event.clientX : window.innerWidth - event.clientX;
-      if (distanceFromEdge >= 0 && distanceFromEdge <= EDGE_WIDTH) {
+      if (distanceFromEdge >= 0 && distanceFromEdge <= EDGE_WIDTH && event.isTrusted && (event.movementX !== 0 || event.movementY !== 0)) {
         ensureHost();
         scheduleOpen();
       } else if (isOpen && distanceFromEdge > currentWidth + RESIZE_HANDLE_WIDTH) {

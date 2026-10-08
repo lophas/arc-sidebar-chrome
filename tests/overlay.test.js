@@ -20,8 +20,8 @@ function setup(mode='overlay',side='right',timeout) {
  return {delays,context,nodes,host,messages,observers,changes,styleWrites:()=>styleWrites,drainMutations:()=>{let rounds=0;while(mutations.size){if(++rounds>20)throw new Error('Mutation observer starved page event loop');const pending=[...mutations];mutations.clear();pending.forEach(o=>o.fn());}return rounds;},emit:(surface,type,event)=>(events[surface][type]||[]).forEach(fn=>fn(event)),tick:()=>{const fns=[...timers.values()];timers.clear();fns.forEach(fn=>fn());}};
 }
 async function settled(){await Promise.resolve();await Promise.resolve();await Promise.resolve();}
-test('lazy overlay loads only on hover and releases idle hidden-tab UI',async()=>{const s=setup();await settled();assert.equal(s.nodes.iframe.hasAttribute('src'),false);s.emit('document','pointermove',{clientX:999});s.tick();assert.equal(s.nodes.iframe.hasAttribute('src'),true);assert.equal(s.nodes['.panel'].classList.values.has('open'),true);assert.equal(s.messages.at(-1).open,true);s.context.document.visibilityState='hidden';s.emit('document','visibilitychange');assert.equal(s.nodes.iframe.hasAttribute('src'),false);assert.equal(s.nodes['.panel'].classList.values.has('open'),false);});
-test('open editors survive tab switches and hidden native mode never loads UI',async()=>{const s=setup();await settled();s.emit('document','pointermove',{clientX:999});s.tick();s.changes.forEach(fn=>fn({type:'arc-sidebar-editor-state',open:true}));s.context.document.visibilityState='hidden';s.emit('document','visibilitychange');assert.equal(s.nodes.iframe.hasAttribute('src'),true);assert.equal(s.messages.at(-1).open,false);const native=setup('native');await settled();native.emit('document','pointermove',{clientX:999});native.tick();assert.equal(native.nodes.iframe.hasAttribute('src'),false);});
+test('lazy overlay loads only on hover and releases idle hidden-tab UI',async()=>{const s=setup();await settled();assert.equal(s.nodes.iframe.hasAttribute('src'),false);s.emit('document','pointermove',{isTrusted:true,movementX:1,movementY:0,clientX:999});s.tick();assert.equal(s.nodes.iframe.hasAttribute('src'),true);assert.equal(s.nodes['.panel'].classList.values.has('open'),true);assert.equal(s.messages.at(-1).open,true);s.context.document.visibilityState='hidden';s.emit('document','visibilitychange');assert.equal(s.nodes.iframe.hasAttribute('src'),false);assert.equal(s.nodes['.panel'].classList.values.has('open'),false);});
+test('open editors survive tab switches and hidden native mode never loads UI',async()=>{const s=setup();await settled();s.emit('document','pointermove',{isTrusted:true,movementX:1,movementY:0,clientX:999});s.tick();s.changes.forEach(fn=>fn({type:'arc-sidebar-editor-state',open:true}));s.context.document.visibilityState='hidden';s.emit('document','visibilitychange');assert.equal(s.nodes.iframe.hasAttribute('src'),true);assert.equal(s.messages.at(-1).open,false);const native=setup('native');await settled();native.emit('document','pointermove',{isTrusted:true,movementX:1,movementY:0,clientX:999});native.tick();assert.equal(native.nodes.iframe.hasAttribute('src'),false);});
 test('DOM repair reuses the same overlay host without duplicating listeners',async()=>{const s=setup();await settled();const original=s.host;for(let i=0;i<5;i++){s.host.parentNode=null;s.observers.forEach(o=>o.fn());s.tick();assert.equal(s.host.parentNode,s.context.document.documentElement);}assert.equal(s.host,original);assert.equal(s.observers.length,3);s.context.document.documentElement={append(node){node.parentNode=this;}};s.observers.forEach(o=>o.fn());s.tick();assert.equal(s.host.parentNode,s.context.document.documentElement);});
 
 test('host style repairs cannot recursively starve page loading',async()=>{
@@ -41,20 +41,20 @@ test('editor state cannot open another closed overlay, and tab return requires f
  s.changes.forEach(fn=>fn({type:'arc-sidebar-editor-state',open:true}));
  assert.equal(s.nodes['.panel'].classList.values.has('open'),false);
  assert.equal(s.nodes.iframe.hasAttribute('src'),false);
- s.emit('document','pointermove',{clientX:999});s.tick();
+ s.emit('document','pointermove',{isTrusted:true,movementX:1,movementY:0,clientX:999});s.tick();
  s.changes.forEach(fn=>fn({type:'arc-sidebar-editor-state',open:true}));
  s.context.document.visibilityState='hidden';s.emit('document','visibilitychange');
  assert.equal(s.nodes['.panel'].classList.values.has('open'),false);
  assert.equal(s.nodes.iframe.hasAttribute('src'),true,'unsaved editor contents preserved');
  s.context.document.visibilityState='visible';s.emit('document','visibilitychange');s.emit('window','focus');s.tick();
  assert.equal(s.nodes['.panel'].classList.values.has('open'),false);
- s.emit('document','pointermove',{clientX:999});s.tick();
+ s.emit('document','pointermove',{isTrusted:true,movementX:1,movementY:0,clientX:999});s.tick();
  assert.equal(s.nodes['.panel'].classList.values.has('open'),true);
 });
 test('hidden tabs cannot start delayed hover opens, and pagehide drops the visible panel state',async()=>{
- const s=setup();await settled();s.emit('document','pointermove',{clientX:999});
+ const s=setup();await settled();s.emit('document','pointermove',{isTrusted:true,movementX:1,movementY:0,clientX:999});
  s.context.document.visibilityState='hidden';s.tick();assert.equal(s.nodes['.panel'].classList.values.has('open'),false);
- s.context.document.visibilityState='visible';s.emit('document','pointermove',{clientX:999});s.tick();
+ s.context.document.visibilityState='visible';s.emit('document','pointermove',{isTrusted:true,movementX:1,movementY:0,clientX:999});s.tick();
  s.emit('window','pagehide');s.emit('window','pageshow');s.tick();
  assert.equal(s.nodes['.panel'].classList.values.has('open'),false);
 });
@@ -63,9 +63,9 @@ test('left edge opens only from the left, closes away from the panel and resizes
  const s=setup('overlay','left');await settled();
  assert.equal(s.nodes['.panel'].classList.values.has('left'),true);
  assert.equal(s.nodes['.resize-handle'].style.left,'383px');
- s.emit('document','pointermove',{clientX:999});s.tick();
+ s.emit('document','pointermove',{isTrusted:true,movementX:1,movementY:0,clientX:999});s.tick();
  assert.equal(s.nodes['.panel'].classList.values.has('open'),false);
- s.emit('document','pointermove',{clientX:1});s.tick();
+ s.emit('document','pointermove',{isTrusted:true,movementX:1,movementY:0,clientX:1});s.tick();
  assert.equal(s.nodes['.panel'].classList.values.has('open'),true);
  const handle=s.nodes['.resize-handle'];
  handle.events.pointerdown[0]({button:0,clientX:390,pointerId:1,preventDefault(){},stopPropagation(){}});
@@ -73,25 +73,25 @@ test('left edge opens only from the left, closes away from the panel and resizes
  assert.equal(s.nodes['.panel'].style.width,'440px');
  assert.equal(handle.style.left,'433px');
  await handle.events.pointerup[0]({pointerId:1});
- s.emit('document','pointermove',{clientX:600});s.tick();
+ s.emit('document','pointermove',{isTrusted:true,movementX:1,movementY:0,clientX:600});s.tick();
  assert.equal(s.nodes['.panel'].classList.values.has('open'),false);
 });
 test('focus refresh updates an existing overlay without losing resize geometry',async()=>{
  const s=setup();await settled();
  const change=async value=>{s.context.chrome.panelSide=value;s.emit('window','focus');await settled();};
- s.emit('document','pointermove',{clientX:999});
+ s.emit('document','pointermove',{isTrusted:true,movementX:1,movementY:0,clientX:999});
  await change('left');s.tick();
  assert.equal(s.nodes['.panel'].classList.values.has('open'),false,'old-edge delayed hover is cancelled');
- s.emit('document','pointermove',{clientX:1});s.tick();
+ s.emit('document','pointermove',{isTrusted:true,movementX:1,movementY:0,clientX:1});s.tick();
  assert.equal(s.nodes['.panel'].classList.values.has('open'),true);
  assert.equal(s.nodes['.panel'].classList.values.has('left'),true);
  await change('right');
  assert.equal(s.nodes['.panel'].classList.values.has('left'),false);
  assert.equal(s.nodes['.resize-handle'].style.left,'auto');
  assert.equal(s.nodes['.resize-handle'].style.right,'383px');
- s.emit('document','pointermove',{clientX:1});s.tick();
+ s.emit('document','pointermove',{isTrusted:true,movementX:1,movementY:0,clientX:1});s.tick();
  assert.equal(s.nodes['.panel'].classList.values.has('open'),false);
- s.emit('document','pointermove',{clientX:999});s.tick();
+ s.emit('document','pointermove',{isTrusted:true,movementX:1,movementY:0,clientX:999});s.tick();
  assert.equal(s.nodes['.panel'].classList.values.has('open'),true);
 });
 
@@ -110,13 +110,27 @@ test('Chrome layout changes remain dormant until focus and also apply on tab ret
 test('every supported timeout controls delayed closing; zero disables overlay even with a legacy overlay preference',async()=>{
  for(const timeout of [500,600,700,800,900,1000,1100]){
   const s=setup('overlay','right',timeout);await settled();
-  s.emit('document','pointermove',{clientX:999});s.tick();
-  s.emit('document','pointermove',{clientX:100});
+  s.emit('document','pointermove',{isTrusted:true,movementX:1,movementY:0,clientX:999});s.tick();
+  s.emit('document','pointermove',{isTrusted:true,movementX:1,movementY:0,clientX:100});
   assert.equal(s.delays.at(-1),timeout);
   assert.equal(s.nodes['.panel'].classList.values.has('open'),true);
   s.tick();assert.equal(s.nodes['.panel'].classList.values.has('open'),false);
  }
  const s=setup('overlay','right',0);await settled();
- s.emit('document','pointermove',{clientX:999});s.tick();
+ s.emit('document','pointermove',{isTrusted:true,movementX:1,movementY:0,clientX:999});s.tick();
  assert.equal(s.nodes.iframe.hasAttribute('src'),false);
+});
+
+test('stationary pointer and synthesized enter on tab return cannot open; activation clears editor locks',async()=>{
+ const s=setup();await settled();
+ s.nodes['.edge'].events.mouseenter?.forEach(fn=>fn({}));
+ s.emit('document','pointermove',{isTrusted:true,movementX:0,movementY:0,clientX:999});s.tick();
+ assert.equal(s.nodes['.panel'].classList.values.has('open'),false);
+ s.emit('document','pointermove',{isTrusted:true,movementX:1,movementY:0,clientX:999});s.tick();
+ s.emit('window','message',{source:s.nodes.iframe.contentWindow,data:{type:'arc-sidebar-editor-state',open:true}});
+ s.changes.forEach(fn=>fn({type:'arc-sidebar-tab-activated'}));
+ assert.equal(s.nodes['.panel'].classList.values.has('open'),false);
+ s.emit('document','pointermove',{isTrusted:true,movementX:1,movementY:0,clientX:999});s.tick();
+ s.emit('document','pointermove',{clientX:100});s.tick();
+ assert.equal(s.nodes['.panel'].classList.values.has('open'),false,'stale editor lock cannot keep the reopened panel visible');
 });

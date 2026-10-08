@@ -14,8 +14,8 @@ test('editor reports target their owning parent/background, never the newly acti
  assert.ok(reports.every(message=>message.type==='arc-sidebar-editor-presence'));
 });
 test('background forwards editor state only to sender.tab and rejects unowned requests',async()=>{
- let listener;const sent=[];
- const chrome={runtime:{id:'test',getURL:path=>'chrome-extension://test/'+path,onMessage:{addListener:fn=>listener=fn}},tabs:{sendMessage:async(id,message)=>sent.push([id,message])}};
+ let listener, activated;const sent=[];
+ const chrome={runtime:{id:'test',getURL:path=>'chrome-extension://test/'+path,onMessage:{addListener:fn=>listener=fn}},tabs:{onActivated:{addListener:fn=>activated=fn},sendMessage:async(id,message)=>sent.push([id,message])}};
  const context={chrome};vm.createContext(context);
  const code=fs.readFileSync('src/background/service-worker.js','utf8').split('// Forward editor locks only to the content script that owns the iframe.')[1];
  vm.runInContext(code,context);
@@ -24,4 +24,6 @@ test('background forwards editor state only to sender.tab and rejects unowned re
  listener({type:'arc-sidebar-editor-presence',open:true},{id:'test',url:'chrome-extension://test/src/sidepanel/index.html'},()=>{});
  listener({type:'arc-sidebar-editor-presence',open:true},{id:'other',url:'https://page.test',tab:{id:99}},()=>{});
  assert.equal(sent.length,1);
+ activated({tabId:42});await Promise.resolve();
+ assert.equal(sent[1][0],42);assert.equal(sent[1][1].type,'arc-sidebar-tab-activated');
 });
