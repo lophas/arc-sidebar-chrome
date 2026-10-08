@@ -443,9 +443,7 @@ function renderFavorites() {
 
 function renderSpaces() {
   els.spaces.replaceChildren();
-  if (!model?.spaces?.length) return;
-
-  for (const space of model.spaces) {
+  for (const space of model?.spaces || []) {
     const button = document.createElement('button');
     const label = space.title || 'Untitled Space';
     button.className = `space-button${space.id === state.currentSpaceId ? ' active' : ''}`;

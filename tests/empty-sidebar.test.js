@@ -8,7 +8,7 @@ test('fresh and reset models contain Favorites and a selected rocket My Space; i
  assert.deepEqual(mock.data.local.arcSidebarModel.favorites,[]);
  assert.deepEqual(mock.data.local.arcSidebarModel.spaces,[{id:'__my_space__',title:'My Space',emoji:'🚀',children:[]}]);
  assert.equal(mock.data.local.arcSidebarState.currentSpaceId,'__my_space__');
- const imported={version:2,favorites:[{id:'fav',type:'tab',url:'https://a.test'}],spaces:[]};
+ const imported={version:2,favorites:[{id:'fav',type:'tab',url:'https://a.test'}],spaces:[{id:'imported',title:'Work',emoji:'💼',children:[]}]};
  await chrome.storage.local.set({arcSidebarModel:imported});
  await Promise.all([ensureEmptySidebar(),ensureEmptySidebar()]);
  assert.deepEqual(mock.data.local.arcSidebarModel,imported);
@@ -16,5 +16,16 @@ test('fresh and reset models contain Favorites and a selected rocket My Space; i
  await ensureEmptySidebar();
  assert.deepEqual(mock.data.local.arcSidebarModel.favorites,[]);
  assert.deepEqual(mock.data.local.arcSidebarModel.spaces,[{id:'__my_space__',title:'My Space',emoji:'🚀',children:[]}]);
+ assert.equal(mock.data.local.arcSidebarState.currentSpaceId,'__my_space__');
+});
+
+test('an existing zero-Space model is repaired without restoring old imported contents',async()=>{
+ const favorite={id:'only-imported-favorite',type:'tab',url:'https://import.test'};
+ await chrome.storage.local.set({arcSidebarModel:{version:2,favorites:[favorite],spaces:[]}});
+ await Promise.all([ensureEmptySidebar(),ensureEmptySidebar()]);
+ const model=mock.data.local.arcSidebarModel;
+ assert.deepEqual(model.favorites,[favorite]);
+ assert.deepEqual(model.spaces,[{id:'__my_space__',title:'My Space',emoji:'🚀',children:[]}]);
+ assert.equal(model.stats.favorites,1);
  assert.equal(mock.data.local.arcSidebarState.currentSpaceId,'__my_space__');
 });

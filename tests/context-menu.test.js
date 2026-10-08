@@ -26,7 +26,7 @@ test('Favorites precedes Spaces, pins current live page and links, and works wit
  assert.equal(mock.data.local.arcSidebarModel.favorites[1].url,'https://link.test');
  assert.equal(Object.keys(mock.data.session.arcSidebarBindings).length,1);
  await chrome.storage.local.set({arcSidebarModel:{favorites:[],spaces:[]}});
- await settle(()=>menus.length===2);
+ await settle(()=>menus.length===3 && menus.some(menu=>menu.id==='arc-sidebar-pin-space:__my_space__'));
  assert.equal(menus[0].enabled,true);
  clicked({menuItemId:'arc-sidebar-pin-favorites',linkUrl:'https://no-spaces.test'},{});
  await settle(()=>mock.data.local.arcSidebarModel.favorites.length===1);
