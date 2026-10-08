@@ -14,7 +14,7 @@ Your saved links stay in the sidebar when their browser tabs close. Click a save
 - **Global Favorites** — keep frequently used sites accessible from every Space.
 - **Persistent pinned links** — save pages without keeping their tabs open; return to the same live tab when you need it.
 - **Search popup** — press **⌘K / Ctrl+K** to find recent tabs, Favorites, pinned links, folders and Spaces, open a URL or search Google.
-- **Folders and drag-and-drop** — organize links, choose their exact order, and move them between folders and Spaces.
+- **Folders and drag-and-drop** — organize links, choose their exact order, and move them between folders and Spaces. Hold a dragged item near the top or bottom of the pinned list to scroll.
 - **Open tabs within each Space** — see the Space’s additional browser tabs below its pinned links and drag them into the pinned list to save them.
 - **Matching Chrome groups** — Favorites first, then Space groups in sidebar order, with pinned tabs ordered by the sidebar hierarchy.
 - **Focused tab bar** — tab or window focus changes expand the active group and collapse the others; manual group changes remain until focus changes again.
@@ -96,7 +96,7 @@ Favorites are shared across all Spaces. Use them for sites you visit throughout 
 - Use the **+** button beside search to add a Favorite.
 - Click a Favorite to open it or focus its existing tab.
 - Click its red live indicator to close the tab while keeping the Favorite.
-- Drag Favorites to change their order. Drag a pinned link from a Space or folder into Favorites to make it available everywhere, keeping its open tab and custom icon. Drop it on **+ Favorite** when the Favorites list is empty. Drag a Favorite back into a Space to place it between pinned links or folders, or inside a folder. Its open tab and custom icon follow the move.
+- Drag Favorites to change their order. Drag a pinned link from a Space or folder into Favorites to make it available everywhere, keeping its open tab and custom icon. Drop it on **+ Favorite** when the Favorites list is empty. Drag a Favorite back into a Space to place it between pinned links or folders, or inside a folder. Its open tab and custom icon follow the move. Links opened in a new tab from a Favorite go into the currently selected Space’s Chrome group.
 - Edit a Favorite to change its title, URL or icon.
 
 The Favorite grid adapts to the sidebar’s width. Choose a tile size of **80%, 90%, 100%, 110% or 120%** in the extension’s options.

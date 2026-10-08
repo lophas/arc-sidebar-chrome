@@ -1,3 +1,4 @@
+import { favoriteChildDestination, appendFavoriteChildren } from './favorite-child-tabs.js';
 import { watchNativeGroupVisibility } from './native-group-visibility.js';
 import { orderNativeGroups } from './native-group-order.js';
 import { pruneGroupMap } from './native-group-map.js';
@@ -26,6 +27,7 @@ const FAVORITES_GROUP = { id: FAVORITES_GROUP_ID, title: 'Favorites', color: 'gr
 const GROUP_COLORS = ['blue', 'red', 'yellow', 'green', 'pink', 'purple', 'cyan', 'orange', 'grey'];
 
 const nativePanelWindows = new Map();
+const pendingFavoriteChildren = new Map();
 let groupSyncTimer = null;
 let groupSyncRunning = false;
 let groupSyncPending = false;
@@ -402,6 +404,10 @@ async function syncNativeGroupsNow() {
       desired.get(key).tabs.push(tab);
     }
 
+    const favoriteChildren = [...pendingFavoriteChildren.values()];
+    pendingFavoriteChildren.clear();
+    appendFavoriteChildren(desired, favoriteChildren, model, bindings, tabsById);
+
     const ungroupIds = ungroupedBoundTabs
       .filter(tab => tab.groupId != null && tab.groupId !== TAB_ID_NONE)
       .map(tab => tab.id)
@@ -486,7 +492,14 @@ chrome.storage.onChanged.addListener((changes, area) => {
   }
 });
 
-chrome.tabs.onCreated.addListener(() => queueNativeGroupSync(250));
+chrome.tabs.onCreated.addListener(tab => {
+  queueNativeGroupSync(250);
+  favoriteChildDestination(tab, sidebarStorage).then(destination => {
+    if (!destination) return;
+    pendingFavoriteChildren.set(destination.tabId, destination);
+    queueNativeGroupSync(80);
+  }).catch(error => console.warn('Arc Sidebar: Favorite child routing failed', error));
+});
 chrome.tabs.onRemoved.addListener(() => queueNativeGroupSync(100));
 chrome.tabs.onReplaced.addListener(() => queueNativeGroupSync(100));
 chrome.tabs.onAttached.addListener(() => queueNativeGroupSync(100));

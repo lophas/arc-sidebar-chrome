@@ -5,7 +5,7 @@ import { resolve, extname } from 'node:path';
 import { chromium } from 'playwright-core';
 const root=process.cwd();
 let html=await readFile('src/sidepanel/index.html','utf8');
-html=html.replace(/<script[^>]*>[\s\S]*?<\/script>/g,'').replace('</body>',`<script src="/tests/fixtures/space-tabs-chrome.js"></script><script type="module" src="index.js"></script><script type="module" src="manage.js"></script><script type="module" src="folder-manage.js"></script><script type="module" src="space-dnd.js"></script><script type="module" src="hierarchy-dnd.js"></script><script type="module" src="root-drop.js"></script><script type="module" src="open-pin.js"></script><script type="module" src="workflow-pin-dnd.js"></script></body>`);
+html=html.replace(/<script[^>]*>[\s\S]*?<\/script>/g,'').replace('</body>',`<script src="/tests/fixtures/space-tabs-chrome.js"></script><script type="module" src="index.js"></script><script type="module" src="drag-scroll.js"></script><script type="module" src="manage.js"></script><script type="module" src="folder-manage.js"></script><script type="module" src="space-dnd.js"></script><script type="module" src="hierarchy-dnd.js"></script><script type="module" src="root-drop.js"></script><script type="module" src="open-pin.js"></script><script type="module" src="workflow-pin-dnd.js"></script></body>`);
 const server=createServer(async(req,res)=>{
  const pathname=new URL(req.url,'http://localhost').pathname;
  if(pathname==='/src/sidepanel/index.html'){res.setHeader('Content-Type','text/html');res.end(html);return;}
@@ -159,5 +159,39 @@ try{
  assert.equal(await page.evaluate(()=>fixture.data.local.arcSidebarModel.spaces[0].children[0].id),'empty-space');
  assert.equal(await page.locator('.favorite-pinned-before,.favorite-pinned-after,.favorite-pinned-into').count(),0);
  console.log('PASS real Chrome: Favorite-to-Space native dragging, folder edge/inside/nested/empty Space drops preserving tab/icon');
+ // Edge scrolling must see drags even when insertion handlers consume events.
+ await page.setViewportSize({width:360,height:500});
+ await page.evaluate(async()=>{
+  const model=fixture.data.local.arcSidebarModel;
+  model.favorites=[{id:'scroll-favorite',type:'tab',title:'Scroll Favorite',url:'https://scroll-fav.test'}];
+  model.spaces[0].children=[{id:'scroll-folder',type:'folder',title:'Scroll Folder',children:[]},...Array.from({length:45},(_,i)=>({id:`scroll-${i}`,type:'tab',title:`Scroll ${i}`,url:`https://scroll-${i}.test`}))];
+  await fixture.write('local',{arcSidebarModel:model});document.querySelector('main').scrollTop=0;
+ });
+ await page.waitForFunction(()=>document.querySelector('[data-folder-reorder-id="scroll-folder"]')?.draggable && document.querySelector('[data-saved-node-id="scroll-0"]')?.draggable);
+ for(const sourceSelector of ['[data-saved-node-id="scroll-0"]','[data-folder-reorder-id="scroll-folder"]','[data-favorite-id="scroll-favorite"]','[data-live-tab-id="11"]']) {
+  await page.evaluate(sourceSelector=>{
+   const main=document.querySelector('main');main.scrollTop=0;
+   const source=document.querySelector(sourceSelector);if(!source?.draggable)throw Error('Missing draggable scroll source '+sourceSelector);
+   const transfer=new DataTransfer();window.scrollDrag={source,transfer};
+   source.dispatchEvent(new DragEvent('dragstart',{bubbles:true,dataTransfer:transfer}));
+   const rect=main.getBoundingClientRect(),clientX=rect.left+40,clientY=rect.bottom-4,target=document.elementFromPoint(clientX,clientY);
+   target.dispatchEvent(new DragEvent('dragover',{bubbles:true,cancelable:true,dataTransfer:transfer,clientX,clientY}));
+  },sourceSelector);
+  await page.waitForFunction(()=>document.querySelector('main').scrollTop>180);
+  await page.evaluate(()=>scrollDrag.source.dispatchEvent(new DragEvent('dragend',{bubbles:true,dataTransfer:scrollDrag.transfer})));
+  const stopped=await page.locator('main').evaluate(el=>el.scrollTop);
+  await page.waitForTimeout(80);
+  assert.equal(await page.locator('main').evaluate(el=>el.scrollTop),stopped);
+ }
+ await page.evaluate(()=>{
+  const main=document.querySelector('main');main.scrollTop=700;
+  const source=document.querySelector('[data-saved-node-id="scroll-20"]'),transfer=new DataTransfer();window.scrollDrag={source,transfer};
+  source.dispatchEvent(new DragEvent('dragstart',{bubbles:true,dataTransfer:transfer}));
+  const rect=main.getBoundingClientRect(),clientX=rect.left+40,clientY=rect.top+4;
+  document.elementFromPoint(clientX,clientY).dispatchEvent(new DragEvent('dragover',{bubbles:true,cancelable:true,dataTransfer:transfer,clientX,clientY}));
+ });
+ await page.waitForFunction(()=>document.querySelector('main').scrollTop<500);
+ await page.evaluate(()=>scrollDrag.source.dispatchEvent(new DragEvent('dragend',{bubbles:true,dataTransfer:scrollDrag.transfer})));
+ console.log('PASS real Chrome: continuous up/down edge drag scrolling for pinned links, folders, Favorites and workflow tabs; drag cancellation stops scrolling');
  assert.deepEqual(errors,[]);console.log('PASS real Chrome: Space workflow rendering, drag-to-pin/pin/activate/close, group changes and Open-tabs view');
 }finally{await browser.close();await new Promise(resolve=>server.close(resolve));}
