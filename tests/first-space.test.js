@@ -10,6 +10,7 @@ test('first link/folder drafts create and select My Space while preserving Favor
   assert.equal(result.created,true);
   assert.equal(stored.spaces.length,0,'draft/cancel cannot alter stored state');
   assert.equal(result.model.spaces[0].title,'My Space');
+  assert.equal(result.model.spaces[0].emoji,'🚀');
   assert.equal(state.currentSpaceId,result.model.spaces[0].id);
   result.model.spaces[0].children.push({type,id:'item'});
   assert.deepEqual(result.model.favorites,stored.favorites);

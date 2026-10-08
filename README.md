@@ -81,7 +81,7 @@ Change the shortcut at `chrome://extensions/shortcuts`.
 
 ### Spaces
 
-Start by adding a pinned link or folder with the sidebar buttons. Saving your first item creates **My Space** automatically. Cancelling leaves the sidebar empty.
+Start with **🚀 My Space** and an empty Favorites collection. Add pinned links and folders with the sidebar buttons or add pages through the right-click menu. The last Space cannot be deleted manually. Reset clears your sidebar and recreates this starting layout; import and restore replace all sidebar contents with the loaded data.
 
 Use Spaces to separate different projects, interests or activities. Each Space contains its own pinned links, folders and additional open tabs.
 

@@ -548,10 +548,12 @@ function renderPinned() {
       visible += 1;
     }
   }
-  if (!visible) {
+  if (!visible && !q && !model.favorites?.length && model.spaces?.length === 1 && space.id === '__my_space__') {
+    els.pinned.append(els.emptyTemplate.content.cloneNode(true));
+  } else if (!visible) {
     const empty = document.createElement('div');
     empty.className = 'empty-state';
-    empty.textContent = q ? 'No pinned items match your search.' : 'This Space has no imported pinned items.';
+    empty.textContent = q ? 'No pinned items match your search.' : 'This Space has no pinned items.';
     els.pinned.append(empty);
   }
 }
