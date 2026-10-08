@@ -193,7 +193,7 @@ try{
  await page.waitForFunction(()=>document.querySelector('main').scrollTop<500);
  await page.evaluate(()=>scrollDrag.source.dispatchEvent(new DragEvent('dragend',{bubbles:true,dataTransfer:scrollDrag.transfer})));
  console.log('PASS real Chrome: continuous up/down edge drag scrolling for pinned links, folders, Favorites and workflow tabs; drag cancellation stops scrolling');
- // Live controls share centered geometry and reveal Close on pointer/keyboard hover.
+ // Favorites close controls sit in the corner; row controls stay vertically centered.
  await page.setViewportSize({width:360,height:900});
  await page.evaluate(async()=>{
   fixture.tabs.push({id:999,windowId:1,index:-1,groupId:-1,pinned:true,title:'Native pinned',url:'https://native.test'});
@@ -205,11 +205,12 @@ try{
  });
  for(const selector of ['[data-favorite-id="a"] .live-dot-close','.folder-header[data-folder-node-id="scroll-folder"] .live-dot-close','[data-saved-node-id="b"] .live-dot-close']){
   await page.waitForFunction(selector=>!!document.querySelector(selector),selector);
-  const centered=await page.locator(selector).evaluate(button=>{
+  const positioned=await page.locator(selector).evaluate(button=>{
    const rect=button.getBoundingClientRect(),parent=button.parentElement.getBoundingClientRect();
+   if (button.closest('.favorite-tile')) return Math.abs(rect.bottom-parent.bottom)<=2 && Math.abs(rect.right-parent.right)<=2;
    return Math.abs(rect.top+rect.height/2-parent.top-parent.height/2)<1;
   });
-  assert.equal(centered,true,'Live control vertically centered '+selector);
+  assert.equal(positioned,true,'Live control at its intended position '+selector);
   await page.locator(selector).hover();
   assert.equal(await page.locator(selector).evaluate(el=>getComputedStyle(el,'::before').content),'"×"');
   assert.equal(await page.locator(selector).evaluate(el=>getComputedStyle(el,'::after').content),'"Close"');
@@ -236,7 +237,7 @@ try{
   assert.equal(await page.locator(selector).evaluate(el=>getComputedStyle(el,'::before').content),'"×"');
   assert.equal(await page.locator(selector).evaluate(el=>getComputedStyle(el,'::after').content),'"Close"');
  }
- console.log('PASS real Chrome: centered live controls on Favorites/links/folders/tabs/groups, hover Close/×, native pinned tabs first and inert');
+ console.log('PASS real Chrome: corner Favorites close control and centered links/folders/tabs/groups, hover Close/×, native pinned tabs first and inert');
  await page.locator('[data-space-id="__open_tabs__"]').click({button:'right'});
  assert.match(await page.locator('dialog[open] .close-all-description').textContent(),/this Chrome window/);
  const beforeCancel=await page.evaluate(()=>fixture.tabs.length);

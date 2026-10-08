@@ -10,3 +10,5 @@
 .native-pinned-tabs { margin: 8px 0 14px; color: #8ab4f8; }
 .native-pinned-tab { background: color-mix(in srgb, #8ab4f8 10%, transparent); border-left: 2px solid #8ab4f8; cursor: default; }
 .native-pinned-tab:hover { background: color-mix(in srgb, #8ab4f8 10%, transparent); }
+
+.favorite-tile .live-dot-close { top: auto !important; bottom: 0 !important; right: 0 !important; transform: none !important; width: 20px !important; height: 20px !important; }
