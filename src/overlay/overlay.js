@@ -76,7 +76,7 @@
     let editorActive = false;
     let currentWidth = DEFAULT_PANEL_WIDTH;
     let sidebarMode = OVERLAY_MODE;
-    let edgeSide = 'right';
+    let edgeSide = 'left';
 
     const sendTheme = () => {
       const theme = currentTheme();
@@ -104,7 +104,7 @@
     };
 
     const applyEdgeSide = value => {
-      const side = value === 'left' ? 'left' : 'right';
+      const side = value === 'right' ? 'right' : 'left';
       if (side !== edgeSide) {
         cancelResize?.();
         clearTimers();

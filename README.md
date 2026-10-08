@@ -147,9 +147,9 @@ Within a group, pinned tabs follow the sidebar’s folder and link order. Additi
 
 Choose **Extension options → Sidebar mode**.
 
-**Autohide overlay** appears when the pointer reaches your chosen left or right edge of a webpage and closes after the pointer leaves. Choose **Extension options → Sidebar mode → Edge trigger** to select the side; right is the default. The sidebar opens on that side, and changes apply immediately to open webpages. It floats over the page. Resize it to suit your workflow; its width is remembered. While an editor is open, the sidebar stays visible until you save or cancel.
+**Autohide overlay** appears when the pointer reaches your chosen left or right edge of a webpage and closes after the pointer leaves. Choose **Extension options → Sidebar mode** and select **Autohide left** (default) or **Autohide right**. The sidebar opens on that side, and changes apply immediately to open webpages. It floats over the page. Resize it to suit your workflow; its width is remembered. While an editor is open, the sidebar stays visible until you save or cancel.
 
-**Native Chrome Side Panel** opens through the extension’s toolbar button and sits alongside the page.
+**Fixed · Chrome side panel** opens through the extension’s toolbar button and sits alongside the page. Choose its left or right position in **Chrome Settings → Appearance → Side panel**.
 
 Each Space and the Open tabs view remember their own scroll position. Returning to a view brings you back to where you left it.
 

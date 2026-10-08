@@ -1,81 +1,35 @@
 import { createStorageClient } from '../shared/storage-client.js';
 const sidebarStorage = createStorageClient();
-const SIDEBAR_MODE_KEY = 'arcSidebarMode';
-const OVERLAY_MODE = 'overlay';
-const NATIVE_MODE = 'native';
-
-const overlay = document.querySelector('#modeOverlay');
-const native = document.querySelector('#modeNative');
+const MODE_KEY = 'arcSidebarMode';
+const SIDE_KEY = 'arcSidebarEdgeSide';
+const choices = ['left', 'right', 'native'].map(side => ({
+  side, input: document.querySelector(side === 'native' ? '#modeNative' : side === 'left' ? '#modeLeft' : '#modeRight')
+}));
 const status = document.querySelector('#modeStatus');
 
-function applySelection(mode) {
-  const normalized = mode === NATIVE_MODE ? NATIVE_MODE : OVERLAY_MODE;
-  overlay.checked = normalized === OVERLAY_MODE;
-  native.checked = normalized === NATIVE_MODE;
+async function loadSelection() {
+  const stored = await sidebarStorage.local.get([MODE_KEY, SIDE_KEY]);
+  const selection = stored[MODE_KEY] === 'native' ? 'native' : stored[SIDE_KEY] === 'right' ? 'right' : 'left';
+  for (const {side, input} of choices) input.checked = side === selection;
 }
-
-async function loadMode() {
-  const stored = await sidebarStorage.local.get(SIDEBAR_MODE_KEY);
-  applySelection(stored[SIDEBAR_MODE_KEY]);
+for (const {side, input} of choices) {
+  input.addEventListener('change', async () => {
+    if (!input.checked) return;
+    for (const choice of choices) choice.input.disabled = true;
+    try {
+      const values = { [MODE_KEY]: side === 'native' ? 'native' : 'overlay' };
+      if (side !== 'native') values[SIDE_KEY] = side;
+      await sidebarStorage.local.set(values);
+      status.textContent = side === 'native' ? 'Fixed Chrome side panel selected.' : `Autohide ${side} selected.`;
+    } catch (error) {
+      status.textContent = `Could not change sidebar mode: ${error.message}`;
+    } finally {
+      await loadSelection();
+      for (const choice of choices) choice.input.disabled = false;
+    }
+  });
 }
-
-async function saveMode(mode) {
-  overlay.disabled = true;
-  native.disabled = true;
-  try {
-    await sidebarStorage.local.set({ [SIDEBAR_MODE_KEY]: mode });
-    applySelection(mode);
-    status.textContent = mode === NATIVE_MODE
-      ? 'Native mode enabled · no edge trigger is active. Existing web tabs reload once when you next switch to them.'
-      : 'Autohide overlay enabled. Existing web tabs reload once when you next switch to them.';
-  } catch (error) {
-    console.error(error);
-    status.textContent = `Could not change sidebar mode: ${error.message}`;
-    await loadMode();
-  } finally {
-    overlay.disabled = false;
-    native.disabled = false;
-  }
-}
-
-overlay.addEventListener('change', () => {
-  if (overlay.checked) saveMode(OVERLAY_MODE);
-});
-
-native.addEventListener('change', () => {
-  if (native.checked) saveMode(NATIVE_MODE);
-});
-
 chrome.storage.onChanged.addListener((changes, area) => {
-  if (area === 'local' && changes[SIDEBAR_MODE_KEY]) {
-    applySelection(changes[SIDEBAR_MODE_KEY].newValue);
-  }
+  if (area === 'local' && (changes[MODE_KEY] || changes[SIDE_KEY])) loadSelection().catch(console.error);
 });
-
-await loadMode();
-
-const EDGE_SIDE_KEY = 'arcSidebarEdgeSide';
-const edgeSide = document.querySelector('#edgeSide');
-const edgeStatus = document.querySelector('#edgeSideStatus');
-const normalizeSide = value => value === 'left' ? 'left' : 'right';
-const loadEdgeSide = async () => {
-  const stored = await sidebarStorage.local.get(EDGE_SIDE_KEY);
-  edgeSide.value = normalizeSide(stored[EDGE_SIDE_KEY]);
-};
-edgeSide.addEventListener('change', async () => {
-  edgeSide.disabled = true;
-  try {
-    const side = normalizeSide(edgeSide.value);
-    await sidebarStorage.local.set({ [EDGE_SIDE_KEY]: side });
-    edgeStatus.textContent = `Autohide sidebar opens at the ${side} edge.`;
-  } catch (error) {
-    edgeStatus.textContent = `Could not change edge trigger: ${error.message}`;
-    await loadEdgeSide();
-  } finally {
-    edgeSide.disabled = false;
-  }
-});
-chrome.storage.onChanged.addListener((changes, area) => {
-  if (area === 'local' && changes[EDGE_SIDE_KEY]) edgeSide.value = normalizeSide(changes[EDGE_SIDE_KEY].newValue);
-});
-await loadEdgeSide();
+await loadSelection();

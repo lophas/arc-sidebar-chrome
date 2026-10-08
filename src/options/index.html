@@ -16,34 +16,18 @@
       <p>Choose how the sidebar opens on this computer.</p>
       <div class="mode-options" role="radiogroup" aria-label="Sidebar mode">
         <label class="mode-option">
-          <input id="modeOverlay" type="radio" name="sidebarMode" value="overlay">
-          <span>
-            <strong>Autohide overlay</strong>
-            <small>Arc-style sidebar opens when the pointer reaches the selected edge and closes automatically.</small>
-          </span>
+          <input id="modeLeft" type="radio" name="sidebarMode" value="left">
+          <span><strong>Autohide left · default</strong><small>Opens at the left edge and closes automatically when the pointer leaves.</small></span>
+        </label>
+        <label class="mode-option">
+          <input id="modeRight" type="radio" name="sidebarMode" value="right">
+          <span><strong>Autohide right</strong><small>Opens at the right edge and closes automatically when the pointer leaves.</small></span>
         </label>
         <label class="mode-option">
           <input id="modeNative" type="radio" name="sidebarMode" value="native">
-          <span>
-            <strong>Native Chrome side panel</strong>
-            <small>No edge trigger or overlay UI is injected. Open the sidebar by clicking the extension button.</small>
-          </span>
+          <span><strong>Fixed · Chrome side panel</strong><small>Open with the extension button. Choose its left or right position in Chrome Settings → Appearance → Side panel.</small></span>
         </label>
       </div>
-      <div class="setting-row">
-        <div>
-          <h3>Edge trigger</h3>
-          <p>Choose which edge opens the autohide sidebar. The sidebar appears on the same side.</p>
-        </div>
-        <label class="select-setting">
-          <span class="sr-only">Edge trigger side</span>
-          <select id="edgeSide">
-            <option value="right">Right · default</option>
-            <option value="left">Left</option>
-          </select>
-        </label>
-      </div>
-      <div id="edgeSideStatus" class="status" role="status"></div>
       <div id="modeStatus" class="status"></div>
     </section>
 

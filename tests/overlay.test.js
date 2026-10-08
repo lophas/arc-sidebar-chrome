@@ -75,7 +75,7 @@ test('left edge opens only from the left, closes away from the panel and resizes
  s.emit('document','pointermove',{clientX:600});s.tick();
  assert.equal(s.nodes['.panel'].classList.values.has('open'),false);
 });
-test('changing edge side updates an existing overlay and reset restores the right default',async()=>{
+test('changing edge side updates an existing overlay and reset restores the left default',async()=>{
  const s=setup();await settled();
  const change=value=>s.changes.forEach(fn=>fn({arcSidebarEdgeSide:{newValue:value}},'local'));
  s.emit('document','pointermove',{clientX:999});
@@ -84,12 +84,22 @@ test('changing edge side updates an existing overlay and reset restores the righ
  s.emit('document','pointermove',{clientX:1});s.tick();
  assert.equal(s.nodes['.panel'].classList.values.has('open'),true);
  assert.equal(s.nodes['.panel'].classList.values.has('left'),true);
- change(undefined);
+ change('right');
  assert.equal(s.nodes['.panel'].classList.values.has('left'),false);
  assert.equal(s.nodes['.resize-handle'].style.left,'auto');
  assert.equal(s.nodes['.resize-handle'].style.right,'383px');
  s.emit('document','pointermove',{clientX:1});s.tick();
  assert.equal(s.nodes['.panel'].classList.values.has('open'),false);
  s.emit('document','pointermove',{clientX:999});s.tick();
+ assert.equal(s.nodes['.panel'].classList.values.has('open'),true);
+});
+
+test('unset edge preference defaults to left for fresh installs and reset',async()=>{
+ const s=setup('overlay',undefined);await settled();
+ s.changes.forEach(fn=>fn({arcSidebarEdgeSide:{newValue:undefined}},'local'));
+ assert.equal(s.nodes['.panel'].classList.values.has('left'),true);
+ s.emit('document','pointermove',{clientX:999});s.tick();
+ assert.equal(s.nodes['.panel'].classList.values.has('open'),false);
+ s.emit('document','pointermove',{clientX:1});s.tick();
  assert.equal(s.nodes['.panel'].classList.values.has('open'),true);
 });
