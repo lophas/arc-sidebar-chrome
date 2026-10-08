@@ -208,12 +208,12 @@ try{
  await page.locator('dialog[open]').getByRole('button',{name:'Cancel',exact:true}).click();
  assert.equal(await page.evaluate(()=>fixture.tabs.length),beforeCancel);
  // Search must not restrict the group-close target set.
- await page.locator('#search').fill('Saved A');
+ await page.evaluate(()=>{const search=document.querySelector('#search');search.value='Saved A';search.dispatchEvent(new Event('input',{bubbles:true}));});
  await page.locator('[data-chrome-group-id="2"] .close-tab-group').click();
  await page.waitForFunction(()=>!fixture.tabs.some(tab=>tab.windowId===1 && tab.groupId===2));
  assert.equal(await page.evaluate(()=>fixture.tabs.some(tab=>tab.id===21 && tab.windowId===2)),true);
  assert.equal(await page.evaluate(()=>fixture.tabs.some(tab=>tab.id===40)),true);
- await page.locator('#search').fill('');
+ await page.evaluate(()=>{const search=document.querySelector('#search');search.value='';search.dispatchEvent(new Event('input',{bubbles:true}));});
  await page.locator('[data-space-id="__open_tabs__"]').click({button:'right'});
  await page.locator('dialog[open] [data-close-all-tabs]').click();
  await page.waitForFunction(()=>!fixture.tabs.some(tab=>tab.windowId===1));
