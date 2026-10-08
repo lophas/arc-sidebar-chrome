@@ -293,7 +293,7 @@ try{
  assert.equal(await page.evaluate(id=>fixture.data.local.arcSidebarModel.spaces[0].children.some(item=>item.id===id),favoriteId),true);
  await page.locator('#addFolder').click();
  assert.equal(await page.locator('#folderSpace option').first().getAttribute('value'),'__favorites__');
- assert.equal(await page.locator('#folderSpace option').first().isDisabled(),true);
+ assert.equal(await page.locator('#folderSpace option').first().evaluate(option=>option.disabled),true);
  await page.locator('#folderCancel').click();
  await page.evaluate(()=>{fixture.tabs.push({id:777,windowId:1,index:30,groupId:-1,title:'Favorite from open tab',url:'https://live-favorite.test'});chrome.tabs.onCreated.emit(fixture.tabs.at(-1));});
  await page.locator('[data-space-id="__open_tabs__"]').click();
