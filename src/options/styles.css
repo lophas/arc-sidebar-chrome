@@ -10,3 +10,10 @@
 #sidePanelSettings{color:var(--accent);text-decoration:underline;text-underline-offset:3px}#sidePanelSettings:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:2px}
 
 .import-warning{display:grid;gap:6px;padding:12px 14px;border:1px solid #d99a20;border-left:4px solid #d99a20;border-radius:8px;background:#3b2b0c;color:#ffe3a3;font-size:13px;line-height:1.5}@media(prefers-color-scheme:light){.import-warning{background:#fff4d6;color:#604000;border-color:#b7790d}}
+
+.arc-file-help { display: grid; gap: 12px; margin: 14px 0; padding: 14px; border: 1px solid var(--border); border-radius: 10px; }
+.arc-file-help > div { display: grid; gap: 7px; }
+.arc-file-help > div > code { display: block; overflow-wrap: anywhere; font-size: 12px; }
+.arc-file-help .button { justify-self: start; }
+.arc-file-help p { margin: 0; font-size: 12px; line-height: 1.5; }
+.arc-file-help kbd { white-space: nowrap; font: inherit; font-weight: 600; }

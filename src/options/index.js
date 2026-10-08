@@ -334,3 +334,15 @@ chrome.storage.onChanged.addListener((changes, area) => {
 });
 
 await load();
+
+for (const button of document.querySelectorAll('[data-copy-arc-path]')) {
+  button.addEventListener('click', async () => {
+    const status = document.querySelector('#arcPathCopyStatus');
+    try {
+      await navigator.clipboard.writeText(button.dataset.copyArcPath);
+      status.textContent = 'Folder path copied.';
+    } catch {
+      status.textContent = 'Select and copy the folder path manually.';
+    }
+  });
+}
