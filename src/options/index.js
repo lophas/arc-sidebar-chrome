@@ -1,3 +1,4 @@
+import { BACKUP_SETTING_KEYS, exportBackupSettings, restoreBackupSettings } from './backup-settings.js';
 import { createStorageClient } from '../shared/storage-client.js';
 const sidebarStorage = createStorageClient();
 const STORAGE_KEY = 'arcSidebarModel';
@@ -6,7 +7,7 @@ const LOCAL_MODEL_UPDATED_KEY = 'arcSidebarModelUpdatedAt';
 const SYNC_ENABLED_KEY = 'arcSidebarSyncEnabled';
 const SYNC_META_KEY = 'arcSidebarSyncMeta';
 const BACKUP_FORMAT = 'arc-sidebar-backup';
-const BACKUP_VERSION = 1;
+const BACKUP_VERSION = 2;
 
 const arcFile = document.querySelector('#arcFile');
 const status = document.querySelector('#status');
@@ -242,7 +243,7 @@ arcFile.addEventListener('change', async event => {
 
 downloadBackup.addEventListener('click', async () => {
   backupStatus.textContent = '';
-  const stored = await sidebarStorage.local.get(STORAGE_KEY);
+  const stored = await sidebarStorage.local.get([STORAGE_KEY, ...BACKUP_SETTING_KEYS]);
   const model = stored[STORAGE_KEY];
   if (!isValidSidebarModel(model)) {
     backupStatus.textContent = 'No sidebar data to back up.';
@@ -253,7 +254,8 @@ downloadBackup.addEventListener('click', async () => {
     format: BACKUP_FORMAT,
     version: BACKUP_VERSION,
     exportedAt: new Date().toISOString(),
-    model
+    model,
+    settings: exportBackupSettings(stored)
   };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
@@ -276,8 +278,11 @@ restoreBackup.addEventListener('change', async event => {
     const model = payload?.format === BACKUP_FORMAT ? payload.model : payload;
     if (!isValidSidebarModel(model)) throw new Error('Not a valid Arc Sidebar backup.');
 
+    const settings = restoreBackupSettings(payload?.format === BACKUP_FORMAT ? payload.settings : undefined);
+    await sidebarStorage.local.get(Object.keys(settings));
     const now = Date.now();
     await sidebarStorage.local.set({
+      ...settings,
       [STORAGE_KEY]: model,
       [STATE_KEY]: { currentSpaceId: model.spaces[0]?.id || null, collapsedFolders: {} },
       [LOCAL_MODEL_UPDATED_KEY]: now
