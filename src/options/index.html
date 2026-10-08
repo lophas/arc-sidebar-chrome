@@ -16,18 +16,15 @@
       <p>Choose how the sidebar opens on this computer.</p>
       <div class="mode-options" role="radiogroup" aria-label="Sidebar mode">
         <label class="mode-option">
-          <input id="modeLeft" type="radio" name="sidebarMode" value="left">
-          <span><strong>Autohide left · default</strong><small>Opens at the left edge and closes automatically when the pointer leaves.</small></span>
-        </label>
-        <label class="mode-option">
-          <input id="modeRight" type="radio" name="sidebarMode" value="right">
-          <span><strong>Autohide right</strong><small>Opens at the right edge and closes automatically when the pointer leaves.</small></span>
+          <input id="modeOverlay" type="radio" name="sidebarMode" value="overlay">
+          <span><strong>Autohide · default</strong><small>Opens at the edge selected for Chrome’s side panel and closes automatically.</small></span>
         </label>
         <label class="mode-option">
           <input id="modeNative" type="radio" name="sidebarMode" value="native">
-          <span><strong>Fixed · Chrome side panel</strong><small>Open with the extension button. Choose its left or right position in Chrome Settings → Appearance → Side panel.</small></span>
+          <span><strong>Fixed · Chrome side panel</strong><small>Open with the extension button.</small></span>
         </label>
       </div>
+      <p>Both modes follow Chrome Settings → Appearance → Side panel. Changes apply to each open tab when you next focus it.</p>
       <div id="modeStatus" class="status"></div>
     </section>
 
@@ -89,7 +86,7 @@
           <span class="sr-only">Enable Chrome Sync</span>
         </label>
       </div>
-      <p class="sync-note">Live tab bindings, open tabs, collapsed folders, overlay width, sidebar mode, edge trigger side and Favorite size stay local to each computer.</p>
+      <p class="sync-note">Live tab bindings, open tabs, collapsed folders, overlay width, sidebar mode and Favorite size stay local to each computer.</p>
       <p class="sync-note">Extension ID on this computer: <code id="extensionId"></code></p>
       <div class="sync-actions">
         <button id="syncNow" class="button button-element" type="button">Sync now</button>

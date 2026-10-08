@@ -22,7 +22,7 @@ try {
     await page.waitForTimeout(150);assert.equal(await isOpen(),false,'returning tab stays closed until hover');
     await hover();await page.waitForFunction(()=>arcTestShadow.querySelector('.panel').classList.contains('open'));
     await report(false);await page.waitForFunction(()=>!arcTestShadow.querySelector('.panel').classList.contains('open'));
-    await page.evaluate(()=>arcTestStorageListeners.forEach(fn=>fn({arcSidebarEdgeSide:{newValue:'left'}},'local')));
+    await page.evaluate(()=>{window.arcTestSide='left';window.dispatchEvent(new Event('focus'));});
     await page.mouse.move(1190,300);await page.waitForTimeout(120);
     assert.equal(await isOpen(),false,'right edge must not open the left sidebar');
     await page.mouse.move(1,300);await page.waitForFunction(()=>arcTestShadow.querySelector('.panel').classList.contains('open'));

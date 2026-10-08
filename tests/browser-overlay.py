@@ -35,7 +35,7 @@ window.MutationObserver = class extends NativeObserver {
 };
 window.chrome = {
  storage: { local: { get: async () => ({arcSidebarMode:mode,arcSidebarEdgeSide:"right"}), set: async () => {} }, onChanged: { addListener(fn){(window.arcTestStorageListeners ||= []).push(fn);} } },
- runtime: { getURL: path => location.origin+'/'+path, sendMessage: async () => ({open:false}), onMessage: { addListener(){} } }
+ runtime: { getURL: path => location.origin+'/'+path, sendMessage: async message => message.type === 'arc-sidebar-panel-layout' ? {side:window.arcTestSide || 'right'} : {open:false}, onMessage: { addListener(){} } }
 };
 </script><script src="overlay.js"></script><script>
 setTimeout(() => {

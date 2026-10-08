@@ -1,3 +1,4 @@
+import './panel-layout.js';
 import { favoriteChildDestination, appendFavoriteChildren } from './favorite-child-tabs.js';
 import { watchNativeGroupVisibility, holdNativeGroupVisibility } from './native-group-visibility.js';
 import { orderNativeGroups } from './native-group-order.js';

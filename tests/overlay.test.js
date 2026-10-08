@@ -13,7 +13,8 @@ function setup(mode='overlay',side='right') {
  const root=()=>({append(node){node.parentNode=this;}});
  const document={documentElement:root(),visibilityState:'visible',createElement:()=>host,addEventListener:(n,fn)=>listener(events.document,n,fn)};
  const window={innerWidth:1000,addEventListener:(n,fn)=>listener(events.window,n,fn),matchMedia:()=>({matches:false,addEventListener(){}})};window.top=window;
- const chrome={storage:{local:{get:async key=>key==='arcSidebarMode'?{arcSidebarMode:mode}:{arcSidebarEdgeSide:side},set:async()=>{}},onChanged:{addListener:fn=>changes.push(fn)}},runtime:{getURL:path=>'chrome-extension://test/'+path,sendMessage:async()=>({open:false}),onMessage:{addListener:fn=>changes.push(fn)}}};
+ const chrome={storage:{local:{get:async key=>key==='arcSidebarMode'?{arcSidebarMode:mode}:{arcSidebarEdgeSide:side},set:async()=>{}},onChanged:{addListener:fn=>changes.push(fn)}},runtime:{getURL:path=>'chrome-extension://test/'+path,sendMessage:async message=>message.type==='arc-sidebar-panel-layout'?{side:chrome.panelSide}:{open:false},onMessage:{addListener:fn=>changes.push(fn)}}};
+ chrome.panelSide=side;
  const context={document,window,chrome,URL,Node:class{},MutationObserver:class{constructor(fn){this.fn=fn;observers.push(this);}targets=new Set();observe(target){this.targets.add(target);}disconnect(){this.targets.clear();mutations.delete(this);}},setTimeout:fn=>{timers.set(++seq,fn);return seq;},clearTimeout:id=>timers.delete(id)};
  vm.createContext(context);vm.runInContext(fs.readFileSync('src/overlay/overlay.js','utf8'),context);
  return {context,nodes,host,messages,observers,changes,styleWrites:()=>styleWrites,drainMutations:()=>{let rounds=0;while(mutations.size){if(++rounds>20)throw new Error('Mutation observer starved page event loop');const pending=[...mutations];mutations.clear();pending.forEach(o=>o.fn());}return rounds;},emit:(surface,type,event)=>(events[surface][type]||[]).forEach(fn=>fn(event)),tick:()=>{const fns=[...timers.values()];timers.clear();fns.forEach(fn=>fn());}};
@@ -75,16 +76,16 @@ test('left edge opens only from the left, closes away from the panel and resizes
  s.emit('document','pointermove',{clientX:600});s.tick();
  assert.equal(s.nodes['.panel'].classList.values.has('open'),false);
 });
-test('changing edge side updates an existing overlay and reset restores the left default',async()=>{
+test('focus refresh updates an existing overlay without losing resize geometry',async()=>{
  const s=setup();await settled();
- const change=value=>s.changes.forEach(fn=>fn({arcSidebarEdgeSide:{newValue:value}},'local'));
+ const change=async value=>{s.context.chrome.panelSide=value;s.emit('window','focus');await settled();};
  s.emit('document','pointermove',{clientX:999});
- change('left');s.tick();
+ await change('left');s.tick();
  assert.equal(s.nodes['.panel'].classList.values.has('open'),false,'old-edge delayed hover is cancelled');
  s.emit('document','pointermove',{clientX:1});s.tick();
  assert.equal(s.nodes['.panel'].classList.values.has('open'),true);
  assert.equal(s.nodes['.panel'].classList.values.has('left'),true);
- change('right');
+ await change('right');
  assert.equal(s.nodes['.panel'].classList.values.has('left'),false);
  assert.equal(s.nodes['.resize-handle'].style.left,'auto');
  assert.equal(s.nodes['.resize-handle'].style.right,'383px');
@@ -94,12 +95,14 @@ test('changing edge side updates an existing overlay and reset restores the left
  assert.equal(s.nodes['.panel'].classList.values.has('open'),true);
 });
 
-test('unset edge preference defaults to left for fresh installs and reset',async()=>{
- const s=setup('overlay',undefined);await settled();
- s.changes.forEach(fn=>fn({arcSidebarEdgeSide:{newValue:undefined}},'local'));
+test('Chrome layout changes remain dormant until focus and also apply on tab return',async()=>{
+ const s=setup();await settled();
+ s.context.chrome.panelSide='left';s.tick();
+ assert.equal(s.nodes['.panel'].classList.values.has('left'),false);
+ s.emit('window','focus');await settled();
  assert.equal(s.nodes['.panel'].classList.values.has('left'),true);
- s.emit('document','pointermove',{clientX:999});s.tick();
- assert.equal(s.nodes['.panel'].classList.values.has('open'),false);
- s.emit('document','pointermove',{clientX:1});s.tick();
- assert.equal(s.nodes['.panel'].classList.values.has('open'),true);
+ s.context.document.visibilityState='hidden';s.emit('document','visibilitychange');
+ s.context.chrome.panelSide='right';
+ s.context.document.visibilityState='visible';s.emit('document','visibilitychange');await settled();
+ assert.equal(s.nodes['.panel'].classList.values.has('left'),false);
 });

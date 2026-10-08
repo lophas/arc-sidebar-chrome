@@ -19,7 +19,7 @@ Your saved links stay in the sidebar when their browser tabs close. Click a save
 - **Open tabs within each Space** — see the Space’s additional browser tabs below its pinned links and drag them into the pinned list to save them.
 - **Matching Chrome groups** — Favorites first, then Space groups in sidebar order, with pinned tabs ordered by the sidebar hierarchy.
 - **Focused tab bar** — tab or window focus changes expand the active group and collapse the others; manual group changes remain until focus changes again.
-- **Two sidebar modes** — an autohide overlay at your chosen left or right edge or Chrome’s native Side Panel.
+- **Two sidebar modes** — an autohide overlay at the same edge as Chrome’s side panel or Chrome’s native Side Panel.
 - **Live indicators and bulk close** — see what is open and close a Favorite, pinned tab, folder or an entire Space’s open tabs.
 - **Personalized appearance** — website favicons, uploaded icons, searchable Space emojis and adjustable Favorite tile sizes.
 - **Remembered layout** — return to your previous scroll position in each Space and the Open tabs view.
@@ -51,7 +51,7 @@ To update an existing installation, replace its files with the new contents, the
 
 ### Getting started
 
-1. Open the sidebar using the extension’s toolbar button, or move the pointer to your selected edge of a webpage in Autohide mode.
+1. Open the sidebar using the extension’s toolbar button, or move the pointer to the edge selected for Chrome’s side panel of a webpage in Autohide mode.
 2. Create a Space for a project or activity.
 3. Add pinned links and folders to that Space.
 4. Add your everyday sites to Favorites using the **+** button beside the search control.
@@ -147,7 +147,7 @@ Within a group, pinned tabs follow the sidebar’s folder and link order. Additi
 
 Choose **Extension options → Sidebar mode**.
 
-**Autohide overlay** appears when the pointer reaches your chosen left or right edge of a webpage and closes after the pointer leaves. Choose **Extension options → Sidebar mode** and select **Autohide left** (default) or **Autohide right**. The sidebar opens on that side, and changes apply immediately to open webpages. It floats over the page. Resize it to suit your workflow; its width is remembered. While an editor is open, the sidebar stays visible until you save or cancel.
+**Autohide overlay** appears when the pointer reaches the same edge as Chrome’s side panel of a webpage and closes after the pointer leaves. Choose **Extension options → Sidebar mode → Autohide** (default). Both Autohide and Fixed follow **Chrome Settings → Appearance → Side panel**. Each open tab picks up changes when you next focus it. It floats over the page. Resize it to suit your workflow; its width is remembered. While an editor is open, the sidebar stays visible until you save or cancel.
 
 **Fixed · Chrome side panel** opens through the extension’s toolbar button and sits alongside the page. Choose its left or right position in **Chrome Settings → Appearance → Side panel**.
 

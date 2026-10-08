@@ -18,7 +18,6 @@
     const MIN_PANEL_WIDTH = 120;
     const MAX_PANEL_WIDTH = 720;
     const WIDTH_STORAGE_KEY = 'arcSidebarOverlayWidth';
-    const EDGE_SIDE_KEY = 'arcSidebarEdgeSide';
     const EDGE_WIDTH = 7;
     const RESIZE_HANDLE_WIDTH = 14;
     const SHOW_DELAY = 80;
@@ -76,7 +75,7 @@
     let editorActive = false;
     let currentWidth = DEFAULT_PANEL_WIDTH;
     let sidebarMode = OVERLAY_MODE;
-    let edgeSide = 'left';
+    let edgeSide = 'right';
 
     const sendTheme = () => {
       const theme = currentTheme();
@@ -104,7 +103,7 @@
     };
 
     const applyEdgeSide = value => {
-      const side = value === 'right' ? 'right' : 'left';
+      const side = value === 'left' ? 'left' : 'right';
       if (side !== edgeSide) {
         cancelResize?.();
         clearTimers();
@@ -116,12 +115,17 @@
       }
       applyWidth(currentWidth);
     };
-    chrome.storage.local.get([WIDTH_STORAGE_KEY, EDGE_SIDE_KEY]).then(stored => {
-      applyEdgeSide(stored[EDGE_SIDE_KEY]);
-      applyWidth(stored[WIDTH_STORAGE_KEY]);
-    }).catch(() => applyWidth(DEFAULT_PANEL_WIDTH));
+    let layoutRequest = 0;
+    const refreshLayout = async () => {
+      const request = ++layoutRequest;
+      try {
+        const layout = await chrome.runtime.sendMessage({ type: 'arc-sidebar-panel-layout' });
+        if (request === layoutRequest && (layout?.side === 'left' || layout?.side === 'right')) applyEdgeSide(layout.side);
+      } catch {}
+    };
+    refreshLayout();
+    chrome.storage.local.get(WIDTH_STORAGE_KEY).then(stored => applyWidth(stored[WIDTH_STORAGE_KEY])).catch(() => applyWidth(DEFAULT_PANEL_WIDTH));
     chrome.storage.onChanged.addListener((changes, area) => {
-      if (area === 'local' && changes[EDGE_SIDE_KEY]) applyEdgeSide(changes[EDGE_SIDE_KEY].newValue);
       if (area === 'local' && changes[WIDTH_STORAGE_KEY] && !isResizing) applyWidth(changes[WIDTH_STORAGE_KEY].newValue);
     });
 
@@ -368,9 +372,9 @@
       observedRoot = null;
     });
     window.addEventListener('pageshow', resume);
-    window.addEventListener('focus', () => { resume(); notifyVisibility(); });
+    window.addEventListener('focus', () => { refreshLayout(); resume(); notifyVisibility(); });
     document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible') { resume(); notifyVisibility(); }
+      if (document.visibilityState === 'visible') { refreshLayout(); resume(); notifyVisibility(); }
       else {
         cancelResize?.();
         forceClosePanel();
@@ -407,9 +411,11 @@
     else if (overlayInitialized) applyInitializedMode?.(NATIVE_MODE);
   };
 
-  chrome.storage.onChanged.addListener((changes, area) => {
-    if (area === 'local' && changes[SIDEBAR_MODE_KEY]) applyMode(changes[SIDEBAR_MODE_KEY].newValue);
+  const refreshMode = () => chrome.storage.local.get(SIDEBAR_MODE_KEY)
+    .then(stored => applyMode(stored[SIDEBAR_MODE_KEY])).catch(() => applyMode(OVERLAY_MODE));
+  window.addEventListener('focus', refreshMode);
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') refreshMode();
   });
-
-  chrome.storage.local.get(SIDEBAR_MODE_KEY).then(stored => applyMode(stored[SIDEBAR_MODE_KEY])).catch(() => applyMode(OVERLAY_MODE));
+  refreshMode();
 })();
