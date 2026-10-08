@@ -5,12 +5,15 @@ const TIMEOUT_KEY = 'arcSidebarAutohideTimeout';
 const allowed = new Set([0, 500, 600, 700, 800, 900, 1000, 1100]);
 const select = document.querySelector('#autohideTimeout');
 const status = document.querySelector('#modeStatus');
+const warning = document.querySelector('#autohideWarning');
 function timeout(stored) {
   const value = stored[TIMEOUT_KEY];
   return allowed.has(value) ? value : stored[MODE_KEY] === 'native' ? 0 : 800;
 }
 async function loadSelection() {
-  select.value = String(timeout(await sidebarStorage.local.get([TIMEOUT_KEY, MODE_KEY])));
+  const value = timeout(await sidebarStorage.local.get([TIMEOUT_KEY, MODE_KEY]));
+  select.value = String(value);
+  warning.hidden = value === 0;
 }
 select.addEventListener('change', async () => {
   const value = Number(select.value);

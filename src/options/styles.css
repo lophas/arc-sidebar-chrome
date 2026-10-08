@@ -4,3 +4,5 @@
 
 .autohide-warning{display:grid;gap:6px;margin-top:8px;padding:12px 14px;border:1px solid #d99a20;border-left:4px solid #d99a20;border-radius:8px;background:#3b2b0c;color:#ffe3a3;font-size:13px;line-height:1.5;cursor:inherit}.autohide-warning strong{color:inherit}.autohide-warning strong span{display:inline}
 @media(prefers-color-scheme:light){.autohide-warning{background:#fff4d6;color:#604000;border-color:#b7790d}}
+
+.autohide-warning[hidden]{display:none}
