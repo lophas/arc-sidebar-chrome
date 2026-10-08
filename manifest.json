@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Arc Sidebar for Chrome",
-  "version": "2.0.0",
-  "version_name": "2.0.0",
+  "version": "2.0.1",
+  "version_name": "2.0.1",
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAo3O1VFmIgnVpEPWr2nIzDJcIs0w9vRPnhQqz863ySROZZeUG+lD0W8i8XoZkPztE3W5vO2izPjrPrZDcxOVSombF5c/uCicuf/bD0+O3OKv3nzLTlMsnEsFL1Iss8s3jmOOmu78o9ZjjMPozsjaKpQ4kTEi5l/fvpLmsQSYuyF9H87+7tMyRxfXVuS2RW/EQr5ciGyMawqzBZj6iy6Rwl/DpUIdrocAH2wWmgUx5fq8GHvacc9e+SoCeWkUhicE/rXYT9m0Gd3mD2Lcp/RxPjCrIyctzejgnAgmSUmza5FaT2yGVZiRRgeYk4J3KdC+8QMipOU9Rl+saqI84sNVunQIDAQAB",
   "description": "Arc-like Spaces, folders and persistent pinned tabs in Chrome's side panel.",
   "permissions": [
