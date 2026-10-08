@@ -6,3 +6,5 @@
 @media(prefers-color-scheme:light){.autohide-warning{background:#fff4d6;color:#604000;border-color:#b7790d}}
 
 .autohide-warning[hidden]{display:none}
+
+#sidePanelSettings{color:var(--accent);text-decoration:underline;text-underline-offset:3px}#sidePanelSettings:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:2px}

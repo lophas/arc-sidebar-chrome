@@ -33,3 +33,13 @@ chrome.storage.onChanged.addListener((changes, area) => {
   if (area === 'local' && (changes[MODE_KEY] || changes[TIMEOUT_KEY])) loadSelection().catch(console.error);
 });
 await loadSelection();
+
+const settingsLink = document.querySelector('#sidePanelSettings');
+settingsLink.addEventListener('click', async event => {
+  event.preventDefault();
+  try {
+    await chrome.tabs.create({ url: 'chrome://settings/appearance' });
+  } catch (error) {
+    status.textContent = `Could not open Chrome Settings: ${error.message}`;
+  }
+});
