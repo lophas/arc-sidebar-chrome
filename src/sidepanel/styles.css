@@ -380,3 +380,5 @@ section { margin-bottom: 15px; }
 .open-tab-group-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
 .close-tab-group { border: 0; background: transparent; color: var(--muted); cursor: pointer; font-size: 18px; padding: 0 5px; }
 .close-tab-group:hover { background: var(--hover); color: var(--text); border-radius: 5px; }
+
+.empty-options-link{appearance:none;border:0;background:none;padding:0;color:var(--text);font:inherit;text-decoration:underline;text-underline-offset:3px;cursor:pointer}.empty-options-link:hover{opacity:.8}.empty-options-link:focus-visible{outline:2px solid var(--text);outline-offset:3px;border-radius:2px}

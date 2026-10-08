@@ -748,3 +748,8 @@ window.addEventListener('arc-sidebar-activity', event => {
   }
 });
 if (isSidebarActive()) await resumeSidebar();
+
+// Delegate because the empty-state template is recreated on each render.
+els.pinned.addEventListener('click', event => {
+  if (event.target.closest('.empty-options-link')) chrome.runtime.openOptionsPage().catch(console.error);
+});
