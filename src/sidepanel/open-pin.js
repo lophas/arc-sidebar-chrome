@@ -1,3 +1,4 @@
+import { fillSpaceSelect, FAVORITES_SPACE_ID } from './space-select.js';
 import { isSidebarActive } from './lifecycle.js';
 import { createStorageClient } from '../shared/storage-client.js';
 const sidebarStorage = createStorageClient({ isActive: isSidebarActive });
@@ -95,7 +96,7 @@ async function openPinDialog(tab) {
   ]);
 
   const model = stored[STORAGE_KEY];
-  if (!model?.spaces?.length) return;
+  if (!model) return;
 
   const bindings = session[BINDINGS_KEY] || {};
   if (Object.values(bindings).map(Number).includes(Number(tab.id))) return;
@@ -108,28 +109,23 @@ async function openPinDialog(tab) {
 
   titleInput.value = tab.title || tab.url;
   urlInput.value = tab.url;
-  spaceSelect.replaceChildren();
-
-  for (const space of model.spaces) {
-    const option = document.createElement('option');
-    option.value = space.id;
-    option.textContent = `${space.emoji || space.title?.slice(0, 1).toUpperCase() || '•'} ${space.title || 'Untitled Space'}`;
-    spaceSelect.append(option);
-  }
-
-  const preferredSpaceId = model.spaces.some(space => space.id === stored[LAST_SPACE_KEY])
-    ? stored[LAST_SPACE_KEY]
-    : model.spaces[0].id;
-  spaceSelect.value = preferredSpaceId;
-  fillFolderOptions(folderSelect, model.spaces.find(space => space.id === preferredSpaceId));
+  fillSpaceSelect(spaceSelect, model.spaces, { selectedId: stored[LAST_SPACE_KEY] });
+  const refreshFolders = () => {
+    const favorite = spaceSelect.value === FAVORITES_SPACE_ID;
+    fillFolderOptions(folderSelect, (model.spaces || []).find(space => space.id === spaceSelect.value));
+    folderSelect.disabled = favorite;
+    folderSelect.closest('label').hidden = favorite;
+  };
+  refreshFolders();
 
   spaceSelect.onchange = () => {
-    fillFolderOptions(folderSelect, model.spaces.find(candidate => candidate.id === spaceSelect.value));
+    refreshFolders();
   };
 
   d.querySelector('#openPinSave').onclick = async () => {
-    const space = model.spaces.find(candidate => candidate.id === spaceSelect.value);
-    if (!space) return;
+    const space = (model.spaces || []).find(candidate => candidate.id === spaceSelect.value);
+    const favorite = spaceSelect.value === FAVORITES_SPACE_ID;
+    if (!space && !favorite) return;
 
     const item = {
       type: 'tab',
@@ -138,13 +134,16 @@ async function openPinDialog(tab) {
       url: tab.url
     };
 
-    space.children ||= [];
-    if (folderSelect.value) {
-      const folder = findFolder(space.children, folderSelect.value);
+    if (favorite) {
+      model.favorites ||= [];
+      model.favorites.push(item);
+    } else if (folderSelect.value) {
+      const folder = findFolder(space.children || [], folderSelect.value);
       if (!folder) return;
       folder.children ||= [];
       folder.children.push(item);
     } else {
+      space.children ||= [];
       space.children.push(item);
     }
 
@@ -152,7 +151,7 @@ async function openPinDialog(tab) {
     bindings[item.id] = tab.id;
     d.close();
     await sidebarStorage.transaction({
-      local: { [STORAGE_KEY]: model, [LAST_SPACE_KEY]: space.id },
+      local: { [STORAGE_KEY]: model, [LAST_SPACE_KEY]: spaceSelect.value },
       session: { [BINDINGS_KEY]: bindings }
     });
   };

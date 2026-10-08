@@ -278,5 +278,33 @@ try{
  await page.waitForFunction(()=>fixture.data.local.arcSidebarModel.spaces[0]?.children[0]?.type==='folder');
  assert.equal(await page.evaluate(()=>fixture.data.local.arcSidebarState.currentSpaceId),'__my_space__');
  console.log('PASS real Chrome: first pinned link/folder creates and selects My Space; cancel leaves no Space');
+ // The same destination picker is shared by link, Favorite and folder editors.
+ await page.locator('#addPinned').click();
+ assert.equal(await page.locator('#itemSpace option').first().getAttribute('value'),'__favorites__');
+ await page.locator('#itemSpace').selectOption('__favorites__');
+ await page.locator('#itemUrl').fill('https://shared-picker.test');
+ await page.locator('#itemSave').click();
+ await page.waitForFunction(()=>fixture.data.local.arcSidebarModel.favorites.some(item=>item.url==='https://shared-picker.test'));
+ const favoriteId=await page.evaluate(()=>fixture.data.local.arcSidebarModel.favorites[0].id);
+ await page.locator(`[data-favorite-id="${favoriteId}"]`).click({button:'right'});
+ await page.locator('#itemSpace').selectOption('__my_space__');
+ await page.locator('#itemSave').click();
+ await page.waitForFunction(()=>fixture.data.local.arcSidebarModel.favorites.length===0);
+ assert.equal(await page.evaluate(id=>fixture.data.local.arcSidebarModel.spaces[0].children.some(item=>item.id===id),favoriteId),true);
+ await page.locator('#addFolder').click();
+ assert.equal(await page.locator('#folderSpace option').first().getAttribute('value'),'__favorites__');
+ assert.equal(await page.locator('#folderSpace option').first().isDisabled(),true);
+ await page.locator('#folderCancel').click();
+ await page.evaluate(()=>{fixture.tabs.push({id:777,windowId:1,index:30,groupId:-1,title:'Favorite from open tab',url:'https://live-favorite.test'});chrome.tabs.onCreated.emit(fixture.tabs.at(-1));});
+ await page.locator('[data-space-id="__open_tabs__"]').click();
+ await page.waitForFunction(()=>document.querySelector('[data-live-tab-id="777"]')?.dataset.openPinManaged==='1');
+ await page.locator('[data-live-tab-id="777"]').click({button:'right'});
+ assert.equal(await page.locator('#openPinSpace option').first().getAttribute('value'),'__favorites__');
+ await page.locator('#openPinSpace').selectOption('__favorites__');
+ assert.equal(await page.locator('#openPinFolder').isVisible(),false);
+ await page.locator('#openPinSave').click();
+ await page.waitForFunction(()=>fixture.data.local.arcSidebarModel.favorites.some(item=>item.url==='https://live-favorite.test'));
+ assert.equal(await page.evaluate(()=>{const item=fixture.data.local.arcSidebarModel.favorites.find(item=>item.url==='https://live-favorite.test');return fixture.data.session.arcSidebarBindings[item.id];}),777);
+ console.log('PASS real Chrome: shared Favorites-first destination picker creates Favorites, moves existing links with stable IDs and protects folders');
  assert.deepEqual(errors,[]);console.log('PASS real Chrome: Space workflow rendering, drag-to-pin/pin/activate/close, group changes and Open-tabs view');
 }finally{await browser.close();await new Promise(resolve=>server.close(resolve));}

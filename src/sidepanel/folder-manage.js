@@ -1,3 +1,4 @@
+import { fillSpaceSelect } from './space-select.js';
 import { prepareFirstSpace } from '../shared/first-space.js';
 import { isSidebarActive } from './lifecycle.js';
 import { sidebarTabAction } from './tab-actions.js';
@@ -143,14 +144,7 @@ async function openFolderEditor(folderId = null) {
   nameInput.value = folder?.title || '';
   nameInput.setCustomValidity('');
 
-  spaceSelect.replaceChildren();
-  for (const candidate of model.spaces || []) {
-    const option = document.createElement('option');
-    option.value = candidate.id;
-    option.textContent = `${candidate.emoji || candidate.title?.slice(0, 1).toUpperCase() || '•'} ${candidate.title || 'Untitled Space'}`;
-    spaceSelect.append(option);
-  }
-  spaceSelect.value = space.id;
+  fillSpaceSelect(spaceSelect, model.spaces, { selectedId: space.id, allowFavorites: false });
 
   deleteButton.style.display = folder ? '' : 'none';
   deleteNote.hidden = !folder;

@@ -1,3 +1,4 @@
+import { fillSpaceSelect, FAVORITES_SPACE_ID } from './space-select.js';
 import { prepareFirstSpace } from '../shared/first-space.js';
 import { moveFavoriteToSpace } from '../shared/favorite-moves.js';
 import { isSidebarActive } from './lifecycle.js';
@@ -80,6 +81,7 @@ function ensureDialog() {
       <h3 id="itemDialogTitle">Link</h3>
       <label>Title<input id="itemTitle" type="text" autocomplete="off"></label>
       <label>URL<input id="itemUrl" type="text" inputmode="url" autocomplete="off"></label>
+      <label>Space<select id="itemSpace"></select></label>
       <div class="dialog-actions">
         <button id="itemDelete" class="danger" type="button">Delete</button>
         <span class="dialog-spacer"></span>
@@ -217,14 +219,21 @@ async function openFavoriteEditor(index = null) {
   d.querySelector('#itemUrl').value = item?.url || '';
   d.querySelector('#itemUrl').setCustomValidity('');
   d.querySelector('#itemDelete').style.display = item ? '' : 'none';
+  fillSpaceSelect(d.querySelector('#itemSpace'), model.spaces, { selectedId: FAVORITES_SPACE_ID });
 
   d.querySelector('#itemSave').onclick = async () => {
     const title = d.querySelector('#itemTitle').value.trim();
     const url = validateUrlInput(d.querySelector('#itemUrl'));
     if (!url) return;
-    const next = { type: 'tab', id: item?.id || uid(), title: title || url, url };
-    if (item) model.favorites[index] = next;
-    else model.favorites.push(next);
+    const next = { ...item, type: 'tab', id: item?.id || uid(), title: title || url, url };
+    const destination = d.querySelector('#itemSpace').value;
+    const target = destination === FAVORITES_SPACE_ID ? model.favorites : model.spaces.find(space => space.id === destination)?.children;
+    if (!target) return;
+    if (item && destination === FAVORITES_SPACE_ID) model.favorites[index] = next;
+    else {
+      if (item) model.favorites.splice(index, 1);
+      target.push(next);
+    }
     d.close();
     await saveModel(model);
   };
@@ -260,14 +269,24 @@ async function openPinnedEditor(itemId = null) {
   d.querySelector('#itemUrl').value = item?.url || '';
   d.querySelector('#itemUrl').setCustomValidity('');
   d.querySelector('#itemDelete').style.display = item ? '' : 'none';
+  fillSpaceSelect(d.querySelector('#itemSpace'), model.spaces, { selectedId: space.id });
 
   d.querySelector('#itemSave').onclick = async () => {
     const title = d.querySelector('#itemTitle').value.trim();
     const url = validateUrlInput(d.querySelector('#itemUrl'));
     if (!url) return;
-    const next = { type: 'tab', id: item?.id || uid(), title: title || url, url };
-    if (location) location.parent[location.index] = next;
-    else space.children.push(next);
+    const next = { ...item, type: 'tab', id: item?.id || uid(), title: title || url, url };
+    const destination = d.querySelector('#itemSpace').value;
+    model.favorites ||= [];
+    const targetSpace = model.spaces.find(candidate => candidate.id === destination);
+    if (targetSpace) targetSpace.children ||= [];
+    const target = destination === FAVORITES_SPACE_ID ? model.favorites : targetSpace?.children;
+    if (!target) return;
+    if (location && destination === space.id) location.parent[location.index] = next;
+    else {
+      if (location) location.parent.splice(location.index, 1);
+      target.push(next);
+    }
     d.close();
     await saveModel(model, created ? state : null);
   };

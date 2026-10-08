@@ -1,3 +1,4 @@
+import { fillSpaceSelect } from './space-select.js';
 import { isSidebarActive } from './lifecycle.js';
 import { createStorageClient } from '../shared/storage-client.js';
 const sidebarStorage = createStorageClient({ isActive: isSidebarActive });
@@ -195,13 +196,7 @@ async function openDeleteSpace(spaceId) {
   const commit = dialog.querySelector('#spaceDeleteCommit');
 
   dialog.querySelector('#spaceDeleteSummary').textContent = `Remove “${space.title}”. By default its pinned links and folders will be moved intact to another Space.`;
-  select.replaceChildren();
-  for (const candidate of others) {
-    const option = document.createElement('option');
-    option.value = candidate.id;
-    option.textContent = `${candidate.emoji || candidate.title.slice(0, 1).toUpperCase()} ${candidate.title}`;
-    select.append(option);
-  }
+  fillSpaceSelect(select, others, { allowFavorites: false });
 
   destructive.checked = false;
   confirm.checked = false;
