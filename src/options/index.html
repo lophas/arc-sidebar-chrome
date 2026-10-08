@@ -12,26 +12,30 @@
     <p class="lead">Import, manage and optionally sync the persistent sidebar data used by the extension.</p>
 
     <section class="card">
-      <h2>Sidebar mode</h2>
-      <p>Choose how the sidebar opens on this computer.</p>
-      <div class="mode-options" role="radiogroup" aria-label="Sidebar mode">
-        <label class="mode-option">
-          <input id="modeOverlay" type="radio" name="sidebarMode" value="overlay">
-          <span>
-            <strong>Autohide · default</strong>
-            <small>Opens at the edge selected for Chrome’s side panel and closes automatically.</small>
-            <span class="autohide-warning" role="note">
-              <strong><span aria-hidden="true">⚠</span> Browser pages need a manual click</strong>
-              <span>Autohide does not work on Chrome’s own settings pages or browser error pages. Click the Arc Sidebar extension icon in the toolbar to open the fixed side panel on these pages.</span>
-            </span>
-          </span>
-        </label>
-        <label class="mode-option">
-          <input id="modeNative" type="radio" name="sidebarMode" value="native">
-          <span><strong>Fixed · Chrome side panel</strong><small>Open with the extension button.</small></span>
+      <div class="setting-row">
+        <div>
+          <h2>Autohide timeout</h2>
+          <p>Choose how long the sidebar stays open after the pointer leaves. Disable autohide to use the fixed Chrome side panel.</p>
+        </div>
+        <label class="select-setting">
+          <span class="sr-only">Autohide timeout</span>
+          <select id="autohideTimeout">
+            <option value="0">0 · Disabled (fixed)</option>
+            <option value="500">500 ms</option>
+            <option value="600">600 ms</option>
+            <option value="700">700 ms</option>
+            <option value="800">800 ms · default</option>
+            <option value="900">900 ms</option>
+            <option value="1000">1000 ms</option>
+            <option value="1100">1100 ms</option>
+          </select>
         </label>
       </div>
-      <p>Both modes follow Chrome Settings → Appearance → Side panel. Changes apply to each open tab when you next focus it.</p>
+      <div class="autohide-warning" role="note">
+        <strong><span aria-hidden="true">⚠</span> Browser pages need a manual click</strong>
+        <span>Autohide does not work on Chrome’s own settings pages or browser error pages. Click the Arc Sidebar extension icon in the toolbar to open the fixed side panel on these pages.</span>
+      </div>
+      <p>The sidebar follows Chrome Settings → Appearance → Side panel. Changes apply to each open tab when you next focus it.</p>
       <div id="modeStatus" class="status"></div>
     </section>
 
@@ -93,7 +97,7 @@
           <span class="sr-only">Enable Chrome Sync</span>
         </label>
       </div>
-      <p class="sync-note">Live tab bindings, open tabs, collapsed folders, overlay width, sidebar mode and Favorite size stay local to each computer.</p>
+      <p class="sync-note">Live tab bindings, open tabs, collapsed folders, overlay width, autohide timeout and Favorite size stay local to each computer.</p>
       <p class="sync-note">Extension ID on this computer: <code id="extensionId"></code></p>
       <div class="sync-actions">
         <button id="syncNow" class="button button-element" type="button">Sync now</button>

@@ -2,6 +2,9 @@
   if (window.top !== window) return;
 
   const SIDEBAR_MODE_KEY = 'arcSidebarMode';
+  const TIMEOUT_KEY = 'arcSidebarAutohideTimeout';
+  const TIMEOUTS = new Set([0, 500, 600, 700, 800, 900, 1000, 1100]);
+  let hideDelay = 800;
   const OVERLAY_MODE = 'overlay';
   const NATIVE_MODE = 'native';
   let overlayInitialized = false;
@@ -21,7 +24,6 @@
     const EDGE_WIDTH = 7;
     const RESIZE_HANDLE_WIDTH = 14;
     const SHOW_DELAY = 80;
-    const HIDE_DELAY = 800;
     const themeMedia = window.matchMedia('(prefers-color-scheme: dark)');
     const currentTheme = () => themeMedia.matches ? 'dark' : 'light';
 
@@ -209,7 +211,7 @@
       hideTimer = setTimeout(() => {
         hideTimer = null;
         closePanel();
-      }, HIDE_DELAY);
+      }, hideDelay);
     };
 
     const setEditorActive = open => {
@@ -411,8 +413,13 @@
     else if (overlayInitialized) applyInitializedMode?.(NATIVE_MODE);
   };
 
-  const refreshMode = () => chrome.storage.local.get(SIDEBAR_MODE_KEY)
-    .then(stored => applyMode(stored[SIDEBAR_MODE_KEY])).catch(() => applyMode(OVERLAY_MODE));
+  const refreshMode = () => chrome.storage.local.get([SIDEBAR_MODE_KEY, TIMEOUT_KEY])
+    .then(stored => {
+      const value = stored[TIMEOUT_KEY];
+      const timeout = TIMEOUTS.has(value) ? value : stored[SIDEBAR_MODE_KEY] === NATIVE_MODE ? 0 : 800;
+      hideDelay = timeout || 800;
+      applyMode(timeout === 0 ? NATIVE_MODE : OVERLAY_MODE);
+    }).catch(() => applyMode(OVERLAY_MODE));
   window.addEventListener('focus', refreshMode);
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') refreshMode();

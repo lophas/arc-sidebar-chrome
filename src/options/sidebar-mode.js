@@ -1,33 +1,32 @@
 import { createStorageClient } from '../shared/storage-client.js';
 const sidebarStorage = createStorageClient();
 const MODE_KEY = 'arcSidebarMode';
-const choices = ['overlay', 'native'].map(side => ({
-  side, input: document.querySelector(side === 'native' ? '#modeNative' : '#modeOverlay')
-}));
+const TIMEOUT_KEY = 'arcSidebarAutohideTimeout';
+const allowed = new Set([0, 500, 600, 700, 800, 900, 1000, 1100]);
+const select = document.querySelector('#autohideTimeout');
 const status = document.querySelector('#modeStatus');
-
+function timeout(stored) {
+  const value = stored[TIMEOUT_KEY];
+  return allowed.has(value) ? value : stored[MODE_KEY] === 'native' ? 0 : 800;
+}
 async function loadSelection() {
-  const stored = await sidebarStorage.local.get(MODE_KEY);
-  const selection = stored[MODE_KEY] === 'native' ? 'native' : 'overlay';
-  for (const {side, input} of choices) input.checked = side === selection;
+  select.value = String(timeout(await sidebarStorage.local.get([TIMEOUT_KEY, MODE_KEY])));
 }
-for (const {side, input} of choices) {
-  input.addEventListener('change', async () => {
-    if (!input.checked) return;
-    for (const choice of choices) choice.input.disabled = true;
-    try {
-      const values = { [MODE_KEY]: side === 'native' ? 'native' : 'overlay' };
-      await sidebarStorage.local.set(values);
-      status.textContent = side === 'native' ? 'Fixed Chrome side panel selected.' : 'Autohide selected.';
-    } catch (error) {
-      status.textContent = `Could not change sidebar mode: ${error.message}`;
-    } finally {
-      await loadSelection();
-      for (const choice of choices) choice.input.disabled = false;
-    }
-  });
-}
+select.addEventListener('change', async () => {
+  const value = Number(select.value);
+  if (!allowed.has(value)) return;
+  select.disabled = true;
+  try {
+    await sidebarStorage.local.set({ [TIMEOUT_KEY]: value, [MODE_KEY]: value === 0 ? 'native' : 'overlay' });
+    status.textContent = value === 0 ? 'Autohide disabled · open the fixed side panel with the extension button.' : `Autohide timeout: ${value} ms.`;
+  } catch (error) {
+    status.textContent = `Could not change autohide timeout: ${error.message}`;
+  } finally {
+    select.disabled = false;
+    await loadSelection();
+  }
+});
 chrome.storage.onChanged.addListener((changes, area) => {
-  if (area === 'local' && changes[MODE_KEY]) loadSelection().catch(console.error);
+  if (area === 'local' && (changes[MODE_KEY] || changes[TIMEOUT_KEY])) loadSelection().catch(console.error);
 });
 await loadSelection();

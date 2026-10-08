@@ -469,7 +469,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
   if (area === 'session' && changes[BINDINGS_KEY]) queueNativeGroupSync(80);
 
   if (area === 'local') {
-    if (changes[SIDEBAR_MODE_KEY]) markWebTabsForModeReload();
+    if (changes[SIDEBAR_MODE_KEY] || changes.arcSidebarAutohideTimeout) markWebTabsForModeReload();
 
     if (changes[STORAGE_KEY]) {
       queueNativeGroupSync(80);
