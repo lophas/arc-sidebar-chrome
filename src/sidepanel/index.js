@@ -1,3 +1,4 @@
+import { groupOpenTabs } from '../shared/open-tab-groups.js';
 import { spaceWorkflowTabs } from '../shared/space-tabs.js';
 import { isSidebarActive } from './lifecycle.js';
 import { sidebarTabAction } from './tab-actions.js';
@@ -478,7 +479,48 @@ function renderSpaces() {
     await saveState({ currentSpaceId: OPEN_TABS_SPACE_ID });
     render();
   });
+  openButton.addEventListener('contextmenu', event => {
+    event.preventDefault();
+    openCloseAllTabsDialog().catch(console.warn);
+  });
   els.spaces.append(openButton);
+}
+
+let closeAllDialog;
+async function openCloseAllTabsDialog() {
+  const tabs = await chrome.tabs.query({ currentWindow: true });
+  if (!closeAllDialog) {
+    closeAllDialog = document.createElement('dialog');
+    closeAllDialog.className = 'item-dialog';
+    const form = document.createElement('form');
+    form.method = 'dialog';
+    form.className = 'item-form';
+    const heading = document.createElement('h3');
+    heading.textContent = 'Close all open tabs?';
+    const text = document.createElement('p');
+    text.className = 'close-all-description';
+    const actions = document.createElement('div');
+    actions.className = 'dialog-actions';
+    const cancel = document.createElement('button');
+    cancel.textContent = 'Cancel';
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.className = 'danger';
+    close.dataset.closeAllTabs = '1';
+    close.textContent = 'Close all tabs';
+    close.addEventListener('click', async () => {
+      closeAllDialog.close();
+      await sidebarTabAction('close-window-tabs').catch(() => {});
+    });
+    actions.append(cancel, close);
+    form.append(heading, text, actions);
+    closeAllDialog.append(form);
+    document.body.append(closeAllDialog);
+  }
+  closeAllDialog.querySelector('.close-all-description').textContent = `Close all ${tabs.length} tabs in this Chrome window, including Favorites and pinned tabs? Your saved Favorites, links and folders will remain in the sidebar.`;
+  closeAllDialog.querySelector('[data-close-all-tabs]').disabled = tabs.length === 0;
+  if (!closeAllDialog.open) closeAllDialog.showModal();
+  closeAllDialog.querySelector('button').focus();
 }
 
 function renderPinned() {
@@ -524,7 +566,40 @@ function renderOpenTabs() {
     return !q || `${tab.title || ''} ${tab.url || ''}`.toLowerCase().includes(q);
   });
   els.openCount.textContent = `(${tabs.length})`;
-  for (const tab of visibleTabs) {
+  const visibleIds = new Set(visibleTabs.map(tab => tab.id));
+  const sections = isOpenSpace ? groupOpenTabs(tabs, nativeGroups) : [{ tabs }];
+  for (const section of sections) {
+    const sectionTabs = section.tabs.filter(tab => visibleIds.has(tab.id));
+    if (!sectionTabs.length) continue;
+    let container = els.openTabs;
+    if (isOpenSpace) {
+      container = document.createElement('section');
+      container.className = 'open-tab-group';
+      container.dataset.chromeGroupId = String(section.id);
+      const header = document.createElement('div');
+      header.className = 'open-tab-group-header';
+      header.dataset.color = section.color;
+      const name = document.createElement('span');
+      name.className = 'open-tab-group-name';
+      name.textContent = section.title;
+      const count = document.createElement('span');
+      count.className = 'muted';
+      count.textContent = `(${section.tabs.length})`;
+      header.append(name, count);
+      if (section.id >= 0) {
+        const close = document.createElement('button');
+        close.type = 'button';
+        close.className = 'close-tab-group';
+        close.textContent = '×';
+        close.title = `Close all tabs in ${section.title}`;
+        close.setAttribute('aria-label', close.title);
+        close.addEventListener('click', () => sidebarTabAction('close-window-group', { groupId: section.id }).catch(() => {}));
+        header.append(close);
+      }
+      container.append(header);
+      els.openTabs.append(container);
+    }
+    for (const tab of sectionTabs) {
     const row = createTabRow(tab, { live: true, active: Boolean(tab.active && tab.windowId === currentWindowId) });
     row.draggable = !isOpenSpace;
     if (!isOpenSpace) row.title += '\nDrag into pinned items to save this tab';
@@ -534,7 +609,8 @@ function renderOpenTabs() {
       label.textContent = 'Other window';
       row.querySelector('.close-tab').before(label);
     }
-    els.openTabs.append(row);
+    container.append(row);
+    }
   }
 }
 

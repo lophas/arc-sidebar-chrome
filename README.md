@@ -15,6 +15,7 @@ Your saved links stay in the sidebar when their browser tabs close. Click a save
 - **Persistent pinned links** — save pages without keeping their tabs open; return to the same live tab when you need it.
 - **Search popup** — press **⌘K / Ctrl+K** to find recent tabs, Favorites, pinned links, folders and Spaces, open a URL or search Google.
 - **Folders and drag-and-drop** — organize links, choose their exact order, and move them between folders and Spaces. Hold a dragged item near the top or bottom of the pinned list to scroll.
+- **Open tabs overview** — browse the current window’s tabs by Chrome group, close a whole group, or close all tabs with confirmation.
 - **Open tabs within each Space** — see the Space’s additional browser tabs below its pinned links and drag them into the pinned list to save them.
 - **Matching Chrome groups** — Favorites first, then Space groups in sidebar order, with pinned tabs ordered by the sidebar hierarchy.
 - **Focused tab bar** — tab or window focus changes expand the active group and collapse the others; manual group changes remain until focus changes again.
@@ -128,7 +129,7 @@ A red indicator shows when a folder contains open pinned tabs. Right-click the f
 
 To save an open tab, drag it into the pinned list at the desired position. You can drop it between links, inside a folder or into an empty Space. The same browser tab becomes the pinned item’s live tab. You can also pin it through its right-click menu.
 
-**Open tabs view:** the dedicated **Open tabs** Space shows all live tabs in the current Chrome window. Use it to find a page or save an already-open tab.
+**Open tabs view:** the dedicated **Open tabs** Space shows all live tabs in the current Chrome window. Tabs are organized by Chrome group, in tab-bar order, with ungrouped tabs listed together. Click **×** beside a group name to close all its tabs. Right-click the **Open tabs** Space to close all tabs in the current Chrome window after confirmation. Saved Favorites, pinned links and folders remain available.
 
 ### Chrome tab groups
 

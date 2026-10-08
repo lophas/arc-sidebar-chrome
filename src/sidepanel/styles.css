@@ -374,3 +374,9 @@ section { margin-bottom: 15px; }
 .favorite-pinned-before::before { top: -1px; }
 .favorite-pinned-after::after { bottom: -1px; }
 .favorite-pinned-into { outline: 1px dashed var(--text); outline-offset: -2px; }
+
+.open-tab-group { margin: 8px 0 14px; }
+.open-tab-group-header { display: flex; align-items: center; gap: 7px; padding: 6px 8px; font-size: 12px; }
+.open-tab-group-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.close-tab-group { border: 0; background: transparent; color: var(--muted); cursor: pointer; font-size: 18px; padding: 0 5px; }
+.close-tab-group:hover { background: var(--hover); color: var(--text); border-radius: 5px; }

@@ -17,6 +17,7 @@ window.chrome={storage:{local:{get:async keys=>read('local',keys),set:values=>wr
   calls.push(message);
   if(message.type==='arc-sidebar-tab-action'){
    if(message.action==='pin-workflow-tab'){const {pinWorkflowTab}=await import('/src/background/tab-actions.js');return {ok:true,values:await pinWorkflowTab(message)};}
+   if(message.action==='close-window-tabs' || message.action==='close-window-group'){const {closeWindowTabs,closeWindowGroup}=await import('/src/background/tab-actions.js');return {ok:true,values:await (message.action==='close-window-tabs'?closeWindowTabs(message.windowId):closeWindowGroup(message.windowId,message.groupId))};}
    return {ok:true};
   }
   const request=message.request;

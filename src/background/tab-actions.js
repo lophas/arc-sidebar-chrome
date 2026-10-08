@@ -107,6 +107,30 @@ export async function closeSpaceTabs(spaceId) {
     if (results.some(result => result.status === 'rejected')) throw new Error('Some tabs could not be closed. Reopen the Space menu to try again.');
   });
 }
+export function closeWindowGroup(windowId, groupId) {
+  if (!Number.isInteger(groupId) || groupId < 0) return Promise.reject(new Error('Invalid Chrome group.'));
+  return closeWindowTabs(windowId, groupId);
+}
+export async function closeWindowTabs(windowId, groupId = null) {
+  await bindingsReady;
+  return serializeState(async () => {
+    if (!Number.isInteger(windowId) || windowId < 0) throw new Error('Invalid Chrome window.');
+    if (groupId != null) {
+      if (!Number.isInteger(groupId) || groupId < 0) throw new Error('Invalid Chrome group.');
+      const group = await chrome.tabGroups.get(groupId);
+      if (group.windowId !== windowId) throw new Error('This group is in another window.');
+    }
+    const tabs = (await chrome.tabs.query({ windowId })).filter(tab => tab.windowId === windowId && (groupId == null || tab.groupId === groupId));
+    const session = await chrome.storage.session.get(BINDINGS);
+    const bindings = session[BINDINGS] || {};
+    const results = await Promise.allSettled(tabs.map(tab => chrome.tabs.remove(tab.id)));
+    const closed = new Set(tabs.filter((_, index) => results[index].status === 'fulfilled').map(tab => tab.id));
+    for (const [id, tabId] of Object.entries(bindings)) if (closed.has(Number(tabId))) delete bindings[id];
+    await chrome.storage.session.set({ [BINDINGS]: bindings });
+    if (results.some(result => result.status === 'rejected')) throw new Error('Some tabs could not be closed. Try again.');
+    return { count: closed.size };
+  });
+}
 function findNodeLocation(nodes, id) {
   for (let index = 0; index < (nodes || []).length; index++) {
     const node = nodes[index];
@@ -173,7 +197,7 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
   if (message?.type !== 'arc-sidebar-tab-action') return;
   if (sender.id !== chrome.runtime.id || !sender.url?.startsWith(chrome.runtime.getURL(''))) { respond({ ok: false, error: 'Invalid sidebar sender' }); return; }
   const action = message.action;
-  const task = action === 'open' ? openSavedItem(message.itemId, message.windowId) : action === 'activate' ? activateTab(message.tabId) : action === 'close' ? closeSavedItems(message.itemIds || []) : action === 'space-close-info' ? getSpaceCloseInfo(message.spaceId) : action === 'close-space' ? closeSpaceTabs(message.spaceId) : action === 'pin-workflow-tab' ? pinWorkflowTab(message) : Promise.reject(new Error('Unknown tab action'));
+  const task = action === 'close-window-tabs' ? closeWindowTabs(message.windowId) : action === 'close-window-group' ? closeWindowGroup(message.windowId, message.groupId) : action === 'open' ? openSavedItem(message.itemId, message.windowId) : action === 'activate' ? activateTab(message.tabId) : action === 'close' ? closeSavedItems(message.itemIds || []) : action === 'space-close-info' ? getSpaceCloseInfo(message.spaceId) : action === 'close-space' ? closeSpaceTabs(message.spaceId) : action === 'pin-workflow-tab' ? pinWorkflowTab(message) : Promise.reject(new Error('Unknown tab action'));
   task.then(values => respond({ ok: true, values })).catch(error => respond({ ok: false, error: error.message }));
   return true;
 });

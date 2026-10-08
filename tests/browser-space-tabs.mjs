@@ -193,5 +193,32 @@ try{
  await page.waitForFunction(()=>document.querySelector('main').scrollTop<500);
  await page.evaluate(()=>scrollDrag.source.dispatchEvent(new DragEvent('dragend',{bubbles:true,dataTransfer:scrollDrag.transfer})));
  console.log('PASS real Chrome: continuous up/down edge drag scrolling for pinned links, folders, Favorites and workflow tabs; drag cancellation stops scrolling');
+ // Open-tabs group rendering, group-close full membership, cancel and confirm.
+ await page.evaluate(()=>{
+  fixture.tabs.push({id:40,windowId:1,index:20,groupId:-1,title:'Ungrouped page',url:'https://ungrouped.test'},{id:41,windowId:1,index:21,groupId:4,title:'Other group page',url:'https://other.test'});
+  chrome.tabs.onCreated.emit(fixture.tabs.at(-1));
+ });
+ await page.locator('[data-space-id="__open_tabs__"]').click();
+ await page.waitForFunction(()=>document.querySelectorAll('.open-tab-group').length===3);
+ assert.deepEqual(await page.locator('.open-tab-group').evaluateAll(groups=>groups.map(g=>g.dataset.chromeGroupId)),['2','-1','4']);
+ assert.deepEqual(await page.locator('.open-tab-group-name').allTextContents(),['Work','Ungrouped','Other']);
+ await page.locator('[data-space-id="__open_tabs__"]').click({button:'right'});
+ assert.match(await page.locator('dialog[open] .close-all-description').textContent(),/this Chrome window/);
+ const beforeCancel=await page.evaluate(()=>fixture.tabs.length);
+ await page.locator('dialog[open]').getByRole('button',{name:'Cancel',exact:true}).click();
+ assert.equal(await page.evaluate(()=>fixture.tabs.length),beforeCancel);
+ // Search must not restrict the group-close target set.
+ await page.locator('#search').fill('Saved A');
+ await page.locator('[data-chrome-group-id="2"] .close-tab-group').click();
+ await page.waitForFunction(()=>!fixture.tabs.some(tab=>tab.windowId===1 && tab.groupId===2));
+ assert.equal(await page.evaluate(()=>fixture.tabs.some(tab=>tab.id===21 && tab.windowId===2)),true);
+ assert.equal(await page.evaluate(()=>fixture.tabs.some(tab=>tab.id===40)),true);
+ await page.locator('#search').fill('');
+ await page.locator('[data-space-id="__open_tabs__"]').click({button:'right'});
+ await page.locator('dialog[open] [data-close-all-tabs]').click();
+ await page.waitForFunction(()=>!fixture.tabs.some(tab=>tab.windowId===1));
+ assert.equal(await page.evaluate(()=>fixture.tabs.some(tab=>tab.windowId===2)),true);
+ assert.equal(await page.evaluate(()=>fixture.data.local.arcSidebarModel.spaces[0].children.length),46);
+ console.log('PASS real Chrome: Open tabs grouped in tab-bar order, group close during search, close-all cancel/confirm scoped to current window, saved items retained');
  assert.deepEqual(errors,[]);console.log('PASS real Chrome: Space workflow rendering, drag-to-pin/pin/activate/close, group changes and Open-tabs view');
 }finally{await browser.close();await new Promise(resolve=>server.close(resolve));}
