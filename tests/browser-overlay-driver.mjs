@@ -26,6 +26,7 @@ try {
     await page.evaluate(()=>{window.arcTestVisibility='visible';document.dispatchEvent(new Event('visibilitychange'));window.dispatchEvent(new Event('focus'));});
     await page.waitForTimeout(150);assert.equal(await isOpen(),false,'returning tab stays closed until hover');
     await hover();await page.waitForFunction(()=>arcTestShadow.querySelector('.panel').classList.contains('open'));
+    await page.mouse.move(600,300);
     await report(false);await page.waitForFunction(()=>!arcTestShadow.querySelector('.panel').classList.contains('open'));
     await page.evaluate(()=>{window.arcTestSide='left';window.dispatchEvent(new Event('focus'));});
     await page.mouse.move(1190,300);await page.waitForTimeout(120);
