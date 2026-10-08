@@ -201,8 +201,8 @@ If different computers change the sidebar, the most recently updated sidebar bec
 
 The extension’s options provide:
 
-- **Download backup** — save your Spaces, Favorites, folders, pinned links, custom icons, autohide timeout, Favorite button size and sidebar width as a JSON file.
-- **Restore backup** — replace the current sidebar contents and restore the appearance settings included in the backup. Older backups keep your current timeout, Favorite size and sidebar width.
+- **Download backup** — save your Spaces, Favorites, folders and their expanded/collapsed state, pinned links, custom icons, autohide timeout, Favorite button size and sidebar width as a JSON file.
+- **Restore backup** — replace the current sidebar contents and restore folder expanded/collapsed states and the appearance settings included in the backup. Older backups keep your current timeout, Favorite size and sidebar width.
 - **Reset all extension data** — clear the extension’s saved organization and settings, including synchronized data. Your Chrome tabs stay open.
 
 Download a backup before importing, restoring or resetting if you want to preserve your current setup.

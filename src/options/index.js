@@ -1,3 +1,4 @@
+import { backupFolderState } from './backup-state.js';
 import { BACKUP_SETTING_KEYS, exportBackupSettings, restoreBackupSettings } from './backup-settings.js';
 import { createStorageClient } from '../shared/storage-client.js';
 const sidebarStorage = createStorageClient();
@@ -243,7 +244,7 @@ arcFile.addEventListener('change', async event => {
 
 downloadBackup.addEventListener('click', async () => {
   backupStatus.textContent = '';
-  const stored = await sidebarStorage.local.get([STORAGE_KEY, ...BACKUP_SETTING_KEYS]);
+  const stored = await sidebarStorage.local.get([STORAGE_KEY, STATE_KEY, ...BACKUP_SETTING_KEYS]);
   const model = stored[STORAGE_KEY];
   if (!isValidSidebarModel(model)) {
     backupStatus.textContent = 'No sidebar data to back up.';
@@ -255,6 +256,7 @@ downloadBackup.addEventListener('click', async () => {
     version: BACKUP_VERSION,
     exportedAt: new Date().toISOString(),
     model,
+    state: backupFolderState(model, stored[STATE_KEY]),
     settings: exportBackupSettings(stored)
   };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
@@ -284,7 +286,7 @@ restoreBackup.addEventListener('change', async event => {
     await sidebarStorage.local.set({
       ...settings,
       [STORAGE_KEY]: model,
-      [STATE_KEY]: { currentSpaceId: model.spaces[0]?.id || null, collapsedFolders: {} },
+      [STATE_KEY]: { currentSpaceId: model.spaces[0]?.id || null, ...backupFolderState(model, payload?.format === BACKUP_FORMAT ? payload.state : undefined) },
       [LOCAL_MODEL_UPDATED_KEY]: now
     });
 
