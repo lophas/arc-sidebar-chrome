@@ -1,6 +1,6 @@
 const FAVORITES = { id: '__favorites__', title: 'Favorites' };
 
-export async function syncNativeGroupVisibility(windowId) {
+export async function syncNativeGroupVisibility(windowId, canContinue = () => true) {
   const [local, session, groups] = await Promise.all([
     chrome.storage.local.get('arcSidebarModel'),
     chrome.storage.session.get('arcSidebarNativeGroups'),
@@ -23,6 +23,7 @@ export async function syncNativeGroupVisibility(windowId) {
       ]);
       if (current.windowId !== group.windowId || current.title !== group.title || !tabs.length) continue;
       const collapsed = tabs[0].groupId !== group.id;
+      if (!canContinue()) return;
       if (current.collapsed !== collapsed) await chrome.tabGroups.update(group.id, { collapsed });
     } catch (error) {
       // A tab/group can disappear while its window is closing.
@@ -33,28 +34,32 @@ export async function syncNativeGroupVisibility(windowId) {
 
 let timer = null;
 let running = false;
+let groupingHolds = 0;
 const pendingWindows = new Set();
 
 async function flushVisibility() {
   timer = null;
-  if (running) return;
+  if (running || groupingHolds) return;
   running = true;
   const windows = [...pendingWindows];
   pendingWindows.clear();
   try {
-    for (const windowId of windows) await syncNativeGroupVisibility(windowId);
+    for (const windowId of windows) {
+      await syncNativeGroupVisibility(windowId, () => groupingHolds === 0);
+      if (groupingHolds) pendingWindows.add(windowId);
+    }
   } catch (error) {
     console.warn('Arc Sidebar: group visibility failed', error);
   } finally {
     running = false;
-    if (pendingWindows.size && !timer) timer = setTimeout(flushVisibility, 60);
+    if (pendingWindows.size && !timer && !groupingHolds) timer = setTimeout(flushVisibility, 60);
   }
 }
 
 export function queueNativeGroupVisibility(windowId) {
   if (!Number.isInteger(windowId) || windowId < 0) return;
   pendingWindows.add(windowId);
-  if (!running && !timer) timer = setTimeout(flushVisibility, 60);
+  if (!running && !timer && !groupingHolds) timer = setTimeout(flushVisibility, 60);
 }
 
 export function watchNativeGroupVisibility() {
@@ -62,4 +67,20 @@ export function watchNativeGroupVisibility() {
   // to that window so working elsewhere preserves its manual layout too.
   chrome.tabs.onActivated.addListener(({ windowId }) => queueNativeGroupVisibility(windowId));
   chrome.windows.onFocusChanged.addListener(queueNativeGroupVisibility);
+}
+
+// A newly focused tab may not belong to its destination group yet. Keep the
+// original focus request pending until our grouping operation has settled.
+// Grouping without a focus change never creates a visibility request.
+export function holdNativeGroupVisibility() {
+  groupingHolds += 1;
+  let released = false;
+  return () => {
+    if (released) return;
+    released = true;
+    groupingHolds -= 1;
+    if (!groupingHolds && pendingWindows.size && !running && !timer) {
+      timer = setTimeout(flushVisibility, 60);
+    }
+  };
 }

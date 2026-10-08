@@ -1,5 +1,5 @@
 import { favoriteChildDestination, appendFavoriteChildren } from './favorite-child-tabs.js';
-import { watchNativeGroupVisibility } from './native-group-visibility.js';
+import { watchNativeGroupVisibility, holdNativeGroupVisibility } from './native-group-visibility.js';
 import { orderNativeGroups } from './native-group-order.js';
 import { pruneGroupMap } from './native-group-map.js';
 import './tab-actions.js';
@@ -31,6 +31,7 @@ const pendingFavoriteChildren = new Map();
 let groupSyncTimer = null;
 let groupSyncRunning = false;
 let groupSyncPending = false;
+let releaseGroupVisibility = null;
 let modelSyncPushTimer = null;
 let modelSyncPullTimer = null;
 let suppressLocalModelJson = null;
@@ -433,11 +434,15 @@ async function syncNativeGroupsNow() {
     if (groupSyncPending) {
       groupSyncPending = false;
       queueNativeGroupSync(50);
+    } else if (!groupSyncTimer) {
+      releaseGroupVisibility?.();
+      releaseGroupVisibility = null;
     }
   }
 }
 
 function queueNativeGroupSync(delay = 120) {
+  releaseGroupVisibility ||= holdNativeGroupVisibility();
   if (groupSyncTimer) clearTimeout(groupSyncTimer);
   groupSyncTimer = setTimeout(() => {
     groupSyncTimer = null;

@@ -64,3 +64,35 @@ test('only tab activation and window focus trigger synchronization; manual chang
  await new Promise(resolve=>setTimeout(resolve,90));
  assert.equal(f.groups.get(3).collapsed,true);
 });
+
+test('new Favorites and Space tabs wait for grouping before applying their focus request',async()=>{
+ const {holdNativeGroupVisibility,queueNativeGroupVisibility}=await import('../src/background/native-group-visibility.js');
+ for(const destination of [1,2]){
+  const f=fixture();f.active.set(10,-1);
+  f.groups.get(destination).collapsed=false;
+  const release=holdNativeGroupVisibility();
+  queueNativeGroupVisibility(10);
+  await new Promise(resolve=>setTimeout(resolve,90));
+  assert.equal(f.updates.length,0,'an active tab awaiting grouping must not collapse its destination');
+  f.active.set(10,destination);
+  release();release();
+  await new Promise(resolve=>setTimeout(resolve,90));
+  assert.equal(f.groups.get(destination).collapsed,false);
+  assert.equal(f.groups.get(destination===1?2:1).collapsed,true);
+ }
+});
+
+test('overlapping grouping passes retain the latest focus; grouping alone preserves manual layout',async()=>{
+ const {holdNativeGroupVisibility,queueNativeGroupVisibility}=await import('../src/background/native-group-visibility.js');
+ const f=fixture();const first=holdNativeGroupVisibility(),second=holdNativeGroupVisibility();
+ queueNativeGroupVisibility(10);first();
+ await new Promise(resolve=>setTimeout(resolve,90));
+ assert.equal(f.updates.length,0);
+ f.active.set(10,2);queueNativeGroupVisibility(10);second();
+ await new Promise(resolve=>setTimeout(resolve,90));
+ assert.equal(f.groups.get(2).collapsed,false);assert.equal(f.groups.get(1).collapsed,true);
+ f.groups.get(3).collapsed=false;f.groups.get(2).collapsed=true;
+ const release=holdNativeGroupVisibility();release();
+ await new Promise(resolve=>setTimeout(resolve,90));
+ assert.equal(f.groups.get(3).collapsed,false);assert.equal(f.groups.get(2).collapsed,true);
+});
