@@ -1,10 +1,12 @@
-## Arc Sidebar for Chrome 2.0.1
+## Arc Sidebar for Chrome 2.0.2
 
-- **Loaded-tab indicators:** filled red dots identify loaded open tabs; outlined dots identify tabs unloaded from memory by Chrome. Indicators update automatically as tabs are unloaded or restored. Folder and group dots are outlined when all their open tabs are unloaded.
-- **Discreet Favorites controls:** the live indicator and close control sit in the bottom-right corner of each Favorite button. The dot is smaller (5 pixels), while hovering still reveals the × and Close label.
+- **Autohide on tab changes:** switching tabs closes the overlay reliably. Returning to a tab while the mouse stays on Chrome’s tab bar no longer opens the sidebar automatically.
+- **Fresh edge movement:** opening the sidebar requires actual pointer movement at the page edge. Stale editor locks cannot keep the overlay open after tab activation.
+
+Includes all features and visual improvements from 2.0.1.
 
 ### Install or update
 
-Download `arc-sidebar-chrome-v2.0.1.zip` and extract it. Open **chrome://extensions → Developer mode → Load unpacked**, then select the folder containing `manifest.json`.
+Download `arc-sidebar-chrome-v2.0.2.zip` and extract it. Open **chrome://extensions → Developer mode → Load unpacked**, then select the folder containing `manifest.json`.
 
-For an existing installation, replace the files in its current folder and click **Reload**. Your saved sidebar organization is retained.
+For an existing installation, replace the files in its current folder, click **Reload**, and reload already-open webpages so they receive the updated edge-trigger code. Your saved sidebar organization is retained.
