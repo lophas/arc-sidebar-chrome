@@ -2,3 +2,5 @@
 .row.folder-reorder-before,.row.folder-reorder-after{position:relative}
 .row.folder-reorder-before::before,.row.folder-reorder-after::before{content:"";position:absolute;left:6px;right:6px;height:2px;border-radius:999px;background:color-mix(in srgb,var(--text) 78%,transparent);z-index:4;pointer-events:none}
 .row.folder-reorder-before::before{top:-1px}.row.folder-reorder-after::before{bottom:-1px}
+
+.item-form label[hidden]{display:none}
