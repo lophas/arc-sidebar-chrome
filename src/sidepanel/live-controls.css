@@ -12,3 +12,9 @@
 .native-pinned-tab:hover { background: color-mix(in srgb, #8ab4f8 10%, transparent); }
 
 .favorite-tile .live-dot-close { top: auto !important; bottom: 0 !important; right: 0 !important; transform: none !important; width: 20px !important; height: 20px !important; }
+
+.live-dot-close::before { box-sizing: border-box; border: 1px solid #ff5d52; }
+.live-dot-close.discarded-tab::before { background: transparent !important; }
+.favorite-tile .live-dot-close::before { width: 5px !important; height: 5px !important; }
+.live-dot-close:hover::before, .live-dot-close:focus-visible::before { border: 0; }
+.favorite-tile .live-dot-close:hover::before, .favorite-tile .live-dot-close:focus-visible::before { width: auto !important; height: auto !important; }

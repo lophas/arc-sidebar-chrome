@@ -216,6 +216,14 @@ try{
   assert.equal(await page.locator(selector).evaluate(el=>getComputedStyle(el,'::after').content),'"Close"');
  }
  assert.equal(await page.locator('[data-favorite-id="native-favorite"] .live-dot-close').count(),0);
+ // Discard state updates without activation and does not remove the binding.
+ await page.evaluate(()=>{fixture.tabs.find(tab=>tab.id===10).discarded=true;chrome.tabs.onUpdated.emit(10,{discarded:true},fixture.tabs.find(tab=>tab.id===10));});
+ await page.waitForFunction(()=>document.querySelector('[data-favorite-id="a"] .discarded-tab'));
+ assert.equal(await page.locator('[data-favorite-id="a"] .live-dot-close').evaluate(el=>getComputedStyle(el,'::before').backgroundColor),'rgba(0, 0, 0, 0)');
+ assert.equal(await page.locator('[data-favorite-id="a"] .live-dot-close').evaluate(el=>getComputedStyle(el,'::before').width),'5px');
+ await page.evaluate(()=>{fixture.tabs.find(tab=>tab.id===10).discarded=false;chrome.tabs.onUpdated.emit(10,{discarded:false},fixture.tabs.find(tab=>tab.id===10));});
+ await page.waitForFunction(()=>document.querySelector('[data-favorite-id="a"] .live-dot-close') && !document.querySelector('[data-favorite-id="a"] .discarded-tab'));
+ console.log('PASS real Chrome: discarded updates show outlined dots and loaded Favorites show discreet five-pixel dots');
  // Open-tabs group rendering, group-close full membership, cancel and confirm.
  await page.evaluate(()=>{
   fixture.tabs.push({id:40,windowId:1,index:20,groupId:-1,title:'Ungrouped page',url:'https://ungrouped.test'},{id:41,windowId:1,index:21,groupId:4,title:'Other group page',url:'https://other.test'});

@@ -312,7 +312,7 @@ function createTabRow(item, { live = false, active = false, boundTab = null } = 
 
   if (live) {
     const close = document.createElement('button');
-    close.className = 'close-tab live-dot-close';
+    close.className = `close-tab live-dot-close${item.discarded ? ' discarded-tab' : ''}`;
     close.type = 'button';
     close.textContent = '';
     close.title = 'Close tab';
@@ -327,7 +327,7 @@ function createTabRow(item, { live = false, active = false, boundTab = null } = 
   } else {
     if (boundTab) {
       const reset = document.createElement('button');
-      reset.className = 'reset-pinned live-dot-close';
+      reset.className = `reset-pinned live-dot-close${boundTab.discarded ? ' discarded-tab' : ''}`;
       reset.type = 'button';
       reset.textContent = '';
       reset.title = 'Close';
@@ -421,7 +421,7 @@ function renderFavorites() {
       tile.append(dot);
 
       const reset = document.createElement('span');
-      reset.className = 'favorite-reset live-dot-close';
+      reset.className = `favorite-reset live-dot-close${matchingTab.discarded ? ' discarded-tab' : ''}`;
       reset.textContent = '';
       reset.title = 'Close';
       reset.setAttribute('role', 'button');
@@ -619,7 +619,7 @@ function renderOpenTabs() {
       {
         const close = document.createElement('button');
         close.type = 'button';
-        close.className = 'close-tab-group live-dot-close';
+        close.className = `close-tab-group live-dot-close${section.tabs.every(tab => tab.discarded) ? ' discarded-tab' : ''}`;
         close.textContent = '';
         close.title = `Close all tabs in ${section.title}`;
         close.setAttribute('aria-label', close.title);
@@ -696,7 +696,7 @@ els.search.addEventListener('input', scheduleRender);
 chrome.tabs.onCreated.addListener(() => scheduleTabRefresh());
 chrome.tabs.onRemoved.addListener(() => scheduleTabRefresh(0));
 chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
-  if (changeInfo.groupId === undefined && !changeInfo.url && !changeInfo.title && !changeInfo.favIconUrl && changeInfo.status !== 'complete') return;
+  if (changeInfo.groupId === undefined && !changeInfo.url && !changeInfo.title && !changeInfo.favIconUrl && changeInfo.status !== 'complete' && changeInfo.discarded === undefined) return;
   scheduleTabRefresh();
 });
 chrome.tabs.onActivated.addListener(() => scheduleTabRefresh(0));

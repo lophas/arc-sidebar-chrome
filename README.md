@@ -197,6 +197,8 @@ Each computer keeps its own open tabs, current Space, collapsed folders, scroll 
 
 If different computers change the sidebar, the most recently updated sidebar becomes the synchronized version.
 
+A filled red dot indicates a loaded open tab; an outlined red dot indicates a tab unloaded from memory by Chrome. Folder and group indicators are outlined when all their open tabs are unloaded. Favorites use a smaller indicator in the bottom-right corner. Hover over an indicator to close its tabs.
+
 ### Backup, restore and reset
 
 The extension’s options provide:

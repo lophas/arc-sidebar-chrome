@@ -244,6 +244,7 @@ async function decorateFolders() {
       header.append(closeButton);
     }
 
+    closeButton.classList.toggle('discarded-tab', liveItemIds.every(itemId => tabs.find(tab => tab.id === Number(bindings[itemId]))?.discarded));
     const count = liveItemIds.length;
     closeButton.title = `Close ${count} open tab${count === 1 ? '' : 's'} in this folder`;
     closeButton.setAttribute('aria-label', `Close ${count} open tab${count === 1 ? '' : 's'} in ${folder.title || 'folder'}`);
