@@ -64,7 +64,7 @@ async function reorderNativeGroupsNow() {
         const tabId = Number(bindings[itemId]);
         if (!Number.isInteger(tabId)) continue;
         const tab = tabsById.get(tabId);
-        if (!tab || tab.groupId == null || tab.groupId === TAB_ID_NONE) continue;
+        if (!tab || tab.pinned || tab.groupId == null || tab.groupId === TAB_ID_NONE) continue;
 
         const key = `${tab.windowId}:${tab.groupId}`;
         if (!grouped.has(key)) grouped.set(key, []);

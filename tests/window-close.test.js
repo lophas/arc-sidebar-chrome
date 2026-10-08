@@ -14,3 +14,12 @@ test('Group close reads current full membership, clears live bindings and preser
 test('Window close includes ungrouped tabs and only affects the requested window',async()=>{seed();assert.deepEqual(await closeWindowTabs(1),{count:3});assert.deepEqual([...mock.tabs.keys()],[20]);});
 test('Invalid/missing group IDs and another-window group cannot trigger close-all',async()=>{seed();for(const id of [undefined,null,-1,'2',3])await assert.rejects(closeWindowGroup(1,id));assert.equal(mock.tabs.size,4);await assert.rejects(closeWindowTabs(undefined));});
 test('Partial failures retain failed bindings and report the error',async()=>{seed();const remove=chrome.tabs.remove;chrome.tabs.remove=async id=>{if(id===10)throw Error('Denied');return remove(id);};await assert.rejects(closeWindowGroup(1,2),/Some tabs/);chrome.tabs.remove=remove;assert.equal(mock.tabs.has(10),true);assert.equal(mock.data.session.arcSidebarBindings.fav,10);});
+test('Chrome pinned tabs survive individual, saved, group, Space and window closes and cannot activate',async()=>{
+ seed();mock.tabs.get(10).pinned=true;
+ mock.data.local.arcSidebarModel.spaces=[{id:'s',title:'Work',children:[{id:'fav',type:'tab',url:'https://a.test'}]}];
+ const {closeLiveTab,closeSavedItems,closeSpaceTabs,activateTab,openSavedItem}=await import('../src/background/tab-actions.js');
+ await assert.rejects(closeLiveTab(10),/read-only/);await assert.rejects(activateTab(10),/read-only/);await assert.rejects(openSavedItem('fav',1),/read-only/);
+ await closeSavedItems(['fav']);assert.equal(mock.tabs.has(10),true);assert.equal(mock.data.session.arcSidebarBindings.fav,10);
+ await closeWindowGroup(1,2);await closeSpaceTabs('s');await closeWindowTabs(1);
+ assert.equal(mock.tabs.has(10),true);assert.equal(mock.data.session.arcSidebarBindings.fav,10);
+});

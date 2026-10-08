@@ -5,7 +5,7 @@ import { resolve, extname } from 'node:path';
 import { chromium } from 'playwright-core';
 const root=process.cwd();
 let html=await readFile('src/sidepanel/index.html','utf8');
-html=html.replace(/<script[^>]*>[\s\S]*?<\/script>/g,'').replace('</body>',`<script src="/tests/fixtures/space-tabs-chrome.js"></script><script type="module" src="index.js"></script><script type="module" src="drag-scroll.js"></script><script type="module" src="manage.js"></script><script type="module" src="folder-manage.js"></script><script type="module" src="space-dnd.js"></script><script type="module" src="hierarchy-dnd.js"></script><script type="module" src="root-drop.js"></script><script type="module" src="open-pin.js"></script><script type="module" src="workflow-pin-dnd.js"></script></body>`);
+html=html.replace(/<script[^>]*>[\s\S]*?<\/script>/g,'').replace('</body>',`<script src="/tests/fixtures/space-tabs-chrome.js"></script><script type="module" src="index.js"></script><script type="module" src="drag-scroll.js"></script><script type="module" src="manage.js"></script><script type="module" src="folder-manage.js"></script><script type="module" src="space-dnd.js"></script><script type="module" src="hierarchy-dnd.js"></script><script type="module" src="root-drop.js"></script><script type="module" src="open-pin.js"></script><script type="module" src="workflow-pin-dnd.js"></script><script type="module" src="memory-controls.js"></script></body>`);
 const server=createServer(async(req,res)=>{
  const pathname=new URL(req.url,'http://localhost').pathname;
  if(pathname==='/src/sidepanel/index.html'){res.setHeader('Content-Type','text/html');res.end(html);return;}
@@ -193,6 +193,28 @@ try{
  await page.waitForFunction(()=>document.querySelector('main').scrollTop<500);
  await page.evaluate(()=>scrollDrag.source.dispatchEvent(new DragEvent('dragend',{bubbles:true,dataTransfer:scrollDrag.transfer})));
  console.log('PASS real Chrome: continuous up/down edge drag scrolling for pinned links, folders, Favorites and workflow tabs; drag cancellation stops scrolling');
+ // Live controls share centered geometry and reveal Close on pointer/keyboard hover.
+ await page.setViewportSize({width:360,height:900});
+ await page.evaluate(async()=>{
+  fixture.tabs.push({id:999,windowId:1,index:-1,groupId:-1,pinned:true,title:'Native pinned',url:'https://native.test'});
+  const model=fixture.data.local.arcSidebarModel;
+  model.favorites=[{id:'a',type:'tab',title:'Saved A',url:'https://a.test'},{id:'native-favorite',type:'tab',title:'Native saved',url:'https://native.test'}];
+  model.spaces[0].children[0].children=[{id:'b',type:'tab',title:'Saved B',url:'https://b.test'}];
+  await fixture.write('session',{arcSidebarBindings:{a:10,b:22,'native-favorite':999}});
+  await fixture.write('local',{arcSidebarModel:model});document.querySelector('main').scrollTop=0;
+ });
+ for(const selector of ['[data-favorite-id="a"] .live-dot-close','.folder-header[data-folder-node-id="scroll-folder"] .live-dot-close','[data-saved-node-id="b"] .live-dot-close']){
+  await page.waitForFunction(selector=>!!document.querySelector(selector),selector);
+  const centered=await page.locator(selector).evaluate(button=>{
+   const rect=button.getBoundingClientRect(),parent=button.parentElement.getBoundingClientRect();
+   return Math.abs(rect.top+rect.height/2-parent.top-parent.height/2)<1;
+  });
+  assert.equal(centered,true,'Live control vertically centered '+selector);
+  await page.locator(selector).hover();
+  assert.equal(await page.locator(selector).evaluate(el=>getComputedStyle(el,'::before').content),'"×"');
+  assert.equal(await page.locator(selector).evaluate(el=>getComputedStyle(el,'::after').content),'"Close"');
+ }
+ assert.equal(await page.locator('[data-favorite-id="native-favorite"] .live-dot-close').count(),0);
  // Open-tabs group rendering, group-close full membership, cancel and confirm.
  await page.evaluate(()=>{
   fixture.tabs.push({id:40,windowId:1,index:20,groupId:-1,title:'Ungrouped page',url:'https://ungrouped.test'},{id:41,windowId:1,index:21,groupId:4,title:'Other group page',url:'https://other.test'});
@@ -202,6 +224,19 @@ try{
  await page.waitForFunction(()=>document.querySelectorAll('.open-tab-group').length===3);
  assert.deepEqual(await page.locator('.open-tab-group').evaluateAll(groups=>groups.map(g=>g.dataset.chromeGroupId)),['2','-1','4']);
  assert.deepEqual(await page.locator('.open-tab-group-name').allTextContents(),['Work','Ungrouped','Other']);
+ assert.equal(await page.locator('#openTabs > :first-child').getAttribute('class'),'native-pinned-tabs');
+ const nativeRow=page.locator('[data-native-pinned-tab-id="999"]');
+ assert.equal(await nativeRow.getAttribute('title'),'Pinned tab');
+ assert.equal(await nativeRow.locator('button,.live-dot-close').count(),0);
+ assert.equal(await nativeRow.evaluate(el=>el.draggable),false);
+ const beforeReadonly=await page.evaluate(()=>fixture.calls.length);await nativeRow.click();
+ assert.equal(await page.evaluate(()=>fixture.calls.length),beforeReadonly);
+ for(const selector of ['[data-chrome-group-id="2"] .close-tab-group','[data-live-tab-id="10"] .close-tab']){
+  await page.locator(selector).hover();
+  assert.equal(await page.locator(selector).evaluate(el=>getComputedStyle(el,'::before').content),'"×"');
+  assert.equal(await page.locator(selector).evaluate(el=>getComputedStyle(el,'::after').content),'"Close"');
+ }
+ console.log('PASS real Chrome: centered live controls on Favorites/links/folders/tabs/groups, hover Close/×, native pinned tabs first and inert');
  await page.locator('[data-space-id="__open_tabs__"]').click({button:'right'});
  assert.match(await page.locator('dialog[open] .close-all-description').textContent(),/this Chrome window/);
  const beforeCancel=await page.evaluate(()=>fixture.tabs.length);
@@ -216,8 +251,9 @@ try{
  await page.evaluate(()=>{const search=document.querySelector('#search');search.value='';search.dispatchEvent(new Event('input',{bubbles:true}));});
  await page.locator('[data-space-id="__open_tabs__"]').click({button:'right'});
  await page.locator('dialog[open] [data-close-all-tabs]').click();
- await page.waitForFunction(()=>!fixture.tabs.some(tab=>tab.windowId===1));
+ await page.waitForFunction(()=>!fixture.tabs.some(tab=>tab.windowId===1 && !tab.pinned));
  assert.equal(await page.evaluate(()=>fixture.tabs.some(tab=>tab.windowId===2)),true);
+ assert.equal(await page.evaluate(()=>fixture.tabs.some(tab=>tab.id===999 && tab.pinned)),true);
  assert.equal(await page.evaluate(()=>fixture.data.local.arcSidebarModel.spaces[0].children.length),46);
  console.log('PASS real Chrome: Open tabs grouped in tab-bar order, group close during search, close-all cancel/confirm scoped to current window, saved items retained');
  assert.deepEqual(errors,[]);console.log('PASS real Chrome: Space workflow rendering, drag-to-pin/pin/activate/close, group changes and Open-tabs view');

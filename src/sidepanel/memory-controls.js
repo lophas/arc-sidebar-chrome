@@ -19,13 +19,14 @@ function collectTabIds(nodes, out = []) {
 }
 
 async function getModelAndBindings() {
-  const [local, session] = await Promise.all([
+  const [local, session, tabs] = await Promise.all([
     sidebarStorage.local.get(STORAGE_KEY),
-    sidebarStorage.session.get(BINDINGS_KEY)
+    sidebarStorage.session.get(BINDINGS_KEY),
+    chrome.tabs.query({})
   ]);
   return {
     model: local[STORAGE_KEY],
-    bindings: session[BINDINGS_KEY] || {}
+    bindings: Object.fromEntries(Object.entries(session[BINDINGS_KEY] || {}).filter(([, id]) => tabs.some(tab => tab.id === Number(id) && !tab.pinned)))
   };
 }
 
@@ -186,7 +187,7 @@ async function decorateMemoryControls() {
   }
 
   decorateImmediateLiveDots();
-  document.querySelectorAll('.folder-reset').forEach(button => button.remove());
+  document.querySelectorAll('.folder-reset').forEach(button => { button.classList.add('live-dot-close'); button.textContent = ''; button.title = 'Close'; });
 }
 
 function scheduleDecorate() {

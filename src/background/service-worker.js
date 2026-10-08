@@ -389,7 +389,7 @@ async function syncNativeGroupsNow() {
 
     for (const [itemId, rawTabId] of Object.entries(bindings)) {
       const tab = tabsById.get(Number(rawTabId));
-      if (!tab) continue;
+      if (!tab || tab.pinned) continue;
 
       let space = itemToSpace.get(itemId);
       if (!space && favoriteIds.has(itemId)) space = FAVORITES_GROUP;

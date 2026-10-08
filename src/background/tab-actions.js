@@ -34,6 +34,7 @@ export async function activateTab(tabId) {
   await bindingsReady;
   return serializeState(async () => {
     const [local, session, tab] = await Promise.all([chrome.storage.local.get(MODEL), chrome.storage.session.get(BINDINGS), chrome.tabs.get(tabId)]);
+    if (tab.pinned) throw new Error('Chrome pinned tabs are read-only.');
     await focus(tab);
     await reveal(local[MODEL], session[BINDINGS] || {}, tab.id);
   });
@@ -48,11 +49,13 @@ export async function openSavedItem(itemId, windowId) {
     const bindings = session[BINDINGS] || {};
     let tab;
     if (bindings[itemId] != null) { try { tab = await chrome.tabs.get(Number(bindings[itemId])); } catch {} }
+    if (tab?.pinned) throw new Error('Chrome pinned tabs are read-only.');
     if (!tab) {
       tab = await chrome.tabs.create({ windowId, url: found.item.url, active: true });
       bindings[itemId] = tab.id;
       await chrome.storage.session.set({ [BINDINGS]: bindings });
     }
+    if (tab.pinned) throw new Error('Chrome pinned tabs are read-only.');
     await focus(tab);
     await reveal(local[MODEL], bindings, tab.id, itemId);
     return tab.id;
@@ -63,7 +66,13 @@ export async function closeSavedItems(itemIds) {
   return serializeState(async () => {
     const session = await chrome.storage.session.get(BINDINGS);
     const bindings = session[BINDINGS] || {}, tabs = new Set();
-    for (const id of itemIds) { if (bindings[id] != null) tabs.add(Number(bindings[id])); delete bindings[id]; }
+    for (const id of itemIds) {
+      if (bindings[id] != null) {
+        try { if ((await chrome.tabs.get(Number(bindings[id]))).pinned) continue; } catch {}
+        tabs.add(Number(bindings[id]));
+      }
+      delete bindings[id];
+    }
     await chrome.storage.session.set({ [BINDINGS]: bindings });
     // A missing tab should not prevent the remaining tabs from closing.
     await Promise.allSettled([...tabs].map(id => chrome.tabs.remove(id)));
@@ -82,9 +91,9 @@ async function spaceCloseTargets(spaceId) {
   const results = await Promise.allSettled([...new Set(Object.values(groupMap))].map(id => chrome.tabGroups.get(id)));
   const groups = results.filter(result => result.status === 'fulfilled').map(result => result.value);
   const groupIds = spaceGroupIds(space, bindings, tabs, groupMap, groups);
-  const live = new Set(tabs.map(tab => tab.id));
+  const live = new Set(tabs.filter(tab => !tab.pinned).map(tab => tab.id));
   const tabIds = new Set(savedItemIds(space.children).map(id => Number(bindings[id])).filter(id => live.has(id)));
-  for (const tab of tabs) if (groupIds.has(tab.groupId)) tabIds.add(tab.id);
+  for (const tab of tabs) if (!tab.pinned && groupIds.has(tab.groupId)) tabIds.add(tab.id);
   return { tabIds: [...tabIds], bindings, groupCount: groupIds.size };
 }
 export async function getSpaceCloseInfo(spaceId) {
@@ -107,6 +116,14 @@ export async function closeSpaceTabs(spaceId) {
     if (results.some(result => result.status === 'rejected')) throw new Error('Some tabs could not be closed. Reopen the Space menu to try again.');
   });
 }
+export async function closeLiveTab(tabId) {
+  await bindingsReady;
+  return serializeState(async () => {
+    const tab = await chrome.tabs.get(tabId);
+    if (tab.pinned) throw new Error('Chrome pinned tabs are read-only.');
+    await chrome.tabs.remove(tabId);
+  });
+}
 export function closeWindowGroup(windowId, groupId) {
   if (!Number.isInteger(groupId) || groupId < 0) return Promise.reject(new Error('Invalid Chrome group.'));
   return closeWindowTabs(windowId, groupId);
@@ -116,11 +133,13 @@ export async function closeWindowTabs(windowId, groupId = null) {
   return serializeState(async () => {
     if (!Number.isInteger(windowId) || windowId < 0) throw new Error('Invalid Chrome window.');
     if (groupId != null) {
-      if (!Number.isInteger(groupId) || groupId < 0) throw new Error('Invalid Chrome group.');
-      const group = await chrome.tabGroups.get(groupId);
-      if (group.windowId !== windowId) throw new Error('This group is in another window.');
+      if (!Number.isInteger(groupId) || groupId < -1) throw new Error('Invalid Chrome group.');
+      if (groupId >= 0) {
+        const group = await chrome.tabGroups.get(groupId);
+        if (group.windowId !== windowId) throw new Error('This group is in another window.');
+      }
     }
-    const tabs = (await chrome.tabs.query({ windowId })).filter(tab => tab.windowId === windowId && (groupId == null || tab.groupId === groupId));
+    const tabs = (await chrome.tabs.query({ windowId })).filter(tab => !tab.pinned && tab.windowId === windowId && (groupId == null || tab.groupId === groupId));
     const session = await chrome.storage.session.get(BINDINGS);
     const bindings = session[BINDINGS] || {};
     const results = await Promise.allSettled(tabs.map(tab => chrome.tabs.remove(tab.id)));
@@ -151,6 +170,7 @@ export async function pinWorkflowTab({ tabId, spaceId, targetNodeId, folderId, a
     if (existing) return existing; // Concurrent drag/pin requests are idempotent.
     if (!tabIds.includes(tabId)) throw new Error('This tab is no longer in the Space.');
     const tab = await chrome.tabs.get(tabId);
+    if (tab.pinned) throw new Error('Chrome pinned tabs are read-only.');
     const url = tab.pendingUrl || tab.url;
     if (!url || !/^(https?:|file:)/i.test(url)) throw new Error('This page cannot be saved as a pinned link.');
     const space = model.spaces.find(space => space.id === spaceId);
@@ -197,7 +217,7 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
   if (message?.type !== 'arc-sidebar-tab-action') return;
   if (sender.id !== chrome.runtime.id || !sender.url?.startsWith(chrome.runtime.getURL(''))) { respond({ ok: false, error: 'Invalid sidebar sender' }); return; }
   const action = message.action;
-  const task = action === 'close-window-tabs' ? closeWindowTabs(message.windowId) : action === 'close-window-group' ? closeWindowGroup(message.windowId, message.groupId) : action === 'open' ? openSavedItem(message.itemId, message.windowId) : action === 'activate' ? activateTab(message.tabId) : action === 'close' ? closeSavedItems(message.itemIds || []) : action === 'space-close-info' ? getSpaceCloseInfo(message.spaceId) : action === 'close-space' ? closeSpaceTabs(message.spaceId) : action === 'pin-workflow-tab' ? pinWorkflowTab(message) : Promise.reject(new Error('Unknown tab action'));
+  const task = action === 'close-ungrouped-tabs' ? closeWindowTabs(message.windowId, -1) : action === 'close-live-tab' ? closeLiveTab(message.tabId) : action === 'close-window-tabs' ? closeWindowTabs(message.windowId) : action === 'close-window-group' ? closeWindowGroup(message.windowId, message.groupId) : action === 'open' ? openSavedItem(message.itemId, message.windowId) : action === 'activate' ? activateTab(message.tabId) : action === 'close' ? closeSavedItems(message.itemIds || []) : action === 'space-close-info' ? getSpaceCloseInfo(message.spaceId) : action === 'close-space' ? closeSpaceTabs(message.spaceId) : action === 'pin-workflow-tab' ? pinWorkflowTab(message) : Promise.reject(new Error('Unknown tab action'));
   task.then(values => respond({ ok: true, values })).catch(error => respond({ ok: false, error: error.message }));
   return true;
 });

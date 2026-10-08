@@ -27,7 +27,7 @@ export function spaceWorkflowTabs(model, space, bindings, tabs, groupMap, groups
   const saved = savedItemIds(model?.favorites);
   for (const candidate of model?.spaces || []) savedItemIds(candidate.children, saved);
   const boundIds = new Set(saved.map(id => Number(bindings[id])).filter(Number.isInteger));
-  return tabs.filter(tab => groupIds.has(tab.groupId) && !boundIds.has(tab.id))
+  return tabs.filter(tab => !tab.pinned && groupIds.has(tab.groupId) && !boundIds.has(tab.id))
     .sort((a, b) => Number(b.windowId === windowId) - Number(a.windowId === windowId)
       || a.windowId - b.windowId || a.index - b.index);
 }

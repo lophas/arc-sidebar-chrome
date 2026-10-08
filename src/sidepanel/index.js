@@ -217,7 +217,8 @@ function collectSavedItemIds() {
 
 function boundTabFor(itemId) {
   const tabId = bindings[itemId];
-  return tabId == null ? null : tabsById.get(Number(tabId)) || null;
+  const tab = tabId == null ? null : tabsById.get(Number(tabId));
+  return tab?.pinned ? null : tab || null;
 }
 
 async function expandAndActivateTab(tabId) { await sidebarTabAction('activate', { tabId }); }
@@ -311,13 +312,13 @@ function createTabRow(item, { live = false, active = false, boundTab = null } = 
 
   if (live) {
     const close = document.createElement('button');
-    close.className = 'close-tab';
+    close.className = 'close-tab live-dot-close';
     close.type = 'button';
-    close.textContent = '×';
+    close.textContent = '';
     close.title = 'Close tab';
     close.addEventListener('click', async event => {
       event.stopPropagation();
-      if (item.id != null) await chrome.tabs.remove(item.id);
+      if (item.id != null) await sidebarTabAction('close-live-tab', { tabId: item.id }).catch(() => {});
     });
     row.append(close);
     row.addEventListener('click', () => {
@@ -326,11 +327,11 @@ function createTabRow(item, { live = false, active = false, boundTab = null } = 
   } else {
     if (boundTab) {
       const reset = document.createElement('button');
-      reset.className = 'reset-pinned';
+      reset.className = 'reset-pinned live-dot-close';
       reset.type = 'button';
-      reset.textContent = '−';
-      reset.title = 'Close and reset to saved URL';
-      reset.setAttribute('aria-label', `Reset ${item.title || 'pinned tab'}`);
+      reset.textContent = '';
+      reset.title = 'Close';
+      reset.setAttribute('aria-label', `Close ${item.title || 'pinned tab'}`);
       reset.addEventListener('click', async event => {
         event.preventDefault();
         event.stopPropagation();
@@ -420,11 +421,13 @@ function renderFavorites() {
       tile.append(dot);
 
       const reset = document.createElement('span');
-      reset.className = 'favorite-reset';
-      reset.textContent = '−';
-      reset.title = 'Close and reset to saved URL';
+      reset.className = 'favorite-reset live-dot-close';
+      reset.textContent = '';
+      reset.title = 'Close';
       reset.setAttribute('role', 'button');
-      reset.setAttribute('aria-label', `Reset ${item.title || 'favorite'}`);
+      reset.tabIndex = 0;
+      reset.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.stopPropagation(); reset.click(); } });
+      reset.setAttribute('aria-label', `Close ${item.title || 'favorite'}`);
       reset.addEventListener('click', async event => {
         event.preventDefault();
         event.stopPropagation();
@@ -488,7 +491,7 @@ function renderSpaces() {
 
 let closeAllDialog;
 async function openCloseAllTabsDialog() {
-  const tabs = await chrome.tabs.query({ currentWindow: true });
+  const tabs = (await chrome.tabs.query({ currentWindow: true })).filter(tab => !tab.pinned);
   if (!closeAllDialog) {
     closeAllDialog = document.createElement('dialog');
     closeAllDialog.className = 'item-dialog';
@@ -517,7 +520,7 @@ async function openCloseAllTabsDialog() {
     closeAllDialog.append(form);
     document.body.append(closeAllDialog);
   }
-  closeAllDialog.querySelector('.close-all-description').textContent = `Close all ${tabs.length} tabs in this Chrome window, including Favorites and pinned tabs? Your saved Favorites, links and folders will remain in the sidebar.`;
+  closeAllDialog.querySelector('.close-all-description').textContent = `Close all ${tabs.length} tabs in this Chrome window, including Favorites and saved links, but excluding Chrome pinned tabs? Your saved Favorites, links and folders will remain in the sidebar.`;
   closeAllDialog.querySelector('[data-close-all-tabs]').disabled = tabs.length === 0;
   if (!closeAllDialog.open) closeAllDialog.showModal();
   closeAllDialog.querySelector('button').focus();
@@ -567,7 +570,34 @@ function renderOpenTabs() {
   });
   els.openCount.textContent = `(${tabs.length})`;
   const visibleIds = new Set(visibleTabs.map(tab => tab.id));
-  const sections = isOpenSpace ? groupOpenTabs(tabs, nativeGroups) : [{ tabs }];
+  const nativePinned = isOpenSpace ? visibleTabs.filter(tab => tab.pinned).sort((a, b) => a.index - b.index) : [];
+  if (nativePinned.length) {
+    const section = document.createElement('section');
+    section.className = 'native-pinned-tabs';
+    const heading = document.createElement('div');
+    heading.className = 'open-tab-group-header';
+    heading.textContent = 'Chrome pinned tabs';
+    section.append(heading);
+    for (const tab of nativePinned) {
+      const row = document.createElement('div');
+      row.className = 'row native-pinned-tab';
+      row.title = 'Pinned tab';
+      row.dataset.nativePinnedTabId = String(tab.id);
+      const icon = document.createElement('img');
+      icon.className = 'favicon';
+      icon.src = tab.favIconUrl || faviconFor(tab.url);
+      icon.alt = '';
+      icon.draggable = false;
+      const title = document.createElement('span');
+      title.className = 'row-title';
+      title.textContent = tab.title || tab.url || 'Pinned tab';
+      row.append(icon, title);
+      section.append(row);
+    }
+    els.openTabs.append(section);
+  }
+  const editableTabs = tabs.filter(tab => !tab.pinned);
+  const sections = isOpenSpace ? groupOpenTabs(editableTabs, nativeGroups) : [{ tabs: editableTabs }];
   for (const section of sections) {
     const sectionTabs = section.tabs.filter(tab => visibleIds.has(tab.id));
     if (!sectionTabs.length) continue;
@@ -586,14 +616,14 @@ function renderOpenTabs() {
       count.className = 'muted';
       count.textContent = `(${section.tabs.length})`;
       header.append(name, count);
-      if (section.id >= 0) {
+      {
         const close = document.createElement('button');
         close.type = 'button';
-        close.className = 'close-tab-group';
-        close.textContent = '×';
+        close.className = 'close-tab-group live-dot-close';
+        close.textContent = '';
         close.title = `Close all tabs in ${section.title}`;
         close.setAttribute('aria-label', close.title);
-        close.addEventListener('click', () => sidebarTabAction('close-window-group', { groupId: section.id }).catch(() => {}));
+        close.addEventListener('click', () => sidebarTabAction(section.id >= 0 ? 'close-window-group' : 'close-ungrouped-tabs', { groupId: section.id }).catch(() => {}));
         header.append(close);
       }
       container.append(header);

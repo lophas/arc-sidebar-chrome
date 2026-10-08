@@ -121,7 +121,7 @@ Folders organize pinned links within a Space. Click a folder heading to expand o
 
 Use the folder editor to rename it or move the complete folder to another Space. Drag folders to reorder them within their current Space. Removing a folder keeps its links.
 
-A red indicator shows when a folder contains open pinned tabs. Right-click the folder to close those tabs together while keeping its saved contents.
+A red indicator shows when a folder contains open pinned tabs. Hover over it to reveal **×** and **Close**, then click to close those tabs together while keeping its saved contents. The same control is available on live links, Favorites and Chrome group rows.
 
 ### Open tabs
 
@@ -129,7 +129,7 @@ A red indicator shows when a folder contains open pinned tabs. Right-click the f
 
 To save an open tab, drag it into the pinned list at the desired position. You can drop it between links, inside a folder or into an empty Space. The same browser tab becomes the pinned item’s live tab. You can also pin it through its right-click menu.
 
-**Open tabs view:** the dedicated **Open tabs** Space shows all live tabs in the current Chrome window. Tabs are organized by Chrome group, in tab-bar order, with ungrouped tabs listed together. Click **×** beside a group name to close all its tabs. Right-click the **Open tabs** Space to close all tabs in the current Chrome window after confirmation. Saved Favorites, pinned links and folders remain available.
+**Open tabs view:** the dedicated **Open tabs** Space shows all live tabs in the current Chrome window. Tabs are organized by Chrome group, in tab-bar order, with ungrouped tabs listed together. Hover over the red indicator and click **×** beside a group name to close all its tabs. Right-click the **Open tabs** Space to close all tabs in the current Chrome window after confirmation. Saved Favorites, pinned links and folders remain available. Chrome’s own pinned tabs appear first in a blue, read-only section with a **Pinned tab** tooltip. They have no live indicator or actions, and are excluded from all sidebar close operations.
 
 ### Chrome tab groups
 

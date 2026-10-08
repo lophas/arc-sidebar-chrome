@@ -22,7 +22,7 @@ export function appendFavoriteChildren(desired, candidates, model, bindings, tab
   for (const candidate of candidates) {
     const tab = tabsById.get(candidate.tabId);
     const space = model?.spaces?.find(space => space.id === candidate.spaceId);
-    if (!tab || !space || tab.windowId !== candidate.windowId || savedTabIds.has(tab.id)) continue;
+    if (!tab || tab.pinned || !space || tab.windowId !== candidate.windowId || savedTabIds.has(tab.id)) continue;
     const key = `${tab.windowId}:${space.id}`;
     if (!desired.has(key)) desired.set(key, { windowId: tab.windowId, space, tabs: [] });
     const entry = desired.get(key);

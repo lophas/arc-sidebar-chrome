@@ -198,13 +198,14 @@ async function openFolderEditor(folderId = null) {
 
 async function decorateFolders() {
   if (!pinnedEl) return;
-  const [stored, session] = await Promise.all([
+  const [stored, session, tabs] = await Promise.all([
     getData(),
-    sidebarStorage.session.get(BINDINGS_KEY)
+    sidebarStorage.session.get(BINDINGS_KEY),
+    chrome.tabs.query({})
   ]);
   const model = stored[STORAGE_KEY];
   const state = stored[STATE_KEY] || { currentSpaceId: null, collapsedFolders: {} };
-  const bindings = session[BINDINGS_KEY] || {};
+  const bindings = Object.fromEntries(Object.entries(session[BINDINGS_KEY] || {}).filter(([, id]) => tabs.some(tab => tab.id === Number(id) && !tab.pinned)));
   const space = currentSpace(model, state);
   if (!space) return;
 
@@ -241,8 +242,8 @@ async function decorateFolders() {
     if (!closeButton) {
       closeButton = document.createElement('button');
       closeButton.type = 'button';
-      closeButton.className = 'folder-reset';
-      closeButton.textContent = '−';
+      closeButton.className = 'folder-reset live-dot-close';
+      closeButton.textContent = '';
       header.append(closeButton);
     }
 
