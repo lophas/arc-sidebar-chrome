@@ -67,6 +67,7 @@
     let hideTimer = null;
     let isOpen = false;
     let isResizing = false;
+    let cancelResize = null;
     let nativePanelOpen = false;
     let editorActive = false;
     let currentWidth = DEFAULT_PANEL_WIDTH;
@@ -140,7 +141,7 @@
     };
 
     const openPanel = () => {
-      if (sidebarMode !== OVERLAY_MODE || nativePanelOpen) return;
+      if (sidebarMode !== OVERLAY_MODE || nativePanelOpen || document.visibilityState === 'hidden') return;
       cancelClose();
       ensureSidebarLoaded();
       sendTheme();
@@ -163,7 +164,7 @@
     };
 
     const scheduleOpen = () => {
-      if (sidebarMode !== OVERLAY_MODE || nativePanelOpen) return;
+      if (sidebarMode !== OVERLAY_MODE || nativePanelOpen || document.visibilityState === 'hidden') return;
       cancelClose();
       if (isOpen || showTimer) return;
       showTimer = setTimeout(() => {
@@ -185,12 +186,13 @@
     };
 
     const setEditorActive = open => {
-      editorActive = Boolean(open);
+      // A stale editor message cannot create an open panel by itself.
+      editorActive = Boolean(open) && isOpen && iframe.hasAttribute('src');
       if (editorActive) {
         cancelClose();
         openPanel();
-      } else {
-        cancelClose();
+      } else if (!panel.matches?.(':hover') && !resizeHandle.matches?.(':hover')) {
+        scheduleClose();
       }
     };
 
@@ -251,6 +253,7 @@
       const finishResize = async upEvent => {
         if (!isResizing) return;
         isResizing = false;
+        cancelResize = null;
         panel.classList.remove('resizing');
         resizeHandle.classList.remove('resizing');
         resizeHandle.removeEventListener('pointermove', onPointerMove);
@@ -259,6 +262,7 @@
         try { if (resizeHandle.hasPointerCapture(upEvent.pointerId)) resizeHandle.releasePointerCapture(upEvent.pointerId); } catch {}
         await chrome.storage.local.set({ [WIDTH_STORAGE_KEY]: currentWidth });
       };
+      cancelResize = () => { finishResize({ pointerId: event.pointerId }).catch(() => {}); };
       resizeHandle.addEventListener('pointermove', onPointerMove);
       resizeHandle.addEventListener('pointerup', finishResize);
       resizeHandle.addEventListener('pointercancel', finishResize);
@@ -329,6 +333,8 @@
         .then(response => setNativePanelOpen(response?.open)).catch(() => {});
     };
     window.addEventListener('pagehide', () => {
+      cancelResize?.();
+      forceClosePanel();
       suspended = true;
       if (repairTimer !== null) clearTimeout(repairTimer);
       repairTimer = null;
@@ -342,12 +348,12 @@
     window.addEventListener('focus', () => { resume(); notifyVisibility(); });
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible') { resume(); notifyVisibility(); }
-      else if (!editorActive && !isResizing) {
+      else {
+        cancelResize?.();
         forceClosePanel();
-        // Release inactive tabs' DOM, listeners and tab/storage subscriptions.
-        // Keep the iframe element itself so host recovery and width work unchanged.
-        iframe.removeAttribute('src');
-      } else notifyVisibility();
+        // Keep unsaved editor contents, but never its visible/open state.
+        if (!editorActive) iframe.removeAttribute('src');
+      }
     });
     // Capture fallback also works when a webpage's own overlay covers the edge.
     document.addEventListener('pointermove', event => {

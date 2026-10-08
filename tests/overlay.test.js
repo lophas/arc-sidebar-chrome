@@ -35,3 +35,25 @@ test('pagehide cancels queued repairs until pageshow',async()=>{
  s.emit('window','pagehide');s.tick();assert.equal(s.host.parentNode,null);
  s.emit('window','pageshow');assert.equal(s.host.parentNode,s.context.document.documentElement);
 });
+test('editor state cannot open another closed overlay, and tab return requires fresh hover',async()=>{
+ const s=setup();await settled();
+ s.changes.forEach(fn=>fn({type:'arc-sidebar-editor-state',open:true}));
+ assert.equal(s.nodes['.panel'].classList.values.has('open'),false);
+ assert.equal(s.nodes.iframe.hasAttribute('src'),false);
+ s.emit('document','pointermove',{clientX:999});s.tick();
+ s.changes.forEach(fn=>fn({type:'arc-sidebar-editor-state',open:true}));
+ s.context.document.visibilityState='hidden';s.emit('document','visibilitychange');
+ assert.equal(s.nodes['.panel'].classList.values.has('open'),false);
+ assert.equal(s.nodes.iframe.hasAttribute('src'),true,'unsaved editor contents preserved');
+ s.context.document.visibilityState='visible';s.emit('document','visibilitychange');s.emit('window','focus');s.tick();
+ assert.equal(s.nodes['.panel'].classList.values.has('open'),false);
+ s.emit('document','pointermove',{clientX:999});s.tick();
+ assert.equal(s.nodes['.panel'].classList.values.has('open'),true);
+});
+test('hidden tabs cannot start delayed hover opens, and pagehide drops the visible panel state',async()=>{
+ const s=setup();await settled();s.emit('document','pointermove',{clientX:999});
+ s.context.document.visibilityState='hidden';s.tick();assert.equal(s.nodes['.panel'].classList.values.has('open'),false);
+ s.context.document.visibilityState='visible';s.emit('document','pointermove',{clientX:999});s.tick();
+ s.emit('window','pagehide');s.emit('window','pageshow');s.tick();
+ assert.equal(s.nodes['.panel'].classList.values.has('open'),false);
+});

@@ -548,3 +548,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 watchNativeGroupVisibility();
+
+// Forward editor locks only to the content script that owns the iframe.
+chrome.runtime.onMessage.addListener((message, sender, respond) => {
+  if (message?.type !== 'arc-sidebar-editor-presence') return;
+  if (sender.id !== chrome.runtime.id || !sender.url?.startsWith(chrome.runtime.getURL('src/sidepanel/')) || sender.tab?.id == null) {
+    respond({ ok: false });
+    return;
+  }
+  chrome.tabs.sendMessage(sender.tab.id, { type: 'arc-sidebar-editor-state', open: message.open === true })
+    .then(() => respond({ ok: true })).catch(() => respond({ ok: false }));
+  return true;
+});

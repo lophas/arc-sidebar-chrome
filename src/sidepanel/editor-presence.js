@@ -12,14 +12,10 @@ if (params.get('overlay') === '1') {
       window.parent.postMessage({ type: 'arc-sidebar-editor-state', open }, '*');
     } catch {}
 
-    // Also notify the tab's content script directly. This is more reliable
-    // across extension iframe/page isolated-world boundaries than relying on
-    // window.postMessage alone.
+    // The background uses sender.tab: never look up the currently active tab,
+    // which may already be another page when this iframe unloads or reports.
     try {
-      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-      if (tab?.id != null) {
-        await chrome.tabs.sendMessage(tab.id, { type: 'arc-sidebar-editor-state', open });
-      }
+      await chrome.runtime.sendMessage({ type: 'arc-sidebar-editor-presence', open });
     } catch {}
   }
 
@@ -32,9 +28,19 @@ if (params.get('overlay') === '1') {
   });
 
   window.addEventListener('pagehide', () => {
+    observer.disconnect();
+    lastOpen = false;
+    try { window.parent.postMessage({ type: 'arc-sidebar-editor-state', open: false }, '*'); } catch {}
+    chrome.runtime.sendMessage({ type: 'arc-sidebar-editor-presence', open: false }).catch(() => {});
+  });
+  window.addEventListener('pageshow', () => {
+    observer.observe(document.documentElement, { subtree: true, childList: true, attributes: true, attributeFilter: ['open'] });
     lastOpen = null;
     report().catch(() => {});
-  }, { once: true });
+  });
+  window.addEventListener('message', event => {
+    if (event.source === window.parent && event.data?.type === 'arc-sidebar-overlay-visibility' && event.data.open) { lastOpen = null; report().catch(() => {}); }
+  });
 
   report().catch(() => {});
 }
