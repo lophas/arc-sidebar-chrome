@@ -34,7 +34,7 @@ window.MutationObserver = class extends NativeObserver {
  }); }
 };
 window.chrome = {
- storage: { local: { get: async () => ({arcSidebarMode:mode}), set: async () => {} }, onChanged: { addListener(){} } },
+ storage: { local: { get: async () => ({arcSidebarMode:mode}), set: async () => {} }, onChanged: { addListener(fn){(window.arcTestStorageListeners ||= []).push(fn);} } },
  runtime: { getURL: path => location.origin+'/'+path, sendMessage: async () => ({open:false}), onMessage: { addListener(){} } }
 };
 </script><script src="overlay.js"></script><script>

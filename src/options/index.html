@@ -19,7 +19,7 @@
           <input id="modeOverlay" type="radio" name="sidebarMode" value="overlay">
           <span>
             <strong>Autohide overlay</strong>
-            <small>Arc-style sidebar opens when the pointer reaches the right edge and closes automatically.</small>
+            <small>Arc-style sidebar opens when the pointer reaches the selected edge and closes automatically.</small>
           </span>
         </label>
         <label class="mode-option">
@@ -30,6 +30,20 @@
           </span>
         </label>
       </div>
+      <div class="setting-row">
+        <div>
+          <h3>Edge trigger</h3>
+          <p>Choose which edge opens the autohide sidebar. The sidebar appears on the same side.</p>
+        </div>
+        <label class="select-setting">
+          <span class="sr-only">Edge trigger side</span>
+          <select id="edgeSide">
+            <option value="right">Right · default</option>
+            <option value="left">Left</option>
+          </select>
+        </label>
+      </div>
+      <div id="edgeSideStatus" class="status" role="status"></div>
       <div id="modeStatus" class="status"></div>
     </section>
 
@@ -91,7 +105,7 @@
           <span class="sr-only">Enable Chrome Sync</span>
         </label>
       </div>
-      <p class="sync-note">Live tab bindings, open tabs, collapsed folders, overlay width, sidebar mode and Favorite size stay local to each computer.</p>
+      <p class="sync-note">Live tab bindings, open tabs, collapsed folders, overlay width, sidebar mode, edge trigger side and Favorite size stay local to each computer.</p>
       <p class="sync-note">Extension ID on this computer: <code id="extensionId"></code></p>
       <div class="sync-actions">
         <button id="syncNow" class="button button-element" type="button">Sync now</button>

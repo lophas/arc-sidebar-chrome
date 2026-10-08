@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import vm from 'node:vm';
-function setup(mode='overlay') {
+function setup(mode='overlay',side='right') {
  const events={window:{},document:{}},changes=[],messages=[],observers=[],timers=new Map(),mutations=new Set();let seq=0,styleWrites=0;
  const mutate=target=>observers.filter(o=>o.targets.has(target)).forEach(o=>mutations.add(o));
  const listener=(map,name,fn)=>(map[name]||=[]).push(fn);
@@ -13,7 +13,7 @@ function setup(mode='overlay') {
  const root=()=>({append(node){node.parentNode=this;}});
  const document={documentElement:root(),visibilityState:'visible',createElement:()=>host,addEventListener:(n,fn)=>listener(events.document,n,fn)};
  const window={innerWidth:1000,addEventListener:(n,fn)=>listener(events.window,n,fn),matchMedia:()=>({matches:false,addEventListener(){}})};window.top=window;
- const chrome={storage:{local:{get:async key=>key==='arcSidebarMode'?{arcSidebarMode:mode}:{},set:async()=>{}},onChanged:{addListener:fn=>changes.push(fn)}},runtime:{getURL:path=>'chrome-extension://test/'+path,sendMessage:async()=>({open:false}),onMessage:{addListener:fn=>changes.push(fn)}}};
+ const chrome={storage:{local:{get:async key=>key==='arcSidebarMode'?{arcSidebarMode:mode}:{arcSidebarEdgeSide:side},set:async()=>{}},onChanged:{addListener:fn=>changes.push(fn)}},runtime:{getURL:path=>'chrome-extension://test/'+path,sendMessage:async()=>({open:false}),onMessage:{addListener:fn=>changes.push(fn)}}};
  const context={document,window,chrome,URL,Node:class{},MutationObserver:class{constructor(fn){this.fn=fn;observers.push(this);}targets=new Set();observe(target){this.targets.add(target);}disconnect(){this.targets.clear();mutations.delete(this);}},setTimeout:fn=>{timers.set(++seq,fn);return seq;},clearTimeout:id=>timers.delete(id)};
  vm.createContext(context);vm.runInContext(fs.readFileSync('src/overlay/overlay.js','utf8'),context);
  return {context,nodes,host,messages,observers,changes,styleWrites:()=>styleWrites,drainMutations:()=>{let rounds=0;while(mutations.size){if(++rounds>20)throw new Error('Mutation observer starved page event loop');const pending=[...mutations];mutations.clear();pending.forEach(o=>o.fn());}return rounds;},emit:(surface,type,event)=>(events[surface][type]||[]).forEach(fn=>fn(event)),tick:()=>{const fns=[...timers.values()];timers.clear();fns.forEach(fn=>fn());}};
@@ -56,4 +56,40 @@ test('hidden tabs cannot start delayed hover opens, and pagehide drops the visib
  s.context.document.visibilityState='visible';s.emit('document','pointermove',{clientX:999});s.tick();
  s.emit('window','pagehide');s.emit('window','pageshow');s.tick();
  assert.equal(s.nodes['.panel'].classList.values.has('open'),false);
+});
+
+test('left edge opens only from the left, closes away from the panel and resizes inward',async()=>{
+ const s=setup('overlay','left');await settled();
+ assert.equal(s.nodes['.panel'].classList.values.has('left'),true);
+ assert.equal(s.nodes['.resize-handle'].style.left,'383px');
+ s.emit('document','pointermove',{clientX:999});s.tick();
+ assert.equal(s.nodes['.panel'].classList.values.has('open'),false);
+ s.emit('document','pointermove',{clientX:1});s.tick();
+ assert.equal(s.nodes['.panel'].classList.values.has('open'),true);
+ const handle=s.nodes['.resize-handle'];
+ handle.events.pointerdown[0]({button:0,clientX:390,pointerId:1,preventDefault(){},stopPropagation(){}});
+ handle.events.pointermove[0]({clientX:440});
+ assert.equal(s.nodes['.panel'].style.width,'440px');
+ assert.equal(handle.style.left,'433px');
+ await handle.events.pointerup[0]({pointerId:1});
+ s.emit('document','pointermove',{clientX:600});s.tick();
+ assert.equal(s.nodes['.panel'].classList.values.has('open'),false);
+});
+test('changing edge side updates an existing overlay and reset restores the right default',async()=>{
+ const s=setup();await settled();
+ const change=value=>s.changes.forEach(fn=>fn({arcSidebarEdgeSide:{newValue:value}},'local'));
+ s.emit('document','pointermove',{clientX:999});
+ change('left');s.tick();
+ assert.equal(s.nodes['.panel'].classList.values.has('open'),false,'old-edge delayed hover is cancelled');
+ s.emit('document','pointermove',{clientX:1});s.tick();
+ assert.equal(s.nodes['.panel'].classList.values.has('open'),true);
+ assert.equal(s.nodes['.panel'].classList.values.has('left'),true);
+ change(undefined);
+ assert.equal(s.nodes['.panel'].classList.values.has('left'),false);
+ assert.equal(s.nodes['.resize-handle'].style.left,'auto');
+ assert.equal(s.nodes['.resize-handle'].style.right,'383px');
+ s.emit('document','pointermove',{clientX:1});s.tick();
+ assert.equal(s.nodes['.panel'].classList.values.has('open'),false);
+ s.emit('document','pointermove',{clientX:999});s.tick();
+ assert.equal(s.nodes['.panel'].classList.values.has('open'),true);
 });

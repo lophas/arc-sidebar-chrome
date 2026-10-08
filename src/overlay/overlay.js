@@ -18,6 +18,7 @@
     const MIN_PANEL_WIDTH = 120;
     const MAX_PANEL_WIDTH = 720;
     const WIDTH_STORAGE_KEY = 'arcSidebarOverlayWidth';
+    const EDGE_SIDE_KEY = 'arcSidebarEdgeSide';
     const EDGE_WIDTH = 7;
     const RESIZE_HANDLE_WIDTH = 14;
     const SHOW_DELAY = 80;
@@ -48,6 +49,9 @@
         .edge { position: fixed; top: 0; right: 0; width: ${EDGE_WIDTH}px; height: 100vh; z-index: 2147483646; background: transparent; pointer-events: auto; }
         .panel { position: fixed; top: 0; right: 0; width: ${DEFAULT_PANEL_WIDTH}px; height: 100vh; z-index: 2147483647; transform: translateX(100%); transition: transform 170ms cubic-bezier(.2,.8,.2,1), box-shadow 170ms ease; background: Canvas; box-shadow: none; overflow: hidden; pointer-events: none; border-left: 1px solid color-mix(in srgb, CanvasText 10%, transparent); }
         .panel.open { transform: translateX(0); box-shadow: -18px 0 42px rgba(0,0,0,.34); pointer-events: auto; }
+        .edge.left { left: 0; right: auto; }
+        .panel.left { left: 0; right: auto; transform: translateX(-100%); border-left: 0; border-right: 1px solid color-mix(in srgb, CanvasText 10%, transparent); }
+        .panel.left.open { transform: translateX(0); box-shadow: 18px 0 42px rgba(0,0,0,.34); }
         .panel.resizing { transition: none; user-select: none; }
         .resize-handle { position: fixed; top: 0; width: ${RESIZE_HANDLE_WIDTH}px; height: 100vh; z-index: 2147483647; cursor: ew-resize; background: transparent; touch-action: none; pointer-events: none; opacity: 0; }
         .resize-handle.open { pointer-events: auto; opacity: 1; }
@@ -72,6 +76,7 @@
     let editorActive = false;
     let currentWidth = DEFAULT_PANEL_WIDTH;
     let sidebarMode = OVERLAY_MODE;
+    let edgeSide = 'right';
 
     const sendTheme = () => {
       const theme = currentTheme();
@@ -94,11 +99,29 @@
     const applyWidth = value => {
       currentWidth = clampWidth(value);
       panel.style.width = `${currentWidth}px`;
-      resizeHandle.style.right = `${currentWidth - (RESIZE_HANDLE_WIDTH / 2)}px`;
+      resizeHandle.style.left = edgeSide === 'left' ? `${currentWidth - (RESIZE_HANDLE_WIDTH / 2)}px` : 'auto';
+      resizeHandle.style.right = edgeSide === 'right' ? `${currentWidth - (RESIZE_HANDLE_WIDTH / 2)}px` : 'auto';
     };
 
-    chrome.storage.local.get(WIDTH_STORAGE_KEY).then(stored => applyWidth(stored[WIDTH_STORAGE_KEY])).catch(() => applyWidth(DEFAULT_PANEL_WIDTH));
+    const applyEdgeSide = value => {
+      const side = value === 'left' ? 'left' : 'right';
+      if (side !== edgeSide) {
+        cancelResize?.();
+        clearTimers();
+      }
+      edgeSide = side;
+      for (const node of [edge, panel]) {
+        if (side === 'left') node.classList.add('left');
+        else node.classList.remove('left');
+      }
+      applyWidth(currentWidth);
+    };
+    chrome.storage.local.get([WIDTH_STORAGE_KEY, EDGE_SIDE_KEY]).then(stored => {
+      applyEdgeSide(stored[EDGE_SIDE_KEY]);
+      applyWidth(stored[WIDTH_STORAGE_KEY]);
+    }).catch(() => applyWidth(DEFAULT_PANEL_WIDTH));
     chrome.storage.onChanged.addListener((changes, area) => {
+      if (area === 'local' && changes[EDGE_SIDE_KEY]) applyEdgeSide(changes[EDGE_SIDE_KEY].newValue);
       if (area === 'local' && changes[WIDTH_STORAGE_KEY] && !isResizing) applyWidth(changes[WIDTH_STORAGE_KEY].newValue);
     });
 
@@ -248,7 +271,7 @@
       const startWidth = currentWidth;
       const onPointerMove = moveEvent => {
         if (!isResizing) return;
-        applyWidth(startWidth + (startX - moveEvent.clientX));
+        applyWidth(startWidth + (edgeSide === 'left' ? moveEvent.clientX - startX : startX - moveEvent.clientX));
       };
       const finishResize = async upEvent => {
         if (!isResizing) return;
@@ -358,10 +381,11 @@
     // Capture fallback also works when a webpage's own overlay covers the edge.
     document.addEventListener('pointermove', event => {
       if (sidebarMode !== OVERLAY_MODE || nativePanelOpen || suspended) return;
-      if (event.clientX >= window.innerWidth - EDGE_WIDTH) {
+      const distanceFromEdge = edgeSide === 'left' ? event.clientX : window.innerWidth - event.clientX;
+      if (distanceFromEdge >= 0 && distanceFromEdge <= EDGE_WIDTH) {
         ensureHost();
         scheduleOpen();
-      } else if (isOpen && event.clientX < window.innerWidth - currentWidth - RESIZE_HANDLE_WIDTH) {
+      } else if (isOpen && distanceFromEdge > currentWidth + RESIZE_HANDLE_WIDTH) {
         scheduleClose();
       } else if (!isOpen && showTimer) {
         clearTimeout(showTimer);

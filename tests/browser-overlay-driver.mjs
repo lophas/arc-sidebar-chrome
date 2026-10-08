@@ -22,6 +22,21 @@ try {
     await page.waitForTimeout(150);assert.equal(await isOpen(),false,'returning tab stays closed until hover');
     await hover();await page.waitForFunction(()=>arcTestShadow.querySelector('.panel').classList.contains('open'));
     await report(false);await page.waitForFunction(()=>!arcTestShadow.querySelector('.panel').classList.contains('open'));
+    await page.evaluate(()=>arcTestStorageListeners.forEach(fn=>fn({arcSidebarEdgeSide:{newValue:'left'}},'local')));
+    await page.mouse.move(1190,300);await page.waitForTimeout(120);
+    assert.equal(await isOpen(),false,'right edge must not open the left sidebar');
+    await page.mouse.move(1,300);await page.waitForFunction(()=>arcTestShadow.querySelector('.panel').classList.contains('open'));
+    await page.waitForTimeout(200);
+    const geometry=await page.evaluate(()=>{
+      const panel=arcTestShadow.querySelector('.panel').getBoundingClientRect();
+      const edge=arcTestShadow.querySelector('.edge').getBoundingClientRect();
+      const handle=arcTestShadow.querySelector('.resize-handle').getBoundingClientRect();
+      return {left:panel.left,width:panel.width,edge:edge.left,handle:handle.left};
+    });
+    assert.equal(geometry.left,0);assert.equal(geometry.edge,0);
+    assert.ok(Math.abs(geometry.handle-(geometry.width-7))<=1);
+    await page.mouse.move(700,300);await page.waitForFunction(()=>!arcTestShadow.querySelector('.panel').classList.contains('open'));
+    console.log('PASS real Chromium: left edge and sidebar geometry, opposite edge ignored, leave closes');
     console.log('PASS real Chromium: editor messages cannot open closed panels; hidden/returned tabs require fresh hover and retain editor contents');
   }
   console.log(result);

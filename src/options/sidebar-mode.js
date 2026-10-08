@@ -53,3 +53,29 @@ chrome.storage.onChanged.addListener((changes, area) => {
 });
 
 await loadMode();
+
+const EDGE_SIDE_KEY = 'arcSidebarEdgeSide';
+const edgeSide = document.querySelector('#edgeSide');
+const edgeStatus = document.querySelector('#edgeSideStatus');
+const normalizeSide = value => value === 'left' ? 'left' : 'right';
+const loadEdgeSide = async () => {
+  const stored = await sidebarStorage.local.get(EDGE_SIDE_KEY);
+  edgeSide.value = normalizeSide(stored[EDGE_SIDE_KEY]);
+};
+edgeSide.addEventListener('change', async () => {
+  edgeSide.disabled = true;
+  try {
+    const side = normalizeSide(edgeSide.value);
+    await sidebarStorage.local.set({ [EDGE_SIDE_KEY]: side });
+    edgeStatus.textContent = `Autohide sidebar opens at the ${side} edge.`;
+  } catch (error) {
+    edgeStatus.textContent = `Could not change edge trigger: ${error.message}`;
+    await loadEdgeSide();
+  } finally {
+    edgeSide.disabled = false;
+  }
+});
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area === 'local' && changes[EDGE_SIDE_KEY]) edgeSide.value = normalizeSide(changes[EDGE_SIDE_KEY].newValue);
+});
+await loadEdgeSide();
