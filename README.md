@@ -81,6 +81,8 @@ Change the shortcut at `chrome://extensions/shortcuts`.
 
 ### Spaces
 
+Start by adding a pinned link or folder with the sidebar buttons. Saving your first item creates **My Space** automatically. Cancelling leaves the sidebar empty.
+
 Use Spaces to separate different projects, interests or activities. Each Space contains its own pinned links, folders and additional open tabs.
 
 - Select a Space from the switcher at the bottom of the sidebar.

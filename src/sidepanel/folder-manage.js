@@ -1,3 +1,4 @@
+import { prepareFirstSpace } from '../shared/first-space.js';
 import { isSidebarActive } from './lifecycle.js';
 import { sidebarTabAction } from './tab-actions.js';
 import { createStorageClient } from '../shared/storage-client.js';
@@ -120,8 +121,10 @@ function ensureFolderDialog() {
 
 async function openFolderEditor(folderId = null) {
   const stored = await getData();
-  const model = stored[STORAGE_KEY];
+  let model = stored[STORAGE_KEY];
   const state = stored[STATE_KEY] || { currentSpaceId: null, collapsedFolders: {} };
+  let created = false;
+  if (!folderId && !model?.spaces?.length) ({model, created} = prepareFirstSpace(model, state));
   const space = currentSpace(model, state);
   if (!space) return;
   space.children ||= [];
@@ -176,7 +179,7 @@ async function openFolderEditor(folderId = null) {
     }
 
     dialog.close();
-    await saveData(model);
+    await saveData(model, created ? state : null);
   };
 
   deleteButton.onclick = async () => {

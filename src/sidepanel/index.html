@@ -26,7 +26,7 @@
 
   <div class="search-wrap">
     <input id="search" type="hidden" value="">
-    <button id="openCommandBar" class="command-launch" type="button">Search or enter URL… <span>⌘K / Ctrl+K</span></button>
+    <button title="Search open tabs or enter a URL · ⌘K / Ctrl+K" aria-label="Search open tabs or enter a URL" id="openCommandBar" class="command-launch" type="button">Search or enter URL… <span>⌘K / Ctrl+K</span></button>
     <button id="addFavorite" class="add-favorite-button" type="button" title="Add Favorite" aria-label="Add Favorite">+</button>
   </div>
 
@@ -57,12 +57,13 @@
   <template id="emptyTemplate">
     <div class="empty-state">
       <strong>Build your sidebar</strong>
-      <span>Create a Space with +, then use the Pinned + button to add links and the folder button to organize them.</span>
+      <span>Use Add pinned link (+) or Add folder (▱) above. Your first saved link or folder creates My Space automatically.</span>
       <span>Right-click any webpage or link and choose <strong>Pin to Arc Sidebar</strong> to save it to Favorites or a Space.</span>
       <span>Open <button type="button" class="empty-options-link">Sidebar Options</button> to import your Spaces, Favorites and icons from Arc Browser, restore an existing backup, or adjust your sidebar settings.</span>
     </div>
   </template>
 
+  <script type="module" src="tooltips.js"></script>
   <script src="theme-sync.js"></script>
   <script type="module" src="lifecycle.js"></script>
   <script type="module" src="native-presence.js"></script>

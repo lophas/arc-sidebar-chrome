@@ -1,3 +1,4 @@
+import { prepareFirstSpace } from '../shared/first-space.js';
 import { moveFavoriteToSpace } from '../shared/favorite-moves.js';
 import { isSidebarActive } from './lifecycle.js';
 import { createStorageClient } from '../shared/storage-client.js';
@@ -56,9 +57,9 @@ function recalcStats(model) {
   model.stats = stats;
 }
 
-async function saveModel(model) {
+async function saveModel(model, state = null) {
   recalcStats(model);
-  await sidebarStorage.local.set({ [STORAGE_KEY]: model });
+  await sidebarStorage.local.set({ [STORAGE_KEY]: model, ...(state ? { [STATE_KEY]: state } : {}) });
 }
 
 function normalizeEnteredUrl(value) {
@@ -240,8 +241,10 @@ async function openFavoriteEditor(index = null) {
 }
 
 async function openPinnedEditor(itemId = null) {
-  const model = await getModel();
+  let model = await getModel();
   const state = await getState();
+  let created = false;
+  if (!itemId && !model.spaces?.length) ({model, created} = prepareFirstSpace(model, state));
   if (state.currentSpaceId === OPEN_TABS_SPACE_ID) return;
   const space = model.spaces?.find(candidate => candidate.id === state.currentSpaceId) || model.spaces?.[0];
   if (!space) return;
@@ -266,14 +269,14 @@ async function openPinnedEditor(itemId = null) {
     if (location) location.parent[location.index] = next;
     else space.children.push(next);
     d.close();
-    await saveModel(model);
+    await saveModel(model, created ? state : null);
   };
 
   d.querySelector('#itemDelete').onclick = async () => {
     if (!location) return;
     location.parent.splice(location.index, 1);
     d.close();
-    await saveModel(model);
+    await saveModel(model, created ? state : null);
   };
 
   d.showModal();

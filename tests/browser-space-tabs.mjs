@@ -256,5 +256,27 @@ try{
  assert.equal(await page.evaluate(()=>fixture.tabs.some(tab=>tab.id===999 && tab.pinned)),true);
  assert.equal(await page.evaluate(()=>fixture.data.local.arcSidebarModel.spaces[0].children.length),46);
  console.log('PASS real Chrome: Open tabs grouped in tab-bar order, group close during search, close-all cancel/confirm scoped to current window, saved items retained');
+ const resetSidebar=async()=>{
+  await page.evaluate(()=>chrome.storage.local.set({arcSidebarModel:{version:2,favorites:[],spaces:[],stats:{spaces:0,folders:0,tabs:0,favorites:0}},arcSidebarState:{currentSpaceId:null,collapsedFolders:{}}}));
+  await page.waitForSelector('.empty-state');
+ };
+ await resetSidebar();
+ await page.locator('#addPinned').click();
+ await page.waitForSelector('#itemDialogTitle');
+ await page.locator('#itemCancel').click();
+ assert.equal(await page.evaluate(()=>fixture.data.local.arcSidebarModel.spaces.length),0);
+ await page.locator('#addPinned').click();
+ await page.locator('#itemUrl').fill('https://first.test');
+ await page.locator('#itemSave').click();
+ await page.waitForFunction(()=>fixture.data.local.arcSidebarModel.spaces[0]?.children.length===1);
+ assert.equal(await page.evaluate(()=>fixture.data.local.arcSidebarModel.spaces[0].title),'My Space');
+ assert.equal(await page.evaluate(()=>fixture.data.local.arcSidebarState.currentSpaceId),'__my_space__');
+ await resetSidebar();
+ await page.locator('#addFolder').click();await page.locator('#folderCancel').click();
+ assert.equal(await page.evaluate(()=>fixture.data.local.arcSidebarModel.spaces.length),0);
+ await page.locator('#addFolder').click();await page.locator('#folderName').fill('First folder');await page.locator('#folderSave').click();
+ await page.waitForFunction(()=>fixture.data.local.arcSidebarModel.spaces[0]?.children[0]?.type==='folder');
+ assert.equal(await page.evaluate(()=>fixture.data.local.arcSidebarState.currentSpaceId),'__my_space__');
+ console.log('PASS real Chrome: first pinned link/folder creates and selects My Space; cancel leaves no Space');
  assert.deepEqual(errors,[]);console.log('PASS real Chrome: Space workflow rendering, drag-to-pin/pin/activate/close, group changes and Open-tabs view');
 }finally{await browser.close();await new Promise(resolve=>server.close(resolve));}
