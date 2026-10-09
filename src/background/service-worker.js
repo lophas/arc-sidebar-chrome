@@ -1,5 +1,6 @@
 import './panel-layout.js';
 import './sidebar-mode.js';
+import { refreshActiveSidebar } from './overlay-delivery.js';
 import { favoriteChildDestination, appendFavoriteChildren } from './favorite-child-tabs.js';
 import { watchNativeGroupVisibility, holdNativeGroupVisibility } from './native-group-visibility.js';
 import { orderNativeGroups } from './native-group-order.js';
@@ -437,7 +438,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
 
   if (area === 'local') {
     if (changes[SIDEBAR_MODE_KEY] || changes.arcSidebarAutohideTimeout) {
-      chrome.tabs.query({ active: true, lastFocusedWindow: true }).then(tabs => Promise.allSettled(tabs.map(tab => chrome.tabs.sendMessage(tab.id, { type: 'arc-sidebar-refresh-mode' })))).catch(() => {});
+      refreshActiveSidebar().catch(() => {});
     }
 
     if (changes[STORAGE_KEY]) {

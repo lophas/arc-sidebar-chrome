@@ -7,7 +7,7 @@ function setup(failClose = false) {
   let listener; const calls = [];
   const chrome = { runtime: { id: 'test', getURL: p => `chrome-extension://test/${p}`, onMessage: { addListener: fn => { listener = fn; } } }, storage: { local: { get: async () => ({ arcSidebarAutohideTimeout: 1000 }) } }, sidePanel: { open: options => { calls.push(['open', options.windowId]); return Promise.resolve(); }, close: options => { calls.push(['close', options.windowId]); return failClose ? Promise.reject(new Error('Close failed')) : Promise.resolve(); } }, tabs: { query: async () => [{ id: 7 }], sendMessage: async (id, message) => calls.push(['message', id, message.type]) } };
   const source = fs.readFileSync('src/background/sidebar-mode.js', 'utf8').replace(/^import .*;\n/gm, '');
-  vm.runInNewContext(source, { chrome, sidebarPreferences, commitStorage() {}, createStorageClient: () => ({ local: { set: async values => calls.push(['set', values.arcSidebarMode, values.arcSidebarAutohideTimeout]) } }) });
+  vm.runInNewContext(source, { chrome, refreshActiveSidebar: async () => calls.push(['message',7,'arc-sidebar-refresh-mode']), sidebarPreferences, commitStorage() {}, createStorageClient: () => ({ local: { set: async values => calls.push(['set', values.arcSidebarMode, values.arcSidebarAutohideTimeout]) } }) });
   const sender = { id: 'test', url: 'chrome-extension://test/src/sidepanel/index.html', tab: { id: 7, windowId: 2 } };
   return { calls, sender, listener, send: mode => new Promise(resolve => listener({ type: 'arc-sidebar-switch-mode', mode, windowId: 2 }, sender, resolve)) };
 }

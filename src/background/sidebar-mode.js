@@ -1,3 +1,4 @@
+import { refreshActiveSidebar } from './overlay-delivery.js';
 import { sidebarPreferences } from '../shared/sidebar-preferences.js';
 import { commitStorage } from './state-controller.js';
 import { createStorageClient } from '../shared/storage-client.js';
@@ -22,8 +23,7 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
     }
     const stored = await chrome.storage.local.get(['arcSidebarMode', 'arcSidebarAutohideTimeout']);
     await storage.local.set({ arcSidebarMode: message.mode, arcSidebarAutohideTimeout: sidebarPreferences(stored).timeout });
-    const tabs = await chrome.tabs.query({ active: true, windowId });
-    await Promise.allSettled(tabs.map(tab => chrome.tabs.sendMessage(tab.id, { type: 'arc-sidebar-refresh-mode' })));
+    await refreshActiveSidebar(windowId);
     return { ok: true };
   })();
   operation.then(respond).catch(error => respond({ ok: false, error: error.message }));

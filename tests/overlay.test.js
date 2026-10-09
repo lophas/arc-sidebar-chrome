@@ -13,7 +13,7 @@ function setup(mode='overlay',side='right',timeout) {
  const root=()=>({append(node){node.parentNode=this;}});
  const document={documentElement:root(),visibilityState:'visible',createElement:()=>host,addEventListener:(n,fn)=>listener(events.document,n,fn)};
  const window={innerWidth:1000,addEventListener:(n,fn)=>listener(events.window,n,fn),matchMedia:()=>({matches:false,addEventListener(){}})};window.top=window;
- const chrome={storage:{local:{get:async()=>({arcSidebarMode:mode,arcSidebarAutohideTimeout:timeout}),set:async()=>{}},onChanged:{addListener:fn=>changes.push(fn)}},runtime:{getURL:path=>'chrome-extension://test/'+path,sendMessage:async message=>message.type==='arc-sidebar-panel-layout'?{side:chrome.panelSide}:{open:false},onMessage:{addListener:fn=>changes.push(fn)}}};
+ const chrome={storage:{local:{get:async()=>({arcSidebarMode:mode,arcSidebarAutohideTimeout:timeout}),set:async()=>{}},onChanged:{addListener:fn=>changes.push(fn)}},runtime:{id:'test',getURL:path=>'chrome-extension://test/'+path,sendMessage:async message=>message.type==='arc-sidebar-panel-layout'?{side:chrome.panelSide}:{open:false},onMessage:{addListener:fn=>changes.push(fn)}}};
  chrome.panelSide=side;
  const context={document,window,chrome,URL,Node:class{},MutationObserver:class{constructor(fn){this.fn=fn;observers.push(this);}targets=new Set();observe(target){this.targets.add(target);}disconnect(){this.targets.clear();mutations.delete(this);}},setTimeout:(fn,delay)=>{delays.push(delay);timers.set(++seq,fn);return seq;},clearTimeout:id=>timers.delete(id)};
  vm.createContext(context);vm.runInContext(fs.readFileSync('src/overlay/overlay.js','utf8'),context);
@@ -135,9 +135,9 @@ test('stationary pointer and synthesized enter on tab return cannot open; activa
  assert.equal(s.nodes['.panel'].classList.values.has('open'),false,'stale editor lock cannot keep the reopened panel visible');
 });
 
-test('fresh profile stays fixed; explicit active refresh and later focus apply modes without reload', async () => {
+test('fresh profile uses autohide; explicit active refresh and later focus apply modes without reload', async () => {
  const s=setup('native'); await settled();
- s.context.chrome.storage.local.get=async()=>({});
+ s.context.chrome.storage.local.get=async()=>({arcSidebarMode:'native'});
  s.emit('window','focus'); await settled();
  s.emit('document','pointermove',{isTrusted:true,movementX:1,movementY:0,clientX:999});s.tick();
  assert.equal(s.nodes.iframe.hasAttribute('src'),false);
@@ -172,4 +172,13 @@ test('rejected runtime promises invalidate the old overlay and cancel pending ed
  s.emit('window','focus');await settled();s.tick();
  assert.equal(s.host.parentNode,null);assert.equal(s.nodes['.panel'].classList.values.has('open'),false);
  assert.equal(s.nodes.iframe.hasAttribute('src'),false);
+});
+test('missing runtime identity stops before touching invalid APIs; duplicate injection reuses one controller',async()=>{
+ const s=setup();await settled();
+ const controller=s.context.__arcSidebarOverlayController;
+ vm.runInContext(fs.readFileSync('src/overlay/overlay.js','utf8'),s.context);await settled();
+ assert.equal(s.context.__arcSidebarOverlayController,controller);
+ let calls=0;s.context.chrome.storage.local.get=()=>{calls++;throw Error('Must not call invalid API');};
+ s.context.chrome.runtime.id=undefined;s.emit('window','focus');await settled();
+ assert.equal(calls,0);assert.equal(s.host.parentNode,null);assert.equal(controller.active(),false);
 });

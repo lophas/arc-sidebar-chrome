@@ -1,3 +1,4 @@
+import { createFavicon } from '../shared/favicon.js';
 import { isSidebarActive } from './lifecycle.js';
 import { createStorageClient } from '../shared/storage-client.js';
 const sidebarStorage = createStorageClient({ isActive: isSidebarActive });
@@ -20,11 +21,7 @@ function render() {
     const icon = document.createElement('span'); icon.className = 'command-icon'; icon.setAttribute('aria-hidden', 'true');
     icon.textContent = item.kind === 'Folder' ? '▱' : item.kind === 'Space' ? '◉' : item.kind === 'Search' ? '⌕' : '🌐';
     if (item.url && item.kind !== 'Search') {
-      const img = document.createElement('img'); img.alt = ''; img.width = 20; img.height = 20;
-      const favicon = new URL(chrome.runtime.getURL('/_favicon/'));
-      favicon.searchParams.set('pageUrl', item.url); favicon.searchParams.set('size', '32');
-      img.src = favicon.href;
-      img.addEventListener('load', () => icon.replaceChildren(img), { once: true });
+      icon.replaceChildren(createFavicon({ url: item.url, faviconUrl: item.favIconUrl, className: '', size: 20, fallbackText: '🌐' }));
     }
     text.append(title, detail); row.append(icon, text, kind); row.addEventListener('click', () => execute(item)); list.append(row);
   });
@@ -35,7 +32,7 @@ async function refresh() {
   const token = ++generation;
   const [stored, tabs] = await Promise.all([sidebarStorage.local.get('arcSidebarModel'), chrome.tabs.query({})]);
   if (token !== generation) return;
-  data = tabs.filter(tab => tab.id != null && /^(https?|file):\/\//i.test(tab.pendingUrl || tab.url || '')).map(tab => ({ kind: 'Open tab', tabId: tab.id, lastAccessed: tab.lastAccessed || 0, title: tab.title || tab.url || 'Untitled tab', url: tab.url || '', detail: tab.url || '' }));
+  data = tabs.filter(tab => tab.id != null && /^(https?|file):\/\//i.test(tab.pendingUrl || tab.url || '')).map(tab => ({ kind: 'Open tab', favIconUrl: tab.favIconUrl, tabId: tab.id, lastAccessed: tab.lastAccessed || 0, title: tab.title || tab.url || 'Untitled tab', url: tab.url || '', detail: tab.url || '' }));
   const model = stored.arcSidebarModel;
   const walk = (nodes, space, ancestors = [], path = []) => {
     for (const node of nodes || []) {

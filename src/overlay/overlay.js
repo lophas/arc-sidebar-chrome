@@ -1,5 +1,10 @@
 (() => {
   if (window.top !== window) return;
+  const CONTROLLER_KEY = '__arcSidebarOverlayController';
+  const VERSION = 'focus-injection-v1';
+  const previous = globalThis[CONTROLLER_KEY];
+  if (previous?.version === VERSION && previous.active()) { previous.refresh(); return; }
+  previous?.dispose();
 
   const SIDEBAR_MODE_KEY = 'arcSidebarMode';
   const TIMEOUT_KEY = 'arcSidebarAutohideTimeout';
@@ -35,7 +40,10 @@
   // Chrome can throw before returning a Promise after extension reload.
   const callChrome = async operation => {
     if (contextInvalid) return undefined;
-    try { return await operation(); }
+    try {
+      if (!chrome.runtime.id) { stopInvalidContext(); return undefined; }
+      return await operation();
+    }
     catch (error) { handleApiError(error); return undefined; }
   };
 
@@ -63,6 +71,7 @@
       return Math.max(MIN_PANEL_WIDTH, Math.min(width, viewportMax));
     };
 
+    document.getElementById?.('arc-sidebar-overlay-host')?.remove();
     const host = document.createElement('div');
     disposeOverlay = () => host.remove?.();
     host.id = 'arc-sidebar-overlay-host';
@@ -469,14 +478,16 @@
     else if (overlayInitialized) applyInitializedMode?.(NATIVE_MODE);
   };
 
+  let modeRequest = 0;
   const refreshMode = async () => {
+    const request = ++modeRequest;
     const stored = await callChrome(() => chrome.storage.local.get([SIDEBAR_MODE_KEY, TIMEOUT_KEY]));
-    if (contextInvalid) return;
+    if (contextInvalid || request !== modeRequest) return;
     try {
       const value = stored?.[TIMEOUT_KEY];
       const timeout = TIMEOUTS.has(value) && value > 0 ? value : 800;
       hideDelay = timeout;
-      const mode = value === 0 ? NATIVE_MODE : stored?.[SIDEBAR_MODE_KEY] || (TIMEOUTS.has(value) ? OVERLAY_MODE : NATIVE_MODE);
+      const mode = value === 0 ? NATIVE_MODE : stored?.[SIDEBAR_MODE_KEY] || OVERLAY_MODE;
       applyMode(mode);
     } catch (error) { handleApiError(error); }
   };
@@ -484,7 +495,15 @@
   listen(document, 'visibilitychange', () => {
     if (document.visibilityState === 'visible') refreshMode();
   });
-  listenChrome(chrome.runtime.onMessage, message => {
+  globalThis[CONTROLLER_KEY] = { version: VERSION, active: () => !contextInvalid && Boolean(chrome.runtime.id), refresh: refreshMode, dispose: stopInvalidContext };
+  listenChrome(chrome.runtime.onMessage, (message, _sender, respond) => {
+    if (message?.type === 'arc-sidebar-apply-mode' && !contextInvalid) {
+      ++modeRequest;
+      hideDelay = TIMEOUTS.has(message.timeout) && message.timeout > 0 ? message.timeout : 800;
+      applyMode(message.mode);
+      respond({ version: VERSION });
+      return;
+    }
     if (message?.type === 'arc-sidebar-refresh-mode' || message?.type === 'arc-sidebar-tab-activated') refreshMode();
   });
   refreshMode();

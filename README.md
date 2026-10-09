@@ -147,7 +147,7 @@ Within a group, pinned tabs follow the sidebar’s folder and link order. Additi
 
 ### Sidebar modes and layout
 
-Use the icon to the left of the sidebar search bar to switch between **Fixed** (the default) and **Autohide**. The current tab applies the change immediately; other open tabs apply it when you next focus them. Set the delay in **Extension options → Autohide timeout**.
+Use the icon to the left of the sidebar search bar to switch between **Fixed** and **Autohide** (the default). The current tab applies the change immediately; other open tabs apply it when you next focus them. Set the delay in **Extension options → Autohide timeout**.
 
 **Autohide overlay** appears when the pointer reaches the same edge as Chrome’s side panel of a webpage and closes after the pointer leaves. Select a timeout from **500 to 1100 ms** in 100 ms steps; **800 ms** is the default. Both Autohide and Fixed follow **Chrome Settings → Appearance → Side panel**. Each open tab picks up changes when you next focus it. It floats over the page. Resize it to suit your workflow; its width is remembered. While an editor is open, the sidebar stays visible until you save or cancel.
 

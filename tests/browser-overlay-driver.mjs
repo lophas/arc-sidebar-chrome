@@ -42,6 +42,21 @@ try {
     assert.equal(geometry.left,0);assert.equal(geometry.edge,0);
     assert.ok(Math.abs(geometry.handle-(geometry.width-7))<=1);
     await page.mouse.move(700,300);await page.waitForFunction(()=>!arcTestShadow.querySelector('.panel').classList.contains('open'));
+    await page.evaluate(()=>{window.arcOriginalController=window.__arcSidebarOverlayController;});
+    await page.addScriptTag({url:new URL('overlay.js',url).href});
+    assert.equal(await page.evaluate(()=>window.arcOriginalController===window.__arcSidebarOverlayController),true,'reinjection reuses its live controller');
+    assert.equal(await page.locator('#arc-sidebar-overlay-host').count(),1);
+    const applyMode=mode=>page.evaluate(mode=>{
+      let response;
+      for(const listener of window.arcTestRuntimeListeners || []) listener({type:'arc-sidebar-apply-mode',mode,timeout:700},{},value=>{response=value;});
+      return response?.version;
+    },mode);
+    assert.equal(await applyMode('native'),'focus-injection-v1');
+    assert.equal(await page.evaluate(()=>getComputedStyle(document.querySelector('#arc-sidebar-overlay-host')).display),'none');
+    assert.equal(await applyMode('overlay'),'focus-injection-v1');
+    await hover();await page.waitForFunction(()=>arcTestShadow.querySelector('.panel').classList.contains('open'));
+    await page.mouse.move(700,300);await page.waitForFunction(()=>!arcTestShadow.querySelector('.panel').classList.contains('open'));
+    console.log('PASS real Chromium: reinjection reuses one overlay; Fixed deactivates it and Autohide reactivates it');
     await page.evaluate(()=>{
       window.arcInvalidApiCalls=0;
       chrome.storage.local.get=()=>{window.arcInvalidApiCalls++;throw new Error('Extension context invalidated.');};

@@ -1,3 +1,4 @@
+import { createFavicon } from '../shared/favicon.js';
 import { groupOpenTabs } from '../shared/open-tab-groups.js';
 import { spaceWorkflowTabs } from '../shared/space-tabs.js';
 import { isSidebarActive } from './lifecycle.js';
@@ -175,10 +176,7 @@ function domainFor(url) {
   catch { return ''; }
 }
 
-function faviconFor(url) {
-  if (!url) return '';
-  return `chrome-extension://${chrome.runtime.id}/_favicon/?pageUrl=${encodeURIComponent(url)}&size=32`;
-}
+
 
 async function saveState(patch = state) {
   await sidebarStorage.local.patch(STATE_KEY, patch);
@@ -289,17 +287,7 @@ function createTabRow(item, { live = false, active = false, boundTab = null } = 
   row.title = item.url || item.title || '';
   if (live && item.id != null) row.dataset.liveTabId = String(item.id);
 
-  const favicon = document.createElement('img');
-  favicon.className = 'favicon';
-  favicon.src = live && item.favIconUrl ? item.favIconUrl : boundTab?.favIconUrl || faviconFor(item.url);
-  favicon.alt = '';
-    favicon.draggable = false;
-  favicon.addEventListener('error', () => {
-    const fallback = document.createElement('span');
-    fallback.className = 'favicon-fallback';
-    fallback.textContent = '●';
-    favicon.replaceWith(fallback);
-  }, { once: true });
+  const favicon = createFavicon({ url: live ? item.url : boundTab?.url || item.url, faviconUrl: live ? item.favIconUrl : boundTab?.favIconUrl });
 
   const title = document.createElement('span');
   title.className = 'row-title';
@@ -403,16 +391,7 @@ function renderFavorites() {
     if (matchingTab?.active) tile.classList.add('active');
     if (matchingTab) tile.classList.add('has-binding');
 
-    const favicon = document.createElement('img');
-    favicon.src = matchingTab?.favIconUrl || faviconFor(item.url);
-    favicon.alt = '';
-    favicon.draggable = false;
-    favicon.addEventListener('error', () => {
-      const fallback = document.createElement('span');
-      fallback.className = 'favicon-fallback';
-      fallback.textContent = '●';
-      favicon.replaceWith(fallback);
-    }, { once: true });
+    const favicon = createFavicon({ url: matchingTab?.url || item.url, faviconUrl: matchingTab?.favIconUrl, className: '' });
     tile.append(favicon);
 
     if (matchingTab) {
@@ -583,11 +562,7 @@ function renderOpenTabs() {
       row.className = 'row native-pinned-tab';
       row.title = 'Pinned tab';
       row.dataset.nativePinnedTabId = String(tab.id);
-      const icon = document.createElement('img');
-      icon.className = 'favicon';
-      icon.src = tab.favIconUrl || faviconFor(tab.url);
-      icon.alt = '';
-      icon.draggable = false;
+      const icon = createFavicon({ url: tab.url, faviconUrl: tab.favIconUrl });
       const title = document.createElement('span');
       title.className = 'row-title';
       title.textContent = tab.title || tab.url || 'Pinned tab';

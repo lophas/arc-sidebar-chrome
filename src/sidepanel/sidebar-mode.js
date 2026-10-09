@@ -1,6 +1,6 @@
 import { sidebarPreferences } from '../shared/sidebar-preferences.js';
 const button = document.querySelector('#toggleSidebarMode');
-let mode = 'native';
+let mode = 'overlay';
 const { id: windowId } = await chrome.windows.getCurrent();
 async function refresh() {
   ({ mode } = sidebarPreferences(await chrome.storage.local.get(['arcSidebarMode', 'arcSidebarAutohideTimeout'])));
