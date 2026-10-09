@@ -7,7 +7,8 @@ import { execFileSync } from 'node:child_process';
 import { chromium } from 'playwright-core';
 const executable = ['google-chrome', 'chromium', 'chromium-browser'].map(name => { try { return execFileSync('which',[name],{encoding:'utf8'}).trim(); } catch { return null; } }).find(Boolean);
 assert.ok(executable,'Chrome executable required');
-const source=fs.readFileSync('src/media/auto-pip.js');
+const regressionRef=process.argv.find(arg=>arg.startsWith('--regression-ref='))?.slice('--regression-ref='.length);
+const source=regressionRef?execFileSync('git',['show',regressionRef+':src/media/auto-pip.js']):fs.readFileSync('src/media/auto-pip.js');
 const video=Buffer.from(fs.readFileSync('tests/fixtures/pip-video.webm.b64','utf8'),'base64');
 const profile=fs.mkdtempSync(path.join(os.tmpdir(),'arc-pip-'));
 fs.mkdirSync(path.join(profile,'Default'));
@@ -39,6 +40,7 @@ const origin=pathToFileURL(path.join(profile,'player.html')).href;
 let context;
 let diagnostics=[];
 let lastPage;
+let baselineReproduced=false;
 try {
  for(const mode of ['document','native']) {
  // A user-dismissed Auto PiP window changes Chrome's per-origin eligibility.
@@ -100,9 +102,15 @@ try {
  await context.close();context=null;
  }
 } catch(error) {
+ if(regressionRef&&error instanceof assert.AssertionError&&error.message.includes('queued pre-request activation must not close the new mini player')) {
+  baselineReproduced=true;
+  console.log('PASS native Chrome: previous controller reproduces immediate PiP closure from a queued activation');
+ } else {
  console.error('Auto PiP state:',await lastPage?.evaluate(()=>({...__arcSidebarAutoPip.getState(),hidden:document.hidden,siteActions,videoDocument:video.ownerDocument.URL,paused:video.paused})));
  console.error('Native PiP diagnostics:',JSON.stringify(diagnostics));
  throw error;
+ }
 } finally {
  await context?.close();fs.rmSync(profile,{recursive:true,force:true});
 }
+if(regressionRef)assert.equal(baselineReproduced,true,'known-bad controller must reproduce the queued-activation closure');
