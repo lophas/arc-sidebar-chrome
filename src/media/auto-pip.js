@@ -1,7 +1,7 @@
 (() => {
   if (window.top !== window || !navigator.mediaSession || !document.pictureInPictureEnabled) return;
   const KEY = '__arcSidebarAutoPip';
-  const VERSION = 6;
+  const VERSION = 7;
   if (globalThis[KEY]?.version === VERSION) return;
   globalThis[KEY]?.dispose();
   const session = navigator.mediaSession;
@@ -28,6 +28,9 @@
     if (recentEvents.length > 12) recentEvents.shift();
   };
   const hasFocus = () => document.hasFocus?.() === true;
+  // macOS can keep an automatic Document PiP window alive but hidden. Use
+  // Chrome's native video window there; the live player stays in its page.
+  const preferNativeVideo = /mac/i.test(navigator.userAgentData?.platform || navigator.platform || '');
   const resizePlayer = player => {
     const resize = () => {
       if (player.ownerDocument !== document) return;
@@ -48,11 +51,19 @@
       if (document.visibilityState !== 'visible' || document.pictureInPictureElement || window.documentPictureInPicture?.window || !video.isConnected) return;
       const player = video.closest('.html5-video-player');
       if (!player) return;
+      const automaticReturn = returnVideo === video;
       try {
-        if (player.getVisibilityState?.() !== 7 && !player.classList.contains('ytp-player-document-picture-in-picture')) return;
+        // YouTube can report background state (3) until focus catches up with
+        // visibility. Ownership, not that transient state, identifies our return.
+        if (!automaticReturn && player.getVisibilityState?.() !== 7 && !player.classList.contains('ytp-player-document-picture-in-picture')) return;
         if (typeof player.setDocumentPictureInPicture === 'function') player.setDocumentPictureInPicture(false);
         else video.dispatchEvent(new Event('leavepictureinpicture'));
       } catch {}
+      if (automaticReturn) {
+        returnVideo = null;
+        resizePlayer(player);
+        trace('video-player-restored');
+      }
     });
   };
   const closeOwned = async (reason = 'navigation') => {
@@ -70,7 +81,7 @@
     if (video && document.pictureInPictureElement === video) {
       try { await document.exitPictureInPicture(); } catch {}
     }
-    restorePlayer(video);
+    restorePlayer(video || returnVideo);
   };
   const openPortal = async (video, epoch) => {
     const player = video.closest('.html5-video-player') || video;
@@ -151,7 +162,7 @@
     try {
       // YouTube's native-video PiP bookkeeping can leave its watch page blank.
       // Document PiP keeps the SAME player and explicitly returns its DOM node.
-      if (typeof window.documentPictureInPicture?.requestWindow === 'function') {
+      if (!(preferNativeVideo && typeof video.requestPictureInPicture === 'function') && typeof window.documentPictureInPicture?.requestWindow === 'function') {
         await openPortal(video, epoch);
         return;
       }
@@ -193,7 +204,6 @@
       // closes it before the source tab's activation/visibility events arrive.
       if (portalOpening || ownedPortal || (ownedVideo && document.pictureInPictureElement === ownedVideo)) return;
       const video = returnVideo;
-      returnVideo = null;
       closeOwned('visibility-recovery').then(() => restorePlayer(video));
     }
   };
@@ -202,7 +212,7 @@
     trace('video-player-left');
     ownedVideo = null;
     if (document.visibilityState === 'hidden') dismissed = true;
-    else { returnVideo = null; restorePlayer(event.target); }
+    else restorePlayer(event.target);
   };
   document.addEventListener('visibilitychange', onVisibility);
   document.addEventListener('leavepictureinpicture', onLeave, true);

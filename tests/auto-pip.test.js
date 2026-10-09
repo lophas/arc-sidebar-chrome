@@ -3,13 +3,13 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import { exportBackupSettings, restoreBackupSettings } from '../src/options/backup-settings.js';
-function setup({ deferred=false }={}) {
+function setup({ deferred=false, platform='' }={}) {
   const events={}; const actions=new Map(); let requests=0, exits=0, resolveRequest;
   const frames=[];
   const document={focused:false,hasFocus(){return this.focused;},pictureInPictureEnabled:true,visibilityState:'visible',pictureInPictureElement:null,querySelectorAll:()=>[video],addEventListener:(name,fn)=>{events[name]=fn;},removeEventListener:(name)=>{delete events[name];},exitPictureInPicture:async()=>{exits++;const target=document.pictureInPictureElement;document.pictureInPictureElement=null;events.leavepictureinpicture?.({target});}};
   const video={paused:false,ended:false,muted:false,volume:1,readyState:4,videoWidth:1280,videoHeight:720,disablePictureInPicture:false,requestPictureInPicture:()=>{requests++;if(deferred)return new Promise(resolve=>{resolveRequest=()=>{document.pictureInPictureElement=video;resolve();};});document.pictureInPictureElement=video;return Promise.resolve();}};
   const session={setActionHandler(action,handler){actions.set(action,handler);}};
-  const window={addEventListener:(name,fn)=>events['window:'+name]=fn,removeEventListener:name=>delete events['window:'+name]};window.top=window;const context={window,document,navigator:{mediaSession:session},requestAnimationFrame:fn=>frames.push(fn),Event};vm.createContext(context);
+  const window={addEventListener:(name,fn)=>events['window:'+name]=fn,removeEventListener:name=>delete events['window:'+name]};window.top=window;const context={window,document,navigator:{mediaSession:session,platform},requestAnimationFrame:fn=>frames.push(fn),Event};vm.createContext(context);
   const source=fs.readFileSync('src/media/auto-pip.js','utf8');vm.runInContext(source,context);
   const controller=context.__arcSidebarAutoPip;
   const auto=()=>{document.visibilityState='hidden';return actions.get('enterpictureinpicture')({enterPictureInPictureReason:'contentoccluded'});};
@@ -70,6 +70,30 @@ test('return repairs stale YouTube player state after native PiP exits without p
  s.document.visibilityState='visible';await s.document.exitPictureInPicture();s.visible();await s.frames();
  assert.equal(state,0);assert.equal(repairs,1);assert.equal(s.video.paused,false);
  assert.equal(s.requests(),1);
+});
+test('Mac uses native video PiP even when Document PiP is available',async()=>{
+ for(const platform of ['MacIntel','macOS']){
+  const s=setup({platform});let portals=0;
+  s.context.window.documentPictureInPicture={window:null,requestWindow:()=>{portals++;throw new Error('must not adopt the player');}};
+  s.controller.configure(true,false);await s.auto();
+  assert.equal(portals,0);assert.equal(s.requests(),1);assert.equal(s.controller.getState().player,'video');
+  s.controller.configure(true,true,Date.now()+1000);await s.frames();
+  assert.equal(s.exits(),1);assert.equal(s.video.paused,false);
+ }
+});
+test('owned native return repairs a background-state player once, even when leave precedes visibility and focus',async()=>{
+ for(const leaveWhileHidden of [false,true]){
+  const s=setup({platform:'MacIntel'});let stale=false,repairs=0,resizes=0;
+  const player={ownerDocument:s.document,getVisibilityState:()=>stale?3:0,classList:{contains:()=>false},setDocumentPictureInPicture:value=>{assert.equal(value,false);stale=false;repairs++;},setSize:()=>resizes++};
+  s.video.isConnected=true;s.video.closest=()=>player;
+  s.controller.configure(true,false);await s.frames();await s.auto();stale=true;
+  if(!leaveWhileHidden)s.document.visibilityState='visible';
+  await s.document.exitPictureInPicture();await s.frames();
+  if(leaveWhileHidden){assert.equal(repairs,0);assert.equal(stale,true);}
+  s.visible();s.controller.configure(true,true,Date.now()+1000);await s.frames();
+  assert.equal(s.document.focused,false);assert.equal(stale,false);assert.equal(repairs,1);assert.equal(resizes,2);
+  assert.equal(s.video.paused,false);assert.equal(s.controller.getState().recentEvents.filter(item=>item.event==='video-player-restored').length,1);
+ }
 });
 test('return recovery leaves manual video and document PiP alone and skips replaced players',async()=>{
  for(const mode of ['video','document','detached']){

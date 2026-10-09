@@ -20,11 +20,11 @@ fs.writeFileSync(path.join(profile,'player.html'),`<!doctype html><title>Auto Pi
  <style>#origin{width:960px}#player{width:100%;height:540px}.stale video{visibility:hidden}#placeholder{display:none}.stale #placeholder{display:block}</style>
  <div id="origin"><span id="before">Before</span><div id="player" class="html5-video-player"><video id="video" src="video.webm" loop controls width="320"></video><span id="placeholder">Playing in picture-in-picture</span></div><span id="after">After</span></div>
  <button id="play">Play</button><button id="manual">Manual PiP</button>
- <script>const video=document.getElementById('video'),player=document.getElementById('player');if(location.search.includes('native'))Object.defineProperty(window,'documentPictureInPicture',{value:undefined});</script>
+ <script>const video=document.getElementById('video'),player=document.getElementById('player');if(location.search==='?native')Object.defineProperty(window,'documentPictureInPicture',{value:undefined});if(location.search==='?mac-native'){Object.defineProperty(navigator,'platform',{value:'MacIntel'});Object.defineProperty(navigator,'userAgentData',{value:{platform:'macOS'}});}</script>
  <script src="agent.js"></script><script>
  window.siteActions=[];
  navigator.mediaSession.setActionHandler('enterpictureinpicture',details=>{siteActions.push(details.enterPictureInPictureReason);video.requestPictureInPicture();});
- player.getVisibilityState=()=>player.classList.contains('stale')?7:0;
+ player.getVisibilityState=()=>player.classList.contains('stale')?(location.search==='?mac-native'?3:7):0;
  player.setDocumentPictureInPicture=value=>{player.classList.toggle('stale',value);if(value){video.style.width='480px';video.style.height='270px';}};
  player.setSize=()=>{video.style.width=player.parentElement.clientWidth+'px';video.style.height=player.parentElement.clientWidth*9/16+'px';};
  player.setSize();
@@ -42,7 +42,7 @@ let diagnostics=[];
 let lastPage;
 let baselineReproduced=false;
 try {
- for(const mode of ['document','native']) {
+ for(const mode of ['document','native','mac-native']) {
  // A user-dismissed Auto PiP window changes Chrome's per-origin eligibility.
  // Exercise each implementation in a fresh profile, with explicit tab focus.
  const modeProfile=path.join(profile,mode);
@@ -54,7 +54,7 @@ try {
  const cdp=await context.newCDPSession(page);await cdp.send('Media.enable');
  cdp.on('Media.playerPropertiesChanged',event=>diagnostics.push(event));
  cdp.on('Media.playerErrorsRaised',event=>diagnostics.push(event));
- await page.goto(origin+(mode==='native'?'?native':''));await page.bringToFront();await page.locator('#play').click();await page.waitForFunction(()=>!video.paused&&video.videoWidth>0);
+ await page.goto(origin+(mode==='document'?'':'?'+mode));await page.bringToFront();await page.locator('#play').click();await page.waitForFunction(()=>!video.paused&&video.videoWidth>0);
  await page.waitForTimeout(1200);
  const other=await context.newPage();await other.goto('about:blank');await other.bringToFront();
  await page.waitForFunction(()=>!!document.pictureInPictureElement||!!window.documentPictureInPicture?.window,{},{timeout:15000});
@@ -68,6 +68,10 @@ try {
   assert.equal(await page.evaluate(()=>video.ownerDocument===window.documentPictureInPicture.window.document),true);
   assert.equal(await page.evaluate(()=>player.ownerDocument===video.ownerDocument),true);
   assert.equal(await page.evaluate(()=>video.ownerDocument.defaultView.getComputedStyle(video).visibility),'visible');
+ } else {
+  assert.equal(await page.evaluate(()=>__arcSidebarAutoPip.getState().player),'video');
+  assert.equal(await page.evaluate(()=>video.ownerDocument===document&&player.parentNode.id==='origin'),true,'native PiP must leave the live player in its source page');
+  if(mode==='mac-native')assert.equal(await page.evaluate(()=>typeof window.documentPictureInPicture.requestWindow==='function'&&!window.documentPictureInPicture.window),true,'Mac must use native video PiP with Document PiP still available');
  }
  const frames=await page.evaluate(()=>video.getVideoPlaybackQuality().totalVideoFrames);
  await page.waitForFunction(previous=>video.getVideoPlaybackQuality().totalVideoFrames>previous,frames);
