@@ -15,10 +15,20 @@ fs.writeFileSync(path.join(profile,'Default','Preferences'),JSON.stringify({prof
 // Chrome only starts automatic PiP for HTTPS or file origins, even on localhost.
 fs.writeFileSync(path.join(profile,'video.webm'),video);
 fs.writeFileSync(path.join(profile,'agent.js'),source);
-fs.writeFileSync(path.join(profile,'player.html'),`<!doctype html><title>Auto PiP regression</title><video id="video" src="video.webm" loop controls width="320"></video><button id="play">Play</button><button id="manual">Manual PiP</button><script src="agent.js"></script><script>
+fs.writeFileSync(path.join(profile,'player.html'),`<!doctype html><title>Auto PiP regression</title>
+ <style>.stale video{visibility:hidden}#placeholder{display:none}.stale #placeholder{display:block}</style>
+ <div id="player" class="html5-video-player"><video id="video" src="video.webm" loop controls width="320"></video><span id="placeholder">Playing in picture-in-picture</span></div>
+ <button id="play">Play</button><button id="manual">Manual PiP</button><script src="agent.js"></script><script>
+ window.siteActions=[];
+ navigator.mediaSession.setActionHandler('enterpictureinpicture',details=>{siteActions.push(details.enterPictureInPictureReason);video.requestPictureInPicture();});
+ player.getVisibilityState=()=>player.classList.contains('stale')?7:0;
+ player.setDocumentPictureInPicture=value=>player.classList.toggle('stale',value);
+ video.addEventListener('enterpictureinpicture',()=>player.classList.add('stale'));
+ // Model YouTube's stale placeholder after automatic PiP has already closed.
+ video.addEventListener('leavepictureinpicture',()=>{if(player.manual)player.classList.remove('stale');});
  __arcSidebarAutoPip.configure(true);
  play.onclick=async()=>{await video.play();navigator.mediaSession.playbackState='playing';};
- manual.onclick=()=>video.requestPictureInPicture();
+ manual.onclick=()=>{player.manual=true;video.requestPictureInPicture();};
  </script>`);
 const origin=pathToFileURL(path.join(profile,'player.html')).href;
 let context;
@@ -33,11 +43,13 @@ try {
  await page.waitForTimeout(1200);
  const other=await context.newPage();await other.goto('about:blank');
  await page.waitForFunction(()=>!!document.pictureInPictureElement,{},{timeout:15000});
- 
  await page.bringToFront();await page.waitForFunction(()=>!document.pictureInPictureElement);
+ await page.waitForFunction(()=>player.getVisibilityState()===0&&getComputedStyle(video).visibility==='visible');
+ assert.equal(await page.locator('#placeholder').isVisible(),false);
+ assert.deepEqual(await page.evaluate(()=>siteActions),[]);
  assert.equal(await page.evaluate(()=>video.paused),false);
  assert.ok(await page.evaluate(()=>video.currentTime)>0);
- console.log('PASS native Chrome: automatic PiP enters on tab switch and returns without pausing');
+ console.log('PASS native Chrome: automatic PiP returns the visible video, clears stale player UI and never invokes the site manual handler');
  await page.locator('#manual').click();await page.waitForFunction(()=>!!document.pictureInPictureElement);
  await other.bringToFront();await page.bringToFront();await page.waitForTimeout(250);
  assert.equal(await page.evaluate(()=>document.pictureInPictureElement===video),true);
