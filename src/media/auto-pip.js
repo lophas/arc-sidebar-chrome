@@ -1,7 +1,7 @@
 (() => {
   if (window.top !== window || !navigator.mediaSession || !document.pictureInPictureEnabled) return;
   const KEY = '__arcSidebarAutoPip';
-  const VERSION = 4;
+  const VERSION = 5;
   if (globalThis[KEY]?.version === VERSION) return;
   globalThis[KEY]?.dispose();
   const session = navigator.mediaSession;
@@ -16,6 +16,19 @@
   let dismissed = false;
   let disposed = false;
   let lastError = null;
+  let lastAction = null;
+  let lastSkip = null;
+  let sourceActive = null;
+  let activationEpoch = 0;
+  const hasFocus = () => document.hasFocus?.() === true;
+  const resizePlayer = player => {
+    const resize = () => {
+      if (player.ownerDocument !== document) return;
+      try { player.setSize?.(); } catch {}
+    };
+    resize();
+    requestAnimationFrame(resize);
+  };
   const setHandler = handler => originalSetter.call(session, 'enterpictureinpicture', handler);
   const playingVideo = () => [...document.querySelectorAll('video')]
     .filter(video => !video.paused && !video.ended && !video.muted && video.volume > 0 && video.readyState >= 2 && video.videoWidth > 0 && !video.disablePictureInPicture)
@@ -51,7 +64,7 @@
     }
     restorePlayer(video);
   };
-  const openPortal = async video => {
+  const openPortal = async (video, epoch) => {
     const player = video.closest('.html5-video-player') || video;
     const parent = player.parentNode;
     if (!parent) return;
@@ -65,6 +78,9 @@
       if (marker.parentNode) marker.parentNode.replaceChild(player, marker);
       else parent.appendChild(player);
       try { player.setDocumentPictureInPicture?.(false); } catch {}
+      // YouTube recalculates inline video/control dimensions in the PiP window.
+      // Restoring the DOM node alone leaves those 480px dimensions on the page.
+      resizePlayer(player);
     };
     portalOpening = true;
     try {
@@ -72,7 +88,7 @@
       // Document PiP makes its opener visible even while another tab is active.
       // Chrome closes an automatic PiP window on return; a closed window, not
       // opener visibility, detects a return during this pending request.
-      if (!enabled || disposed || pipWindow.closed) {
+      if (!enabled || disposed || pipWindow.closed || epoch !== activationEpoch || hasFocus()) {
         lastError = `Portal cancelled: enabled=${enabled}, disposed=${disposed}, closed=${pipWindow.closed}, visibility=${document.visibilityState}`;
         restore(); pipWindow.close(); return;
       }
@@ -113,28 +129,33 @@
     } finally { portalOpening = false; }
   };
   const enterAutomatic = async () => {
-    if (!enabled || disposed || opening || dismissed || document.pictureInPictureElement || window.documentPictureInPicture?.window) return;
+    lastSkip = !enabled ? 'disabled' : disposed ? 'disposed' : opening ? 'pending' : dismissed ? 'dismissed' : document.pictureInPictureElement ? 'existing-video-pip' : window.documentPictureInPicture?.window ? 'existing-document-pip' : null;
+    if (lastSkip) return;
     const video = playingVideo();
-    if (!video) return;
+    if (!video) { lastSkip = 'no-eligible-video'; return; }
+    const epoch = activationEpoch;
+    lastError = null;
     opening = true;
     try {
       // YouTube's native-video PiP bookkeeping can leave its watch page blank.
       // Document PiP keeps the SAME player and explicitly returns its DOM node.
       if (typeof window.documentPictureInPicture?.requestWindow === 'function') {
-        await openPortal(video);
+        await openPortal(video, epoch);
         return;
       }
       await video.requestPictureInPicture();
       if (document.pictureInPictureElement === video) { ownedVideo = video; returnVideo = video; }
       // PiP can also make a native video's background opener visible. Chrome
       // owns automatic return/closure; we close explicitly only when disabled.
-      if (!enabled || disposed) await closeOwned();
-    } catch {
+      if (!enabled || disposed || epoch !== activationEpoch || hasFocus()) await closeOwned();
+    } catch (error) {
+      lastError = `${error.name}: ${error.message}`;
       // Permission denial/unsupported media must not create extension errors.
     } finally { opening = false; }
   };
   const handler = async (details = {}) => {
     const reason = details.enterPictureInPictureReason;
+    lastAction = { reason: reason ?? null, visibility: document.visibilityState, focused: hasFocus() };
     const automatic = reason === 'contentoccluded' || (!reason && document.visibilityState === 'hidden');
     if (automatic) return enabled ? enterAutomatic() : undefined;
     // Keep the site's own manually invoked player behavior.
@@ -158,11 +179,17 @@
       dismissed = false;
       // Automatic Document PiP is returned by pagehide, including when Chrome
       // closes it before the source tab's activation/visibility events arrive.
-      if (portalOpening || ownedPortal || (ownedVideo && document.pictureInPictureElement === ownedVideo)) return;
+      if (!hasFocus() && (portalOpening || ownedPortal || (ownedVideo && document.pictureInPictureElement === ownedVideo))) return;
       const video = returnVideo;
       returnVideo = null;
       closeOwned().then(() => restorePlayer(video));
     }
+  };
+  const onFocus = () => {
+    if (!hasFocus()) return;
+    activationEpoch++;
+    dismissed = false;
+    closeOwned();
   };
   const onLeave = event => {
     if (event.target !== ownedVideo) return;
@@ -173,14 +200,21 @@
   document.addEventListener('visibilitychange', onVisibility);
   document.addEventListener('leavepictureinpicture', onLeave, true);
   document.addEventListener('yt-navigate-start', closeOwned);
+  window.addEventListener('focus', onFocus);
   globalThis[KEY] = {
     version: VERSION,
     getState() {
-      return { version: VERSION, enabled, opening, player: ownedPortal ? 'document' : ownedVideo ? 'video' : 'none', visibility: document.visibilityState, lastError };
+      return { version: VERSION, enabled, opening, player: ownedPortal ? 'document' : ownedVideo ? 'video' : 'none', visibility: document.visibilityState, focused: hasFocus(), sourceActive, lastAction, lastSkip, lastError,
+        videos: [...document.querySelectorAll('video')].map(video => ({ paused: video.paused, muted: video.muted, volume: video.volume, readyState: video.readyState, videoWidth: video.videoWidth, disablePictureInPicture: video.disablePictureInPicture })) };
     },
-    configure(value) {
+    configure(value, active) {
       if (disposed) return false;
       enabled = value === true;
+      if (typeof active === 'boolean') {
+        const returning = active && sourceActive === false;
+        sourceActive = active;
+        if (returning) { activationEpoch++; dismissed = false; closeOwned(); }
+      }
       if (!enabled) closeOwned();
       // Also recover a stale player left by the previous injected version.
       if (document.visibilityState === 'visible') restorePlayer(playingVideo());
@@ -192,6 +226,7 @@
       document.removeEventListener('visibilitychange', onVisibility);
       document.removeEventListener('leavepictureinpicture', onLeave, true);
       document.removeEventListener('yt-navigate-start', closeOwned);
+      window.removeEventListener('focus', onFocus);
       if (session.setActionHandler === wrappedSetter) session.setActionHandler = originalSetter;
       try { setHandler(siteHandler); } catch {}
     }

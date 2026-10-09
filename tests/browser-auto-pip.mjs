@@ -16,7 +16,7 @@ fs.writeFileSync(path.join(profile,'Default','Preferences'),JSON.stringify({prof
 fs.writeFileSync(path.join(profile,'video.webm'),video);
 fs.writeFileSync(path.join(profile,'agent.js'),source);
 fs.writeFileSync(path.join(profile,'player.html'),`<!doctype html><title>Auto PiP regression</title>
- <style>.stale video{visibility:hidden}#placeholder{display:none}.stale #placeholder{display:block}</style>
+ <style>#origin{width:960px}#player{width:100%;height:540px}.stale video{visibility:hidden}#placeholder{display:none}.stale #placeholder{display:block}</style>
  <div id="origin"><span id="before">Before</span><div id="player" class="html5-video-player"><video id="video" src="video.webm" loop controls width="320"></video><span id="placeholder">Playing in picture-in-picture</span></div><span id="after">After</span></div>
  <button id="play">Play</button><button id="manual">Manual PiP</button>
  <script>const video=document.getElementById('video'),player=document.getElementById('player');if(location.search.includes('native'))Object.defineProperty(window,'documentPictureInPicture',{value:undefined});</script>
@@ -24,7 +24,9 @@ fs.writeFileSync(path.join(profile,'player.html'),`<!doctype html><title>Auto Pi
  window.siteActions=[];
  navigator.mediaSession.setActionHandler('enterpictureinpicture',details=>{siteActions.push(details.enterPictureInPictureReason);video.requestPictureInPicture();});
  player.getVisibilityState=()=>player.classList.contains('stale')?7:0;
- player.setDocumentPictureInPicture=value=>player.classList.toggle('stale',value);
+ player.setDocumentPictureInPicture=value=>{player.classList.toggle('stale',value);if(value){video.style.width='480px';video.style.height='270px';}};
+ player.setSize=()=>{video.style.width=player.parentElement.clientWidth+'px';video.style.height=player.parentElement.clientWidth*9/16+'px';};
+ player.setSize();
  video.addEventListener('enterpictureinpicture',()=>player.classList.add('stale'));
  // Model YouTube's stale placeholder after automatic PiP has already closed.
  video.addEventListener('leavepictureinpicture',()=>{if(player.manual)player.classList.remove('stale');});
@@ -66,6 +68,7 @@ try {
  assert.deepEqual(await page.evaluate(()=>[player.parentNode.id,player.previousElementSibling.id,player.nextElementSibling.id]),['origin','before','after']);
  await page.waitForFunction(()=>player.getVisibilityState()===0&&getComputedStyle(video).visibility==='visible');
  assert.equal(await page.locator('#placeholder').isVisible(),false);
+ assert.equal(await page.evaluate(()=>video.getBoundingClientRect().width),960,'returned inline player must fill its original container, not stay at PiP width');
  assert.deepEqual(await page.evaluate(()=>siteActions),[]);
  assert.equal(await page.evaluate(()=>video.paused),false);
  assert.ok(await page.evaluate(()=>video.currentTime)>0);

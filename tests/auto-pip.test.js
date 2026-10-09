@@ -6,15 +6,15 @@ import { exportBackupSettings, restoreBackupSettings } from '../src/options/back
 function setup({ deferred=false }={}) {
   const events={}; const actions=new Map(); let requests=0, exits=0, resolveRequest;
   const frames=[];
-  const document={pictureInPictureEnabled:true,visibilityState:'visible',pictureInPictureElement:null,querySelectorAll:()=>[video],addEventListener:(name,fn)=>{events[name]=fn;},removeEventListener:(name)=>{delete events[name];},exitPictureInPicture:async()=>{exits++;const target=document.pictureInPictureElement;document.pictureInPictureElement=null;events.leavepictureinpicture?.({target});}};
+  const document={focused:false,hasFocus(){return this.focused;},pictureInPictureEnabled:true,visibilityState:'visible',pictureInPictureElement:null,querySelectorAll:()=>[video],addEventListener:(name,fn)=>{events[name]=fn;},removeEventListener:(name)=>{delete events[name];},exitPictureInPicture:async()=>{exits++;const target=document.pictureInPictureElement;document.pictureInPictureElement=null;events.leavepictureinpicture?.({target});}};
   const video={paused:false,ended:false,muted:false,volume:1,readyState:4,videoWidth:1280,videoHeight:720,disablePictureInPicture:false,requestPictureInPicture:()=>{requests++;if(deferred)return new Promise(resolve=>{resolveRequest=()=>{document.pictureInPictureElement=video;resolve();};});document.pictureInPictureElement=video;return Promise.resolve();}};
   const session={setActionHandler(action,handler){actions.set(action,handler);}};
-  const window={};window.top=window;const context={window,document,navigator:{mediaSession:session},requestAnimationFrame:fn=>frames.push(fn),Event};vm.createContext(context);
+  const window={addEventListener:(name,fn)=>events['window:'+name]=fn,removeEventListener:name=>delete events['window:'+name]};window.top=window;const context={window,document,navigator:{mediaSession:session},requestAnimationFrame:fn=>frames.push(fn),Event};vm.createContext(context);
   const source=fs.readFileSync('src/media/auto-pip.js','utf8');vm.runInContext(source,context);
   const controller=context.__arcSidebarAutoPip;
   const auto=()=>{document.visibilityState='hidden';return actions.get('enterpictureinpicture')({enterPictureInPictureReason:'contentoccluded'});};
   const visible=()=>{document.visibilityState='visible';events.visibilitychange();};
-  return {source,context,controller,video,document,session,actions,auto,visible,emit:name=>events[name]?.(),frames:async()=>{await new Promise(setImmediate);while(frames.length)frames.shift()();},requests:()=>requests,exits:()=>exits,resolve:()=>resolveRequest()};
+  return {source,context,controller,video,document,session,actions,auto,visible,focus:()=>{document.focused=true;events['window:focus']?.();},emit:name=>events[name]?.(),frames:async()=>{await new Promise(setImmediate);while(frames.length)frames.shift()();},requests:()=>requests,exits:()=>exits,resolve:()=>resolveRequest()};
 }
 test('native automatic PiP returns only its own video to the source page; manual PiP stays open',async()=>{
  const s=setup();s.controller.configure(true);await s.auto();assert.equal(s.requests(),1);await s.document.exitPictureInPicture();s.visible();assert.equal(s.exits(),1);
@@ -135,4 +135,31 @@ test('native PiP stays open when Chrome marks its background opener visible',asy
  assert.equal(s.document.pictureInPictureElement,s.video);assert.equal(s.exits(),0);
  await s.document.exitPictureInPicture();s.visible();await s.frames();
  assert.equal(s.document.pictureInPictureElement,null);assert.equal(s.controller.getState().player,'none');
+});
+test('source activation cancels a delayed Document PiP without moving the player after return',async()=>{
+ for(const signal of ['focus','tab']){
+  const s=portalSetup({deferred:true});s.controller.configure(true,false);const pending=s.auto();
+  if(signal==='focus')s.focus();else s.controller.configure(true,true);
+  s.resolveWindow();await pending;
+  assert.equal(s.video.ownerDocument,s.document,signal);assert.equal(s.pipWindow.closed,true);
+  assert.deepEqual(s.order(),['before','player','after']);
+ }
+});
+test('return restores YouTube inline dimensions using the original page layout',async()=>{
+ const s=portalSetup();let width=1100;
+ s.player.setDocumentPictureInPicture=value=>{if(value)width=480;};
+ s.player.setSize=()=>{assert.equal(s.player.ownerDocument,s.document);width=1100;};
+ s.controller.configure(true,false);await s.auto();assert.equal(width,480);
+ s.controller.configure(true,true);await s.frames();
+ assert.equal(width,1100);assert.equal(s.video.ownerDocument,s.document);assert.equal(s.pipWindow.closed,true);
+});
+test('a late automatic callback on the already focused source does not adopt its player',async()=>{
+ const s=portalSetup();s.controller.configure(true);s.document.focused=true;await s.auto();
+ assert.equal(s.video.ownerDocument,s.document);assert.equal(s.pipWindow.closed,true);
+});
+test('explicit Chrome action can start before focus loss without cancelling a valid pending request',async()=>{
+ const s=portalSetup({deferred:true});s.controller.configure(true);s.document.focused=true;
+ const pending=s.actions.get('enterpictureinpicture')({enterPictureInPictureReason:'contentoccluded'});
+ s.document.focused=false;s.resolveWindow();await pending;
+ assert.equal(s.video.ownerDocument,s.pipDoc);assert.equal(s.pipWindow.closed,false);
 });

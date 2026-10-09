@@ -1,5 +1,6 @@
 const KEY = 'arcSidebarAutoPipEnabled';
 const pending = new Map();
+const activeTabs = new Map();
 function isYouTube(tab) {
   try {
     const url = new URL(tab?.pendingUrl || tab?.url || '');
@@ -11,10 +12,11 @@ async function apply(tabId) {
   if (!isYouTube(tab)) return;
   await chrome.scripting.executeScript({ target: { tabId }, world: 'MAIN', files: ['src/media/auto-pip.js'] });
   const stored = await chrome.storage.local.get(KEY);
+  const current = await chrome.tabs.get(tabId);
   await chrome.scripting.executeScript({
     target: { tabId }, world: 'MAIN',
-    func: enabled => globalThis.__arcSidebarAutoPip?.configure(enabled),
-    args: [stored[KEY] !== false]
+    func: (enabled, active) => globalThis.__arcSidebarAutoPip?.configure(enabled, active),
+    args: [stored[KEY] !== false, current.active]
   });
 }
 function sync(tabId) {
@@ -25,6 +27,7 @@ function sync(tabId) {
 }
 async function syncAll() {
   const tabs = await chrome.tabs.query({});
+  for (const tab of tabs) if (tab.active && !activeTabs.has(tab.windowId)) activeTabs.set(tab.windowId, tab.id);
   await Promise.all(tabs.filter(isYouTube).map(tab => sync(tab.id)));
 }
 chrome.runtime.onMessage.addListener((message, sender, respond) => {
@@ -33,7 +36,13 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
   sync(sender.tab.id).then(() => respond({ ok: true }));
   return true;
 });
-chrome.tabs.onActivated.addListener(({ tabId }) => { sync(tabId); });
+chrome.tabs.onActivated.addListener(({ tabId, windowId }) => {
+  const previous = activeTabs.get(windowId);
+  activeTabs.set(windowId, tabId);
+  if (previous != null && previous !== tabId) sync(previous);
+  sync(tabId);
+});
+chrome.windows.onRemoved.addListener(windowId => { activeTabs.delete(windowId); });
 chrome.tabs.onUpdated.addListener((tabId, info, tab) => {
   if (isYouTube(tab) && (info.status === 'complete' || info.url)) sync(tabId);
 });
