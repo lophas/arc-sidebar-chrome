@@ -19,6 +19,7 @@ Your saved links stay in the sidebar when their browser tabs close. Click a save
 - **Open tabs within each Space** — see the Space’s additional browser tabs below its pinned links and drag them into the pinned list to save them.
 - **Matching Chrome groups** — Favorites first, then Space groups in sidebar order, with pinned tabs ordered by the sidebar hierarchy.
 - **Focused tab bar** — tab or window focus changes expand the active group and collapse the others; manual group changes remain until focus changes again.
+- **Automatic YouTube mini player** — keep watching when you switch tabs; return the video to its page when you switch back. Enabled by default.
 - **Two sidebar modes** — an autohide overlay at the same edge as Chrome’s side panel or Chrome’s native Side Panel.
 - **Live indicators and bulk close** — see what is open and close a Favorite, pinned tab, folder or an entire Space’s open tabs.
 - **Personalized appearance** — website favicons, uploaded icons, searchable Space emojis and adjustable Favorite tile sizes.
@@ -154,6 +155,14 @@ Use the icon to the left of the sidebar search bar to switch between **Fixed** a
 **Fixed · Chrome side panel** opens through the extension’s toolbar button and sits alongside the page. Choose its left or right position in **Chrome Settings → Appearance → Side panel**.
 
 Each Space and the Open tabs view remember their own scroll position. Returning to a view brings you back to where you left it.
+
+### Automatic YouTube mini player
+
+The mini player is **on by default**. When a YouTube video is playing with sound, switching to another tab opens it in a floating Picture-in-Picture window. Returning to the YouTube tab puts it back in the page without restarting playback. Paused videos stay in the page. Picture-in-Picture windows you open manually stay open when you return.
+
+Turn this feature on or off in **Extension options → Automatic YouTube mini player**. Changes apply to already open YouTube tabs, and the preference is included in backups.
+
+If Chrome asks for permission, allow **Automatic picture-in-picture** for YouTube using the site controls next to the address bar. If your Chrome build has Auto PiP disabled, enable **Auto picture in picture for video playback** at `chrome://flags/#auto-picture-in-picture-for-video-playback` and restart Chrome.
 
 ### Icons and appearance
 

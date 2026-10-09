@@ -14,6 +14,21 @@
     <section class="card">
       <div class="setting-row">
         <div>
+          <h2>Automatic YouTube mini player</h2>
+          <p>Keep watching a playing YouTube video when you switch tabs. It returns to the page when you switch back. Enabled by default; manually opened Picture-in-Picture stays open.</p>
+        </div>
+        <label class="switch">
+          <input id="autoPipEnabled" type="checkbox" checked aria-label="Enable automatic YouTube mini player">
+          <span class="switch-track" aria-hidden="true"></span>
+        </label>
+      </div>
+      <p class="sync-note">If Chrome asks, allow Automatic picture-in-picture for YouTube in the site controls next to the address bar. The video needs to be playing with sound.</p>
+      <div id="autoPipStatus" class="status" role="status"></div>
+    </section>
+
+    <section class="card">
+      <div class="setting-row">
+        <div>
           <h2>Autohide timeout</h2>
           <p>Choose how long the sidebar stays open after the pointer leaves. Switch between Fixed and Autohide using the icon to the left of the sidebar search bar. Autohide is the default.</p>
         </div>
@@ -125,6 +140,7 @@
   </main>
 
   <script type="module" src="sidebar-mode.js"></script>
+  <script type="module" src="auto-pip.js"></script>
   <script type="module" src="favorite-size.js"></script>
   <script type="module" src="index.js"></script>
 </body>

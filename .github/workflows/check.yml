@@ -17,3 +17,4 @@ jobs:
       - run: npm install --no-save --package-lock=false --ignore-scripts playwright-core@1.56.1
       - run: python3 tests/browser-overlay.py --require-browser --regression-ref=0a7248abf3b70cc393ccfd091daecfd275e012cc
       - run: node tests/browser-space-tabs.mjs
+      - run: xvfb-run -a node tests/browser-auto-pip.mjs

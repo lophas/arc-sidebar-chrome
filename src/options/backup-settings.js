@@ -1,9 +1,10 @@
 import { sidebarPreferences } from '../shared/sidebar-preferences.js';
-export const BACKUP_SETTING_KEYS = ['arcSidebarAutohideTimeout', 'arcSidebarMode', 'arcSidebarFavoriteSizePercent', 'arcSidebarOverlayWidth'];
+export const BACKUP_SETTING_KEYS = ['arcSidebarAutohideTimeout', 'arcSidebarMode', 'arcSidebarFavoriteSizePercent', 'arcSidebarOverlayWidth', 'arcSidebarAutoPipEnabled'];
 const timeouts = new Set([0, 500, 600, 700, 800, 900, 1000, 1100]);
 const sizes = new Set([80, 90, 100, 110, 120]);
 export function exportBackupSettings(stored) {
   return {
+    autoPipEnabled: stored.arcSidebarAutoPipEnabled !== false,
     autohideTimeout: sidebarPreferences(stored).timeout,
     sidebarMode: sidebarPreferences(stored).mode,
     favoriteSizePercent: sizes.has(stored.arcSidebarFavoriteSizePercent) ? stored.arcSidebarFavoriteSizePercent : 100,
@@ -14,6 +15,10 @@ export function restoreBackupSettings(settings) {
   if (settings === undefined) return {};
   if (!settings || typeof settings !== 'object' || Array.isArray(settings)) throw new Error('Invalid backup settings.');
   const values = {};
+  if (Object.hasOwn(settings, 'autoPipEnabled')) {
+    if (typeof settings.autoPipEnabled !== 'boolean') throw new Error('Invalid backup mini player setting.');
+    values.arcSidebarAutoPipEnabled = settings.autoPipEnabled;
+  }
   if (Object.hasOwn(settings, 'autohideTimeout')) {
     if (!timeouts.has(settings.autohideTimeout)) throw new Error('Invalid backup autohide timeout.');
     values.arcSidebarAutohideTimeout = settings.autohideTimeout || 800;
