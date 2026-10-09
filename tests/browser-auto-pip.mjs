@@ -35,10 +35,12 @@ fs.writeFileSync(path.join(profile,'player.html'),`<!doctype html><title>Auto Pi
 const origin=pathToFileURL(path.join(profile,'player.html')).href;
 let context;
 let diagnostics=[];
+let lastPage;
 try {
  context=await chromium.launchPersistentContext(profile,{executablePath:executable,headless:false,ignoreDefaultArgs:['--mute-audio'],args:['--no-sandbox','--enable-features=AutoPictureInPictureForVideoPlayback,MediaSessionEnterPictureInPicture']});
  for(const mode of ['document','native']) {
  const page=await context.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ lastPage=page;
  const cdp=await context.newCDPSession(page);await cdp.send('Media.enable');
  cdp.on('Media.playerPropertiesChanged',event=>diagnostics.push(event));
  cdp.on('Media.playerErrorsRaised',event=>diagnostics.push(event));
@@ -82,6 +84,7 @@ try {
  await other.close();await page.close();
  }
 } catch(error) {
+ console.error('Auto PiP state:',await lastPage?.evaluate(()=>({...__arcSidebarAutoPip.getState(),hidden:document.hidden,siteActions,videoDocument:video.ownerDocument.URL,paused:video.paused})));
  console.error('Native PiP diagnostics:',JSON.stringify(diagnostics));
  throw error;
 } finally {
