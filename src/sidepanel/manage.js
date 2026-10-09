@@ -1,3 +1,4 @@
+import { prepareItemIconEditor, applyItemIconEditor } from './item-icons.js';
 import { fillSpaceSelect, FAVORITES_SPACE_ID } from './space-select.js';
 import { prepareFirstSpace } from '../shared/first-space.js';
 import { moveFavoriteToSpace } from '../shared/favorite-moves.js';
@@ -213,6 +214,7 @@ async function openFavoriteEditor(index = null) {
   model.favorites ||= [];
   const item = index == null ? null : model.favorites[index];
   const d = ensureDialog();
+  prepareItemIconEditor(d.querySelector('.item-form'), item);
 
   d.querySelector('#itemDialogTitle').textContent = item ? 'Edit favorite' : 'Add favorite';
   d.querySelector('#itemTitle').value = item?.title || '';
@@ -226,6 +228,7 @@ async function openFavoriteEditor(index = null) {
     const url = validateUrlInput(d.querySelector('#itemUrl'));
     if (!url) return;
     const next = { ...item, type: 'tab', id: item?.id || uid(), title: title || url, url };
+    applyItemIconEditor(d.querySelector('.item-form'), next);
     const destination = d.querySelector('#itemSpace').value;
     const target = destination === FAVORITES_SPACE_ID ? model.favorites : model.spaces.find(space => space.id === destination)?.children;
     if (!target) return;
@@ -264,6 +267,7 @@ async function openPinnedEditor(itemId = null) {
   if (itemId && (!item || item.type !== 'tab')) return;
 
   const d = ensureDialog();
+  prepareItemIconEditor(d.querySelector('.item-form'), item);
   d.querySelector('#itemDialogTitle').textContent = item ? 'Edit pinned link' : `Add pinned link · ${space.title}`;
   d.querySelector('#itemTitle').value = item?.title || '';
   d.querySelector('#itemUrl').value = item?.url || '';
@@ -276,6 +280,7 @@ async function openPinnedEditor(itemId = null) {
     const url = validateUrlInput(d.querySelector('#itemUrl'));
     if (!url) return;
     const next = { ...item, type: 'tab', id: item?.id || uid(), title: title || url, url };
+    applyItemIconEditor(d.querySelector('.item-form'), next);
     const destination = d.querySelector('#itemSpace').value;
     model.favorites ||= [];
     const targetSpace = model.spaces.find(candidate => candidate.id === destination);

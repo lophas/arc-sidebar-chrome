@@ -2,6 +2,7 @@ import { recalcModelStats } from '../shared/state-merge.js';
 import { savedItemIds, spaceGroupIds } from '../shared/space-tabs.js';
 import { bindingsReady, restoreSessionBindings, preserveWindowBindings } from './persistent-bindings.js';
 import { serializeState } from './state-controller.js';
+import { createWindowPlaceholder, reuseWindowPlaceholder, dismissWindowPlaceholder } from './window-placeholders.js';
 const MODEL = 'arcSidebarModel', STATE = 'arcSidebarState', BINDINGS = 'arcSidebarBindings';
 async function keepWindowsOpen(tabIds) {
   const closing = new Set(tabIds);
@@ -15,7 +16,7 @@ async function keepWindowsOpen(tabIds) {
     if (tabs.every(tab => closing.has(tab.id))) {
       // Create before removing the last tab: afterwards its window is gone.
       // Omitting URL honors Chrome's default New Tab page, including overrides.
-      await chrome.tabs.create({ windowId, active: true });
+      await createWindowPlaceholder(windowId);
     }
   }
 }
@@ -52,6 +53,7 @@ export async function activateTab(tabId) {
     const [local, session, tab] = await Promise.all([chrome.storage.local.get(MODEL), chrome.storage.session.get(BINDINGS), chrome.tabs.get(tabId)]);
     if (tab.pinned) throw new Error('Chrome pinned tabs are read-only.');
     await focus(tab);
+    await dismissWindowPlaceholder(tab);
     await reveal(local[MODEL], session[BINDINGS] || {}, tab.id);
   });
 }
@@ -67,13 +69,23 @@ export async function openSavedItem(itemId, windowId) {
     if (bindings[itemId] != null) { try { tab = await chrome.tabs.get(Number(bindings[itemId])); } catch {} }
     if (tab?.pinned) throw new Error('Chrome pinned tabs are read-only.');
     if (!tab) {
-      tab = await chrome.tabs.create({ windowId, url: found.item.url, active: true });
+      tab = await reuseWindowPlaceholder(windowId, found.item.url) || await chrome.tabs.create({ windowId, url: found.item.url, active: true });
       bindings[itemId] = tab.id;
       await chrome.storage.session.set({ [BINDINGS]: bindings });
     }
     if (tab.pinned) throw new Error('Chrome pinned tabs are read-only.');
     await focus(tab);
+    await dismissWindowPlaceholder(tab);
     await reveal(local[MODEL], bindings, tab.id, itemId);
+    return tab.id;
+  });
+}
+export async function openUrlTab(url, windowId) {
+  await bindingsReady;
+  return serializeState(async () => {
+    const tab = await reuseWindowPlaceholder(windowId, url) || await chrome.tabs.create({ windowId, url, active: true });
+    await focus(tab);
+    await dismissWindowPlaceholder(tab);
     return tab.id;
   });
 }

@@ -5,7 +5,7 @@ import { resolve, extname } from 'node:path';
 import { chromium } from 'playwright-core';
 const root=process.cwd();
 let html=await readFile('src/sidepanel/index.html','utf8');
-html=html.replace(/<script[^>]*>[\s\S]*?<\/script>/g,'').replace('</body>',`<script src="/tests/fixtures/space-tabs-chrome.js"></script><script type="module" src="index.js"></script><script type="module" src="drag-scroll.js"></script><script type="module" src="manage.js"></script><script type="module" src="folder-manage.js"></script><script type="module" src="space-dnd.js"></script><script type="module" src="hierarchy-dnd.js"></script><script type="module" src="root-drop.js"></script><script type="module" src="open-pin.js"></script><script type="module" src="workflow-pin-dnd.js"></script><script type="module" src="memory-controls.js"></script></body>`);
+html=html.replace(/<script[^>]*>[\s\S]*?<\/script>/g,'').replace('</body>',`<script src="/tests/fixtures/space-tabs-chrome.js"></script><script type="module" src="index.js"></script><script type="module" src="drag-scroll.js"></script><script type="module" src="manage.js"></script><script type="module" src="item-icons.js"></script><script type="module" src="folder-manage.js"></script><script type="module" src="space-dnd.js"></script><script type="module" src="hierarchy-dnd.js"></script><script type="module" src="root-drop.js"></script><script type="module" src="open-pin.js"></script><script type="module" src="workflow-pin-dnd.js"></script><script type="module" src="memory-controls.js"></script></body>`);
 const server=createServer(async(req,res)=>{
  const pathname=new URL(req.url,'http://localhost').pathname;
  if(pathname==='/src/sidepanel/index.html'){res.setHeader('Content-Type','text/html');res.end(html);return;}
@@ -21,6 +21,56 @@ try{
  const ids=()=>page.locator('#openTabs .row').evaluateAll(rows=>rows.map(row=>Number(row.dataset.liveTabId)));
  await page.waitForFunction(()=>document.querySelectorAll('#openTabs .row').length===3);
  assert.deepEqual(await ids(),[11,12,21]);assert.equal(await page.locator('.other-window-label').textContent(),'Other window');
+ {
+ // A close-all dialog is created first: the link editor must still own its icon field.
+ await page.locator('[data-space-id="__open_tabs__"]').click({button:'right'});
+ await page.locator('dialog[open]').getByRole('button',{name:'Cancel',exact:true}).click();
+ await page.locator('[data-saved-node-id="a"]').click({button:'right'});
+ const editor=page.locator('dialog[open]');
+ await editor.locator('.item-icon-clear').waitFor({state:'visible'});
+ const uploadIcon=async()=>{
+  await editor.locator('.item-icon-file-input').setInputFiles({name:'icon.svg',mimeType:'image/svg+xml',buffer:Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect width="64" height="64" fill="red"/></svg>')});
+  await page.waitForFunction(()=>document.querySelector('dialog[open] .item-icon-status')?.textContent==='Image icon ready. Save to apply it.');
+ };
+ await uploadIcon();
+ await editor.locator('#itemSave').click();
+ await page.waitForFunction(()=>fixture.data.local.arcSidebarModel.spaces[0].children[0].icon?.startsWith('data:image/webp'));
+ await page.locator('[data-saved-node-id="a"]').click({button:'right'});
+ await editor.locator('.item-icon-file-preview').waitFor({state:'visible'});
+ assert.equal(await editor.locator('.item-icon-file-preview').isVisible(),true);
+ await editor.locator('.item-icon-clear').click();
+ await editor.locator('#itemSave').click();
+ await page.waitForFunction(()=>!fixture.data.local.arcSidebarModel.spaces[0].children[0].icon);
+ // Creation and moving across Favorites/Spaces save the icon on the actual item.
+ await page.locator('#addFavorite').click();
+ assert.equal(await editor.locator('.item-icon-file-preview').isVisible(),false);
+ await editor.locator('#itemTitle').fill('Icon test');
+ await editor.locator('#itemUrl').fill('https://icon.test');
+ await uploadIcon();
+ await editor.locator('#itemSave').click();
+ await page.waitForFunction(()=>fixture.data.local.arcSidebarModel.favorites[0]?.icon?.startsWith('data:image/webp'));
+ const favoriteId=await page.evaluate(()=>fixture.data.local.arcSidebarModel.favorites[0].id);
+ await page.locator(`[data-favorite-id="${favoriteId}"]`).click({button:'right'});
+ await editor.locator('.item-icon-file-preview').waitFor({state:'visible'});
+ assert.equal(await editor.locator('.item-icon-file-preview').isVisible(),true);
+ await editor.locator('#itemSpace').selectOption('work');
+ await editor.locator('#itemSave').click();
+ await page.waitForFunction(id=>fixture.data.local.arcSidebarModel.spaces[0].children.some(item=>item.id===id&&item.icon?.startsWith('data:image/webp')),favoriteId);
+ await page.locator(`[data-saved-node-id="${favoriteId}"]`).click({button:'right'});
+ await editor.locator('#itemSpace').selectOption('__favorites__');
+ await editor.locator('.item-icon-clear').click();
+ await editor.locator('#itemSave').click();
+ await page.waitForFunction(id=>fixture.data.local.arcSidebarModel.favorites.some(item=>item.id===id&&!item.icon),favoriteId);
+ await page.locator(`[data-favorite-id="${favoriteId}"]`).click({button:'right'});
+ await uploadIcon();
+ await editor.locator('#itemCancel').click();
+ assert.equal(await page.evaluate(()=>fixture.data.local.arcSidebarModel.favorites[0].icon),undefined);
+ await page.evaluate(async()=>{
+  const model=fixture.data.local.arcSidebarModel;model.favorites=[];
+  await fixture.write('local',{arcSidebarModel:model});
+ });
+ console.log('PASS real Chrome: link/Favorite icon upload, preview, favicon reset, cancel and cross-Space moves after another dialog was created first');
+ }
  await page.locator('[data-live-tab-id="12"]').click();
  assert.equal(await page.evaluate(()=>fixture.calls.findLast(c=>c.type==='arc-sidebar-tab-action')?.tabId),12);
  await page.waitForFunction(()=>document.querySelector('[data-live-tab-id="12"]')?.dataset.openPinManaged==='1');

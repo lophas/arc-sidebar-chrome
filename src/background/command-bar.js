@@ -1,4 +1,4 @@
-import { activateTab, openSavedItem } from './tab-actions.js';
+import { activateTab, openSavedItem, openUrlTab } from './tab-actions.js';
 import { createStorageClient } from '../shared/storage-client.js';
 import { commitStorage } from './state-controller.js';
 const sidebarStorage = createStorageClient({ transact: commitStorage });
@@ -24,8 +24,7 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
     } else if (['URL', 'Search'].includes(item.kind)) {
       const url = new URL(item.url);
       if (!['http:', 'https:', 'chrome:', 'file:'].includes(url.protocol)) throw new Error('Unsupported URL');
-      await chrome.tabs.create({ windowId: message.windowId, url: url.href, active: true });
-      await chrome.windows.update(message.windowId, { focused: true });
+      await openUrlTab(url.href, message.windowId);
     } else if (['Folder', 'Space'].includes(item.kind)) {
       const stored = await sidebarStorage.local.get('arcSidebarState');
       const state = stored.arcSidebarState || {};

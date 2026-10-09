@@ -8,8 +8,6 @@ const OPEN_TABS_SPACE_ID = '__open_tabs__';
 const favoritesEl = document.querySelector('#favorites');
 const pinnedEl = document.querySelector('#pinned');
 const searchEl = document.querySelector('#search');
-const addFavoriteButton = document.querySelector('#addFavorite');
-const addPinnedButton = document.querySelector('#addPinned');
 
 const IMAGE_ICON_PREFIX = 'data:image/';
 const MAX_SOURCE_ICON_BYTES = 2 * 1024 * 1024;
@@ -18,33 +16,10 @@ const ACCEPTED_ICON_TYPES = new Set(['image/svg+xml', 'image/png', 'image/webp',
 
 let cachedModel = null;
 let cachedState = { currentSpaceId: null, collapsedFolders: {} };
-let editing = null;
-let pendingIconSave = null;
-let pendingClearTimer = null;
-let applyingIconSave = false;
-
-function normalizeEnteredUrl(value) {
-  const url = String(value || '').trim();
-  if (!url) return '';
-  if (/^[a-z][a-z0-9+.-]*:\/\//i.test(url)) return url;
-  if (/^(chrome|edge|about):/i.test(url)) return url;
-  return `https://${url}`;
-}
+const iconRequests = new WeakMap();
 
 function isImageIcon(value) {
   return typeof value === 'string' && value.startsWith(IMAGE_ICON_PREFIX);
-}
-
-function findNodeLocation(nodes, id) {
-  for (let index = 0; index < (nodes || []).length; index += 1) {
-    const node = nodes[index];
-    if (node?.id === id) return { node, parent: nodes, index };
-    if (node?.type === 'folder') {
-      const found = findNodeLocation(node.children || [], id);
-      if (found) return found;
-    }
-  }
-  return null;
 }
 
 function matchesSearch(node, q) {
@@ -125,18 +100,6 @@ async function refreshCache() {
   decorateVisibleIcons();
 }
 
-function currentIconForEditing() {
-  if (!editing || !cachedModel) return '';
-  if (editing.kind === 'favorite') return cachedModel.favorites?.[editing.index]?.icon || '';
-  if (editing.kind === 'pinned') {
-    for (const space of cachedModel.spaces || []) {
-      const found = findNodeLocation(space.children || [], editing.id);
-      if (found?.node?.type === 'tab') return found.node.icon || '';
-    }
-  }
-  return '';
-}
-
 function fileToImage(file) {
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file);
@@ -215,31 +178,45 @@ function setImagePreview(field, icon, fileName = '') {
 }
 
 function clearFileIcon(field) {
+  iconRequests.delete(field);
+  field.querySelector('.item-icon-dropzone')?.classList.remove('busy');
+  field.closest('form').querySelector('#itemSave').disabled = false;
   delete field.dataset.fileIcon;
   setImagePreview(field, '');
 }
 
 async function selectIconFile(field, file) {
   const dropzone = field.querySelector('.item-icon-dropzone');
+  const save = field.closest('form').querySelector('#itemSave');
+  const request = {};
+  iconRequests.set(field, request);
   try {
+    save.disabled = true;
     dropzone?.classList.add('busy');
     setIconStatus(field, 'Preparing icon…');
     const dataUrl = await prepareIconFile(file);
+    if (iconRequests.get(field) !== request) return;
+    delete field.dataset.useFavicon;
     field.dataset.fileIcon = dataUrl;
     setImagePreview(field, dataUrl, file.name || 'Custom image icon');
     setIconStatus(field, 'Image icon ready. Save to apply it.');
   } catch (error) {
+    if (iconRequests.get(field) !== request) return;
     setIconStatus(field, error?.message || 'Could not use this icon.', true);
   } finally {
-    dropzone?.classList.remove('busy');
+    if (iconRequests.get(field) === request) {
+      iconRequests.delete(field);
+      dropzone?.classList.remove('busy');
+      save.disabled = false;
+    }
   }
 }
 
 function createIconField() {
-  const label = document.createElement('label');
+  const label = document.createElement('div');
   label.className = 'item-icon-field';
   label.innerHTML = `
-    Icon
+    <span>Icon</span>
     <div class="item-icon-actions">
       <button class="item-icon-clear" type="button" title="Use site favicon">Use favicon</button>
     </div>
@@ -273,7 +250,6 @@ function createIconField() {
   fileInput.addEventListener('change', () => {
     const file = fileInput.files?.[0];
     if (file) {
-      delete label.dataset.useFavicon;
       selectIconFile(label, file);
     }
     fileInput.value = '';
@@ -297,7 +273,6 @@ function createIconField() {
   dropzone.addEventListener('drop', event => {
     const file = event.dataTransfer?.files?.[0];
     if (file) {
-      delete label.dataset.useFavicon;
       selectIconFile(label, file);
     }
   });
@@ -305,27 +280,17 @@ function createIconField() {
   return label;
 }
 
-function showIconFieldWhenReady(attempt = 0) {
-  const dialog = document.querySelector('.item-dialog');
-  if (!dialog?.open) {
-    if (attempt < 20) setTimeout(() => showIconFieldWhenReady(attempt + 1), 20);
-    return;
-  }
-
-  const form = dialog.querySelector('.item-form');
-  const urlInput = dialog.querySelector('#itemUrl');
-  if (!form || !urlInput) return;
-
+// The link editor owns this field and saves its value in the same model update.
+export function prepareItemIconEditor(form, item) {
   let field = form.querySelector('.item-icon-field');
   if (!field) {
     field = createIconField();
-    urlInput.closest('label')?.after(field);
+    form.querySelector('#itemUrl').closest('label').after(field);
   }
-
   clearFileIcon(field);
   delete field.dataset.useFavicon;
   setIconStatus(field, '');
-  const current = currentIconForEditing();
+  const current = item?.icon || '';
   if (isImageIcon(current)) {
     field.dataset.fileIcon = current;
     setImagePreview(field, current, 'Current custom image icon');
@@ -334,132 +299,11 @@ function showIconFieldWhenReady(attempt = 0) {
   }
 }
 
-function setEditingFromTarget(target) {
-  const favorite = target.closest?.('.favorite-tile');
-  if (favorite && favoritesEl?.contains(favorite)) {
-    editing = { kind: 'favorite', index: [...favoritesEl.querySelectorAll('.favorite-tile')].indexOf(favorite) };
-    setTimeout(() => showIconFieldWhenReady(), 0);
-    return true;
-  }
-
-  const row = target.closest?.('#pinned .row.managed-pinned');
-  if (row?.dataset.nodeId) {
-    editing = { kind: 'pinned', id: row.dataset.nodeId };
-    setTimeout(() => showIconFieldWhenReady(), 0);
-    return true;
-  }
-  return false;
+export function applyItemIconEditor(form, item) {
+  const field = form.querySelector('.item-icon-field');
+  if (field?.dataset.useFavicon === '1') delete item.icon;
+  else if (field?.dataset.fileIcon) item.icon = field.dataset.fileIcon;
 }
-
-function armPendingSave() {
-  const dialog = document.querySelector('.item-dialog');
-  const field = dialog?.querySelector('.item-icon-field');
-  if (!editing || !field) return;
-
-  const normalizedUrl = normalizeEnteredUrl(dialog.querySelector('#itemUrl')?.value || '');
-  const enteredTitle = dialog.querySelector('#itemTitle')?.value.trim() || '';
-  const current = currentIconForEditing();
-  const icon = field.dataset.useFavicon === '1'
-    ? ''
-    : field.dataset.fileIcon || (isImageIcon(current) ? current : '');
-
-  pendingIconSave = {
-    ...editing,
-    icon,
-    expectedUrl: normalizedUrl,
-    expectedTitle: enteredTitle || normalizedUrl
-  };
-
-  if (pendingClearTimer) clearTimeout(pendingClearTimer);
-  pendingClearTimer = setTimeout(() => {
-    pendingIconSave = null;
-    pendingClearTimer = null;
-  }, 2500);
-}
-
-function applyIconValue(node, icon) {
-  if (!node) return false;
-  const current = node.icon || '';
-  if (current === icon) return false;
-  if (icon) node.icon = icon;
-  else delete node.icon;
-  return true;
-}
-
-async function applyPendingIconSave(modelFromChange) {
-  if (!pendingIconSave || applyingIconSave || !modelFromChange) return;
-  applyingIconSave = true;
-  const pending = pendingIconSave;
-  pendingIconSave = null;
-  if (pendingClearTimer) clearTimeout(pendingClearTimer);
-  pendingClearTimer = null;
-
-  try {
-    const model = structuredClone(modelFromChange);
-    let changed = false;
-
-    if (pending.kind === 'favorite') {
-      changed = applyIconValue(model.favorites?.[pending.index], pending.icon);
-    } else if (pending.kind === 'new-favorite') {
-      const candidates = model.favorites || [];
-      const item = [...candidates].reverse().find(candidate =>
-        candidate?.type === 'tab' && candidate.url === pending.expectedUrl && candidate.title === pending.expectedTitle
-      ) || candidates.at(-1);
-      changed = applyIconValue(item, pending.icon);
-    } else if (pending.kind === 'pinned') {
-      for (const space of model.spaces || []) {
-        const found = findNodeLocation(space.children || [], pending.id);
-        if (found?.node?.type === 'tab') {
-          changed = applyIconValue(found.node, pending.icon);
-          break;
-        }
-      }
-    } else if (pending.kind === 'new-pinned') {
-      const state = await sidebarStorage.local.get(STATE_KEY);
-      const spaceId = state[STATE_KEY]?.currentSpaceId;
-      const space = model.spaces?.find(candidate => candidate.id === spaceId) || model.spaces?.[0];
-      const roots = space?.children || [];
-      const item = [...roots].reverse().find(candidate =>
-        candidate?.type === 'tab' && candidate.url === pending.expectedUrl && candidate.title === pending.expectedTitle
-      ) || [...roots].reverse().find(candidate => candidate?.type === 'tab');
-      changed = applyIconValue(item, pending.icon);
-    }
-
-    if (changed) await sidebarStorage.local.set({ [STORAGE_KEY]: model }, { before: { [STORAGE_KEY]: modelFromChange } });
-  } finally {
-    applyingIconSave = false;
-  }
-}
-
-async function applyPendingExistingIconSave() {
-  if (!pendingIconSave || !['favorite', 'pinned'].includes(pendingIconSave.kind)) return;
-  const stored = await sidebarStorage.local.get(STORAGE_KEY);
-  if (stored[STORAGE_KEY]) await applyPendingIconSave(stored[STORAGE_KEY]);
-}
-
-document.addEventListener('contextmenu', event => {
-  setEditingFromTarget(event.target);
-}, true);
-
-addFavoriteButton?.addEventListener('click', () => {
-  editing = { kind: 'new-favorite' };
-  setTimeout(() => showIconFieldWhenReady(), 0);
-}, true);
-
-addPinnedButton?.addEventListener('click', () => {
-  editing = { kind: 'new-pinned' };
-  setTimeout(() => showIconFieldWhenReady(), 0);
-}, true);
-
-document.addEventListener('click', event => {
-  if (event.target?.id !== 'itemSave') return;
-  armPendingSave();
-  setTimeout(() => {
-    applyPendingExistingIconSave().catch(error => {
-      console.warn('Arc Sidebar: custom icon save fallback failed', error);
-    });
-  }, 80);
-}, true);
 
 window.addEventListener('arc-sidebar-rendered', decorateVisibleIcons);
 chrome.storage.onChanged.addListener((changes, area) => {
@@ -467,9 +311,6 @@ chrome.storage.onChanged.addListener((changes, area) => {
 
   if (changes[STORAGE_KEY]) {
     cachedModel = changes[STORAGE_KEY].newValue || null;
-    if (pendingIconSave && !applyingIconSave) {
-      applyPendingIconSave(changes[STORAGE_KEY].newValue).catch(() => {});
-    }
   }
   if (changes[STATE_KEY]) {
     cachedState = { currentSpaceId: null, collapsedFolders: {}, ...(changes[STATE_KEY].newValue || {}) };
