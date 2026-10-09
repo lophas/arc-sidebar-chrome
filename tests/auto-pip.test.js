@@ -17,7 +17,7 @@ function setup({ deferred=false }={}) {
   return {source,context,controller,video,document,session,actions,auto,visible,emit:name=>events[name]?.(),frames:async()=>{await new Promise(setImmediate);while(frames.length)frames.shift()();},requests:()=>requests,exits:()=>exits,resolve:()=>resolveRequest()};
 }
 test('native automatic PiP returns only its own video to the source page; manual PiP stays open',async()=>{
- const s=setup();s.controller.configure(true);await s.auto();assert.equal(s.requests(),1);s.visible();assert.equal(s.exits(),1);
+ const s=setup();s.controller.configure(true);await s.auto();assert.equal(s.requests(),1);await s.document.exitPictureInPicture();s.visible();assert.equal(s.exits(),1);
  s.document.pictureInPictureElement=s.video;await s.auto();s.visible();assert.equal(s.requests(),1);assert.equal(s.exits(),1);
 });
 test('paused, muted, ended and unsupported players never enter automatic PiP',async()=>{
@@ -34,7 +34,9 @@ test('site handlers survive registration and disabling; manual action does not b
 test('quick return or disable during pending PiP closes it when request resolves; duplicate script does not wrap twice',async()=>{
  for(const disable of [false,true]){
   const s=setup({deferred:true});s.controller.configure(true);const pending=s.auto();
-  if(disable)s.controller.configure(false);else s.visible();s.resolve();await pending;assert.equal(s.exits(),1);
+  if(disable)s.controller.configure(false);else s.visible();s.resolve();await pending;
+  if(!disable)await s.document.exitPictureInPicture(); // Chrome closes automatic PiP on return.
+  assert.equal(s.exits(),1);
   const setter=s.session.setActionHandler;vm.runInContext(s.source,s.context);assert.equal(s.context.__arcSidebarAutoPip,s.controller);assert.equal(s.session.setActionHandler,setter);
  }
 });
@@ -54,7 +56,7 @@ test('Chrome automatic reason takes priority before visibility changes; hidden m
  s.session.setActionHandler('enterpictureinpicture',()=>{manual++;});s.controller.configure(true);
  const pending=s.actions.get('enterpictureinpicture')({enterPictureInPictureReason:'contentoccluded'});
  assert.equal(s.requests(),1);assert.equal(manual,0);
- s.document.visibilityState='hidden';s.resolve();await pending;s.visible();assert.equal(s.exits(),1);
+ s.document.visibilityState='hidden';s.resolve();await pending;await s.document.exitPictureInPicture();s.visible();assert.equal(s.exits(),1);
  s.document.visibilityState='hidden';
  await s.actions.get('enterpictureinpicture')({enterPictureInPictureReason:'useraction'});
  assert.equal(manual,1);assert.equal(s.requests(),1);
@@ -83,7 +85,7 @@ test('legacy YouTube player receives a leave event only if its PiP UI is stuck',
  s.video.isConnected=true;s.video.closest=()=>({getVisibilityState:()=>state,classList:{contains:()=>false}});
  s.video.dispatchEvent=event=>{assert.equal(event.type,'leavepictureinpicture');leaves++;state=0;};
  s.controller.configure(true);await s.frames();assert.equal(leaves,0);
- await s.auto();state=7;s.visible();await s.frames();assert.equal(leaves,1);assert.equal(s.video.paused,false);
+ await s.auto();state=7;await s.document.exitPictureInPicture();s.visible();await s.frames();assert.equal(leaves,1);assert.equal(s.video.paused,false);
 });
 function portalSetup({ deferred=false, reject=false }={}) {
  const s=setup();let resolveWindow;
@@ -127,4 +129,10 @@ test('Document PiP making the background opener visible does not cancel the pend
  assert.equal(s.video.ownerDocument,s.pipDoc);assert.equal(s.pipWindow.closed,false);
  s.visible();await s.frames();assert.equal(s.video.ownerDocument,s.pipDoc);
  s.pipWindow.close();assert.equal(s.video.ownerDocument,s.document);
+});
+test('native PiP stays open when Chrome marks its background opener visible',async()=>{
+ const s=setup();s.controller.configure(true);await s.auto();s.visible();
+ assert.equal(s.document.pictureInPictureElement,s.video);assert.equal(s.exits(),0);
+ await s.document.exitPictureInPicture();s.visible();await s.frames();
+ assert.equal(s.document.pictureInPictureElement,null);assert.equal(s.controller.getState().player,'none');
 });

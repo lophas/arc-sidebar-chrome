@@ -126,8 +126,9 @@
       }
       await video.requestPictureInPicture();
       if (document.pictureInPictureElement === video) { ownedVideo = video; returnVideo = video; }
-      // The user may return to the source tab or disable the setting mid-request.
-      if (!enabled || disposed || document.visibilityState !== 'hidden') await closeOwned();
+      // PiP can also make a native video's background opener visible. Chrome
+      // owns automatic return/closure; we close explicitly only when disabled.
+      if (!enabled || disposed) await closeOwned();
     } catch {
       // Permission denial/unsupported media must not create extension errors.
     } finally { opening = false; }
@@ -157,7 +158,7 @@
       dismissed = false;
       // Automatic Document PiP is returned by pagehide, including when Chrome
       // closes it before the source tab's activation/visibility events arrive.
-      if (portalOpening || ownedPortal) return;
+      if (portalOpening || ownedPortal || (ownedVideo && document.pictureInPictureElement === ownedVideo)) return;
       const video = returnVideo;
       returnVideo = null;
       closeOwned().then(() => restorePlayer(video));
