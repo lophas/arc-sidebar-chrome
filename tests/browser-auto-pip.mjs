@@ -49,7 +49,10 @@ try {
  if(mode==='document') {
   assert.equal(await page.evaluate(()=>video.ownerDocument===window.documentPictureInPicture.window.document),true);
   assert.equal(await page.evaluate(()=>player.ownerDocument===video.ownerDocument),true);
+  assert.equal(await page.evaluate(()=>video.ownerDocument.defaultView.getComputedStyle(video).visibility),'visible');
  }
+ const frames=await page.evaluate(()=>video.getVideoPlaybackQuality().totalVideoFrames);
+ await page.waitForFunction(previous=>video.getVideoPlaybackQuality().totalVideoFrames>previous,frames);
  await page.bringToFront();await page.waitForFunction(()=>!document.pictureInPictureElement);
  await page.waitForFunction(()=>!window.documentPictureInPicture?.window);
  assert.equal(await page.evaluate(()=>video.ownerDocument===document&&document.getElementById('video')===video),true);
