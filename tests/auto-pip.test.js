@@ -102,7 +102,8 @@ test('document PiP keeps the same live player and restores its original DOM slot
  const s=portalSetup();s.controller.configure(true);await s.auto();
  assert.equal(s.video.ownerDocument,s.pipDoc);assert.equal(s.pipDoc.body.children[0],s.player);assert.deepEqual(s.order(),['before','marker','after']);assert.equal(s.requests(),0);
  const close=s.pipWindow.close;s.pipWindow.close=function(){assert.equal(s.video.ownerDocument,s.document);close.call(this);};
- s.visible();await s.frames();assert.equal(s.player.ownerDocument,s.document);assert.deepEqual(s.order(),['before','player','after']);assert.equal(s.video.paused,false);
+ s.visible();await s.frames();assert.equal(s.player.ownerDocument,s.pipDoc);
+ s.controller.configure(false);assert.equal(s.player.ownerDocument,s.document);assert.deepEqual(s.order(),['before','player','after']);assert.equal(s.video.paused,false);
 });
 test('Chrome or user closing the document PiP restores the player even before source visibility changes',async()=>{
  const s=portalSetup();s.controller.configure(true);await s.auto();s.pipWindow.close();
@@ -118,6 +119,12 @@ test('disable, disposal and YouTube navigation return the adopted player',async(
 });
 test('quick return and rejected document PiP leave the original player in place without orphan markers',async()=>{
  const denied=portalSetup({reject:true});denied.controller.configure(true);await denied.auto();assert.deepEqual(denied.order(),['before','player','after']);assert.equal(denied.requests(),0);
- const s=portalSetup({deferred:true});s.controller.configure(true);const pending=s.auto();s.visible();s.resolveWindow();await pending;
+ const s=portalSetup({deferred:true});s.controller.configure(true);const pending=s.auto();s.visible();s.pipWindow.close();s.resolveWindow();await pending;
  assert.equal(s.video.ownerDocument,s.document);assert.deepEqual(s.order(),['before','player','after']);assert.equal(s.pipWindow.closed,true);
+});
+test('Document PiP making the background opener visible does not cancel the pending window',async()=>{
+ const s=portalSetup({deferred:true});s.controller.configure(true);const pending=s.auto();s.visible();s.resolveWindow();await pending;
+ assert.equal(s.video.ownerDocument,s.pipDoc);assert.equal(s.pipWindow.closed,false);
+ s.visible();await s.frames();assert.equal(s.video.ownerDocument,s.pipDoc);
+ s.pipWindow.close();assert.equal(s.video.ownerDocument,s.document);
 });

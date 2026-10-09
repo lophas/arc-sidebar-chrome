@@ -12,6 +12,7 @@
   let returnVideo = null;
   let ownedPortal = null;
   let opening = false;
+  let portalOpening = false;
   let dismissed = false;
   let disposed = false;
   let lastError = null;
@@ -65,10 +66,13 @@
       else parent.appendChild(player);
       try { player.setDocumentPictureInPicture?.(false); } catch {}
     };
+    portalOpening = true;
     try {
       pipWindow = await window.documentPictureInPicture.requestWindow({ width: 480, height: Math.round(480 * video.videoHeight / video.videoWidth) });
-      // The source tab may have returned while Chrome was creating the window.
-      if (!enabled || disposed || pipWindow.closed || document.visibilityState !== 'hidden') {
+      // Document PiP makes its opener visible even while another tab is active.
+      // Chrome closes an automatic PiP window on return; a closed window, not
+      // opener visibility, detects a return during this pending request.
+      if (!enabled || disposed || pipWindow.closed) {
         lastError = `Portal cancelled: enabled=${enabled}, disposed=${disposed}, closed=${pipWindow.closed}, visibility=${document.visibilityState}`;
         restore(); pipWindow.close(); return;
       }
@@ -106,7 +110,7 @@
       restore();
       if (ownedPortal?.window === pipWindow) ownedPortal = null;
       try { pipWindow?.close(); } catch {}
-    }
+    } finally { portalOpening = false; }
   };
   const enterAutomatic = async () => {
     if (!enabled || disposed || opening || dismissed || document.pictureInPictureElement || window.documentPictureInPicture?.window) return;
@@ -151,6 +155,9 @@
   const onVisibility = () => {
     if (document.visibilityState === 'visible') {
       dismissed = false;
+      // Automatic Document PiP is returned by pagehide, including when Chrome
+      // closes it before the source tab's activation/visibility events arrive.
+      if (portalOpening || ownedPortal) return;
       const video = returnVideo;
       returnVideo = null;
       closeOwned().then(() => restorePlayer(video));
