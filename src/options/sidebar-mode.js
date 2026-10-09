@@ -2,26 +2,24 @@ import { createStorageClient } from '../shared/storage-client.js';
 const sidebarStorage = createStorageClient();
 const MODE_KEY = 'arcSidebarMode';
 const TIMEOUT_KEY = 'arcSidebarAutohideTimeout';
-const allowed = new Set([0, 500, 600, 700, 800, 900, 1000, 1100]);
+import { sidebarPreferences, AUTOHIDE_TIMEOUTS } from '../shared/sidebar-preferences.js';
+const allowed = new Set(AUTOHIDE_TIMEOUTS);
 const select = document.querySelector('#autohideTimeout');
 const status = document.querySelector('#modeStatus');
 const warning = document.querySelector('#autohideWarning');
-function timeout(stored) {
-  const value = stored[TIMEOUT_KEY];
-  return allowed.has(value) ? value : stored[MODE_KEY] === 'native' ? 0 : 800;
-}
 async function loadSelection() {
-  const value = timeout(await sidebarStorage.local.get([TIMEOUT_KEY, MODE_KEY]));
-  select.value = String(value);
-  warning.hidden = value === 0;
+  const { mode, timeout } = sidebarPreferences(await sidebarStorage.local.get([TIMEOUT_KEY, MODE_KEY]));
+  select.value = String(timeout);
+  warning.hidden = mode === 'native';
 }
 select.addEventListener('change', async () => {
   const value = Number(select.value);
   if (!allowed.has(value)) return;
   select.disabled = true;
   try {
-    await sidebarStorage.local.set({ [TIMEOUT_KEY]: value, [MODE_KEY]: value === 0 ? 'native' : 'overlay' });
-    status.textContent = value === 0 ? 'Autohide disabled · open the fixed side panel with the extension button.' : `Autohide timeout: ${value} ms.`;
+    const { mode } = sidebarPreferences(await sidebarStorage.local.get([TIMEOUT_KEY, MODE_KEY]));
+    await sidebarStorage.local.set({ [TIMEOUT_KEY]: value, [MODE_KEY]: mode });
+    status.textContent = `Autohide timeout: ${value} ms.`;
   } catch (error) {
     status.textContent = `Could not change autohide timeout: ${error.message}`;
   } finally {
@@ -32,6 +30,8 @@ select.addEventListener('change', async () => {
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area === 'local' && (changes[MODE_KEY] || changes[TIMEOUT_KEY])) loadSelection().catch(console.error);
 });
+const previous = await sidebarStorage.local.get([TIMEOUT_KEY, MODE_KEY]);
+if (previous[TIMEOUT_KEY] === 0) await sidebarStorage.local.set({ [TIMEOUT_KEY]: 800, [MODE_KEY]: 'native' });
 await loadSelection();
 
 const settingsLink = document.querySelector('#sidePanelSettings');

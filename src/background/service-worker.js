@@ -1,4 +1,5 @@
 import './panel-layout.js';
+import './sidebar-mode.js';
 import { favoriteChildDestination, appendFavoriteChildren } from './favorite-child-tabs.js';
 import { watchNativeGroupVisibility, holdNativeGroupVisibility } from './native-group-visibility.js';
 import { orderNativeGroups } from './native-group-order.js';
@@ -21,7 +22,6 @@ const SYNC_CHUNK_PREFIX = 'arcSidebarSyncChunk:';
 const SYNC_SCHEMA_VERSION = 1;
 const SYNC_CHUNK_SIZE = 6000;
 const SIDEBAR_MODE_KEY = 'arcSidebarMode';
-const MODE_RELOAD_TABS_KEY = 'arcSidebarModeReloadTabs';
 const TAB_ID_NONE = -1;
 const FAVORITES_GROUP_ID = '__favorites__';
 const FAVORITES_GROUP = { id: FAVORITES_GROUP_ID, title: 'Favorites', color: 'grey' };
@@ -60,39 +60,6 @@ function decodeBase64Utf8(value) {
 
 function chunkKey(index) {
   return `${SYNC_CHUNK_PREFIX}${index}`;
-}
-
-function isWebTab(tab) {
-  const url = tab?.pendingUrl || tab?.url || '';
-  return /^https?:\/\//i.test(url);
-}
-
-async function markWebTabsForModeReload() {
-  try {
-    const tabs = await chrome.tabs.query({});
-    const tabIds = tabs.filter(tab => tab.id != null && isWebTab(tab)).map(tab => tab.id);
-    if (tabIds.length) await sidebarStorage.session.set({ [MODE_RELOAD_TABS_KEY]: tabIds });
-    else await sidebarStorage.session.remove(MODE_RELOAD_TABS_KEY);
-  } catch (error) {
-    console.warn('Arc Sidebar: could not mark tabs for sidebar-mode reload', error);
-  }
-}
-
-async function reloadActivatedTabForMode(tabId) {
-  try {
-    const stored = await sidebarStorage.session.get(MODE_RELOAD_TABS_KEY);
-    const pending = Array.isArray(stored[MODE_RELOAD_TABS_KEY]) ? stored[MODE_RELOAD_TABS_KEY] : [];
-    if (!pending.includes(tabId)) return;
-
-    const next = pending.filter(id => id !== tabId);
-    if (next.length) await sidebarStorage.session.set({ [MODE_RELOAD_TABS_KEY]: next });
-    else await sidebarStorage.session.remove(MODE_RELOAD_TABS_KEY);
-
-    const tab = await chrome.tabs.get(tabId);
-    if (isWebTab(tab)) await chrome.tabs.reload(tabId);
-  } catch (error) {
-    console.debug('Arc Sidebar: deferred sidebar-mode reload skipped', tabId, error?.message || error);
-  }
 }
 
 async function isSidebarSyncEnabled() {
@@ -469,7 +436,9 @@ chrome.storage.onChanged.addListener((changes, area) => {
   if (area === 'session' && changes[BINDINGS_KEY]) queueNativeGroupSync(80);
 
   if (area === 'local') {
-    if (changes[SIDEBAR_MODE_KEY] || changes.arcSidebarAutohideTimeout) markWebTabsForModeReload();
+    if (changes[SIDEBAR_MODE_KEY] || changes.arcSidebarAutohideTimeout) {
+      chrome.tabs.query({ active: true, lastFocusedWindow: true }).then(tabs => Promise.allSettled(tabs.map(tab => chrome.tabs.sendMessage(tab.id, { type: 'arc-sidebar-refresh-mode' })))).catch(() => {});
+    }
 
     if (changes[STORAGE_KEY]) {
       queueNativeGroupSync(80);
@@ -510,9 +479,6 @@ chrome.tabs.onRemoved.addListener(() => queueNativeGroupSync(100));
 chrome.tabs.onReplaced.addListener(() => queueNativeGroupSync(100));
 chrome.tabs.onAttached.addListener(() => queueNativeGroupSync(100));
 chrome.tabs.onDetached.addListener(() => queueNativeGroupSync(100));
-chrome.tabs.onActivated.addListener(({ tabId }) => {
-  reloadActivatedTabForMode(tabId);
-});
 
 chrome.runtime.onConnect.addListener(port => {
   if (port.name !== 'arc-native-sidepanel') return;

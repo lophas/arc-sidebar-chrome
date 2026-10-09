@@ -1,9 +1,11 @@
+import { sidebarPreferences } from '../shared/sidebar-preferences.js';
 export const BACKUP_SETTING_KEYS = ['arcSidebarAutohideTimeout', 'arcSidebarMode', 'arcSidebarFavoriteSizePercent', 'arcSidebarOverlayWidth'];
 const timeouts = new Set([0, 500, 600, 700, 800, 900, 1000, 1100]);
 const sizes = new Set([80, 90, 100, 110, 120]);
 export function exportBackupSettings(stored) {
   return {
-    autohideTimeout: timeouts.has(stored.arcSidebarAutohideTimeout) ? stored.arcSidebarAutohideTimeout : stored.arcSidebarMode === 'native' ? 0 : 800,
+    autohideTimeout: sidebarPreferences(stored).timeout,
+    sidebarMode: sidebarPreferences(stored).mode,
     favoriteSizePercent: sizes.has(stored.arcSidebarFavoriteSizePercent) ? stored.arcSidebarFavoriteSizePercent : 100,
     sidebarWidth: Number.isFinite(stored.arcSidebarOverlayWidth) ? Math.max(120, Math.min(720, stored.arcSidebarOverlayWidth)) : 390
   };
@@ -14,8 +16,12 @@ export function restoreBackupSettings(settings) {
   const values = {};
   if (Object.hasOwn(settings, 'autohideTimeout')) {
     if (!timeouts.has(settings.autohideTimeout)) throw new Error('Invalid backup autohide timeout.');
-    values.arcSidebarAutohideTimeout = settings.autohideTimeout;
+    values.arcSidebarAutohideTimeout = settings.autohideTimeout || 800;
     values.arcSidebarMode = settings.autohideTimeout === 0 ? 'native' : 'overlay';
+  }
+  if (Object.hasOwn(settings, 'sidebarMode')) {
+    if (!['native', 'overlay'].includes(settings.sidebarMode)) throw new Error('Invalid backup sidebar mode.');
+    values.arcSidebarMode = settings.sidebarMode;
   }
   if (Object.hasOwn(settings, 'favoriteSizePercent')) {
     if (!sizes.has(settings.favoriteSizePercent)) throw new Error('Invalid backup Favorite size.');

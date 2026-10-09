@@ -25,6 +25,7 @@
   </header>
 
   <div class="search-wrap">
+    <button id="toggleSidebarMode" type="button" class="sidebar-mode-toggle" aria-label="Switch sidebar mode" title="Switch sidebar mode">▣</button>
     <input id="search" type="hidden" value="">
     <button title="Search open tabs or enter a URL · ⌘K / Ctrl+K" aria-label="Search open tabs or enter a URL" id="openCommandBar" class="command-launch" type="button">Search or enter URL… <span>⌘K / Ctrl+K</span></button>
     <button id="addFavorite" class="add-favorite-button" type="button" title="Add Favorite" aria-label="Add Favorite">+</button>
@@ -67,6 +68,7 @@
   <script src="theme-sync.js"></script>
   <script type="module" src="lifecycle.js"></script>
   <script type="module" src="native-presence.js"></script>
+  <script type="module" src="sidebar-mode.js"></script>
   <script type="module" src="index.js"></script>
   <script type="module" src="drag-scroll.js"></script>
   <script type="module" src="manage.js"></script>

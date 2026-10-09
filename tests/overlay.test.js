@@ -134,3 +134,20 @@ test('stationary pointer and synthesized enter on tab return cannot open; activa
  s.emit('document','pointermove',{clientX:100});s.tick();
  assert.equal(s.nodes['.panel'].classList.values.has('open'),false,'stale editor lock cannot keep the reopened panel visible');
 });
+
+test('fresh profile stays fixed; explicit active refresh and later focus apply modes without reload', async () => {
+ const s=setup('native'); await settled();
+ s.context.chrome.storage.local.get=async()=>({});
+ s.emit('window','focus'); await settled();
+ s.emit('document','pointermove',{isTrusted:true,movementX:1,movementY:0,clientX:999});s.tick();
+ assert.equal(s.nodes.iframe.hasAttribute('src'),false);
+ s.context.chrome.storage.local.get=async()=>({arcSidebarMode:'overlay',arcSidebarAutohideTimeout:600});
+ s.changes.forEach(fn=>fn({type:'arc-sidebar-refresh-mode'}));await settled();
+ s.emit('document','pointermove',{isTrusted:true,movementX:1,movementY:0,clientX:999});s.tick();
+ assert.equal(s.nodes['.panel'].classList.values.has('open'),true);
+ s.context.chrome.storage.local.get=async()=>({arcSidebarMode:'native',arcSidebarAutohideTimeout:600});
+ // Inactive pages do not receive storage broadcasts and keep their applied mode until focus.
+ assert.equal(s.nodes['.panel'].classList.values.has('open'),true);
+ s.emit('window','focus');await settled();
+ assert.equal(s.nodes['.panel'].classList.values.has('open'),false);
+});

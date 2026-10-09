@@ -425,13 +425,17 @@
   const refreshMode = () => chrome.storage.local.get([SIDEBAR_MODE_KEY, TIMEOUT_KEY])
     .then(stored => {
       const value = stored[TIMEOUT_KEY];
-      const timeout = TIMEOUTS.has(value) ? value : stored[SIDEBAR_MODE_KEY] === NATIVE_MODE ? 0 : 800;
-      hideDelay = timeout || 800;
-      applyMode(timeout === 0 ? NATIVE_MODE : OVERLAY_MODE);
-    }).catch(() => applyMode(OVERLAY_MODE));
+      const timeout = TIMEOUTS.has(value) && value > 0 ? value : 800;
+      hideDelay = timeout;
+      const mode = value === 0 ? NATIVE_MODE : stored[SIDEBAR_MODE_KEY] || (TIMEOUTS.has(value) ? OVERLAY_MODE : NATIVE_MODE);
+      applyMode(mode);
+    }).catch(() => applyMode(NATIVE_MODE));
   window.addEventListener('focus', refreshMode);
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') refreshMode();
+  });
+  chrome.runtime.onMessage.addListener(message => {
+    if (message?.type === 'arc-sidebar-refresh-mode' || message?.type === 'arc-sidebar-tab-activated') refreshMode();
   });
   refreshMode();
 })();
