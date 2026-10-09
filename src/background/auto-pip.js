@@ -7,7 +7,7 @@ function isYouTube(tab) {
     return url.protocol === 'https:' && (url.hostname === 'youtube.com' || url.hostname.endsWith('.youtube.com'));
   } catch { return false; }
 }
-async function apply(tabId) {
+async function apply(tabId, activated) {
   const tab = await chrome.tabs.get(tabId);
   if (!isYouTube(tab)) return;
   await chrome.scripting.executeScript({ target: { tabId }, world: 'MAIN', files: ['src/media/auto-pip.js'] });
@@ -15,12 +15,12 @@ async function apply(tabId) {
   const current = await chrome.tabs.get(tabId);
   await chrome.scripting.executeScript({
     target: { tabId }, world: 'MAIN',
-    func: (enabled, active) => globalThis.__arcSidebarAutoPip?.configure(enabled, active),
-    args: [stored[KEY] !== false, current.active]
+    func: (enabled, active, activated) => globalThis.__arcSidebarAutoPip?.configure(enabled, active, activated),
+    args: [stored[KEY] !== false, current.active, activated && current.active]
   });
 }
-function sync(tabId) {
-  const operation = (pending.get(tabId) || Promise.resolve()).then(() => apply(tabId)).catch(() => {});
+function sync(tabId, activated = false) {
+  const operation = (pending.get(tabId) || Promise.resolve()).then(() => apply(tabId, activated)).catch(() => {});
   pending.set(tabId, operation);
   operation.finally(() => { if (pending.get(tabId) === operation) pending.delete(tabId); });
   return operation;
@@ -40,7 +40,7 @@ chrome.tabs.onActivated.addListener(({ tabId, windowId }) => {
   const previous = activeTabs.get(windowId);
   activeTabs.set(windowId, tabId);
   if (previous != null && previous !== tabId) sync(previous);
-  sync(tabId);
+  sync(tabId, true);
 });
 chrome.windows.onRemoved.addListener(windowId => { activeTabs.delete(windowId); });
 chrome.tabs.onUpdated.addListener((tabId, info, tab) => {

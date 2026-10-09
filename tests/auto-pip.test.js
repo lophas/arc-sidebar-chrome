@@ -137,11 +137,12 @@ test('native PiP stays open when Chrome marks its background opener visible',asy
  assert.equal(s.document.pictureInPictureElement,null);assert.equal(s.controller.getState().player,'none');
 });
 test('source activation cancels a delayed Document PiP without moving the player after return',async()=>{
- for(const signal of ['focus','tab']){
+ for(const inactiveObserved of [true,false]){
   const s=portalSetup({deferred:true});s.controller.configure(true,false);const pending=s.auto();
-  if(signal==='focus')s.focus();else s.controller.configure(true,true);
+  if(!inactiveObserved)s.controller.configure(true,true);
+  s.controller.configure(true,true,true);
   s.resolveWindow();await pending;
-  assert.equal(s.video.ownerDocument,s.document,signal);assert.equal(s.pipWindow.closed,true);
+  assert.equal(s.video.ownerDocument,s.document);assert.equal(s.pipWindow.closed,true);
   assert.deepEqual(s.order(),['before','player','after']);
  }
 });
@@ -153,9 +154,9 @@ test('return restores YouTube inline dimensions using the original page layout',
  s.controller.configure(true,true);await s.frames();
  assert.equal(width,1100);assert.equal(s.video.ownerDocument,s.document);assert.equal(s.pipWindow.closed,true);
 });
-test('a late automatic callback on the already focused source does not adopt its player',async()=>{
+test('Document PiP reporting its background opener focused does not cancel the window',async()=>{
  const s=portalSetup();s.controller.configure(true);s.document.focused=true;await s.auto();
- assert.equal(s.video.ownerDocument,s.document);assert.equal(s.pipWindow.closed,true);
+ assert.equal(s.video.ownerDocument,s.pipDoc);assert.equal(s.pipWindow.closed,false);
 });
 test('explicit Chrome action can start before focus loss without cancelling a valid pending request',async()=>{
  const s=portalSetup({deferred:true});s.controller.configure(true);s.document.focused=true;

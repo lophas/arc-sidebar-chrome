@@ -26,4 +26,5 @@ test('tab activation updates the previous YouTube tab and sends fresh active sta
  assert.equal(calls.at(-1).id,7);assert.equal(calls.at(-1).args[1],false);
  calls.length=0;active=7;handlers.activate({tabId:7,windowId:1});await vm.runInContext('sync(7)',context);
  assert.equal(calls.at(-1).id,7);assert.equal(calls.at(-1).args[1],true);
+ assert.equal(calls.some(call=>call.id===7&&call.args[2]===true),true);
 });

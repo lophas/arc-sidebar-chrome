@@ -88,7 +88,7 @@
       // Document PiP makes its opener visible even while another tab is active.
       // Chrome closes an automatic PiP window on return; a closed window, not
       // opener visibility, detects a return during this pending request.
-      if (!enabled || disposed || pipWindow.closed || epoch !== activationEpoch || hasFocus()) {
+      if (!enabled || disposed || pipWindow.closed || epoch !== activationEpoch) {
         lastError = `Portal cancelled: enabled=${enabled}, disposed=${disposed}, closed=${pipWindow.closed}, visibility=${document.visibilityState}`;
         restore(); pipWindow.close(); return;
       }
@@ -147,7 +147,7 @@
       if (document.pictureInPictureElement === video) { ownedVideo = video; returnVideo = video; }
       // PiP can also make a native video's background opener visible. Chrome
       // owns automatic return/closure; we close explicitly only when disabled.
-      if (!enabled || disposed || epoch !== activationEpoch || hasFocus()) await closeOwned();
+      if (!enabled || disposed || epoch !== activationEpoch) await closeOwned();
     } catch (error) {
       lastError = `${error.name}: ${error.message}`;
       // Permission denial/unsupported media must not create extension errors.
@@ -179,17 +179,11 @@
       dismissed = false;
       // Automatic Document PiP is returned by pagehide, including when Chrome
       // closes it before the source tab's activation/visibility events arrive.
-      if (!hasFocus() && (portalOpening || ownedPortal || (ownedVideo && document.pictureInPictureElement === ownedVideo))) return;
+      if (portalOpening || ownedPortal || (ownedVideo && document.pictureInPictureElement === ownedVideo)) return;
       const video = returnVideo;
       returnVideo = null;
       closeOwned().then(() => restorePlayer(video));
     }
-  };
-  const onFocus = () => {
-    if (!hasFocus()) return;
-    activationEpoch++;
-    dismissed = false;
-    closeOwned();
   };
   const onLeave = event => {
     if (event.target !== ownedVideo) return;
@@ -200,20 +194,19 @@
   document.addEventListener('visibilitychange', onVisibility);
   document.addEventListener('leavepictureinpicture', onLeave, true);
   document.addEventListener('yt-navigate-start', closeOwned);
-  window.addEventListener('focus', onFocus);
   globalThis[KEY] = {
     version: VERSION,
     getState() {
       return { version: VERSION, enabled, opening, player: ownedPortal ? 'document' : ownedVideo ? 'video' : 'none', visibility: document.visibilityState, focused: hasFocus(), sourceActive, lastAction, lastSkip, lastError,
         videos: [...document.querySelectorAll('video')].map(video => ({ paused: video.paused, muted: video.muted, volume: video.volume, readyState: video.readyState, videoWidth: video.videoWidth, disablePictureInPicture: video.disablePictureInPicture })) };
     },
-    configure(value, active) {
+    configure(value, active, activated = false) {
       if (disposed) return false;
       enabled = value === true;
       if (typeof active === 'boolean') {
         const returning = active && sourceActive === false;
         sourceActive = active;
-        if (returning) { activationEpoch++; dismissed = false; closeOwned(); }
+        if (returning || activated) { activationEpoch++; dismissed = false; closeOwned(); }
       }
       if (!enabled) closeOwned();
       // Also recover a stale player left by the previous injected version.
@@ -226,7 +219,6 @@
       document.removeEventListener('visibilitychange', onVisibility);
       document.removeEventListener('leavepictureinpicture', onLeave, true);
       document.removeEventListener('yt-navigate-start', closeOwned);
-      window.removeEventListener('focus', onFocus);
       if (session.setActionHandler === wrappedSetter) session.setActionHandler = originalSetter;
       try { setHandler(siteHandler); } catch {}
     }
