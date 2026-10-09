@@ -37,16 +37,21 @@ let context;
 let diagnostics=[];
 let lastPage;
 try {
- context=await chromium.launchPersistentContext(profile,{executablePath:executable,headless:false,ignoreDefaultArgs:['--mute-audio'],args:['--no-sandbox','--enable-features=AutoPictureInPictureForVideoPlayback,MediaSessionEnterPictureInPicture']});
  for(const mode of ['document','native']) {
+ // A user-dismissed Auto PiP window changes Chrome's per-origin eligibility.
+ // Exercise each implementation in a fresh profile, with explicit tab focus.
+ const modeProfile=path.join(profile,mode);
+ fs.mkdirSync(path.join(modeProfile,'Default'),{recursive:true});
+ fs.writeFileSync(path.join(modeProfile,'Default','Preferences'),JSON.stringify({profile:{default_content_setting_values:{auto_picture_in_picture:1}}}));
+ context=await chromium.launchPersistentContext(modeProfile,{executablePath:executable,headless:false,ignoreDefaultArgs:['--mute-audio'],args:['--no-sandbox','--enable-features=AutoPictureInPictureForVideoPlayback,MediaSessionEnterPictureInPicture']});
  const page=await context.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
  lastPage=page;
  const cdp=await context.newCDPSession(page);await cdp.send('Media.enable');
  cdp.on('Media.playerPropertiesChanged',event=>diagnostics.push(event));
  cdp.on('Media.playerErrorsRaised',event=>diagnostics.push(event));
- await page.goto(origin+(mode==='native'?'?native':''));await page.locator('#play').click();await page.waitForFunction(()=>!video.paused&&video.videoWidth>0);
+ await page.goto(origin+(mode==='native'?'?native':''));await page.bringToFront();await page.locator('#play').click();await page.waitForFunction(()=>!video.paused&&video.videoWidth>0);
  await page.waitForTimeout(1200);
- const other=await context.newPage();await other.goto('about:blank');
+ const other=await context.newPage();await other.goto('about:blank');await other.bringToFront();
  await page.waitForFunction(()=>!!document.pictureInPictureElement||!!window.documentPictureInPicture?.window,{},{timeout:15000});
  if(mode==='document') {
   assert.equal(await page.evaluate(()=>video.ownerDocument===window.documentPictureInPicture.window.document),true);
@@ -82,6 +87,7 @@ try {
  assert.deepEqual(errors,[]);
  console.log('PASS native Chrome: manual PiP stays open and paused video does not auto-enter');
  await other.close();await page.close();
+ await context.close();context=null;
  }
 } catch(error) {
  console.error('Auto PiP state:',await lastPage?.evaluate(()=>({...__arcSidebarAutoPip.getState(),hidden:document.hidden,siteActions,videoDocument:video.ownerDocument.URL,paused:video.paused})));

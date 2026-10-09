@@ -1,7 +1,7 @@
 (() => {
   if (window.top !== window || !navigator.mediaSession || !document.pictureInPictureEnabled) return;
   const KEY = '__arcSidebarAutoPip';
-  const VERSION = 3;
+  const VERSION = 4;
   if (globalThis[KEY]?.version === VERSION) return;
   globalThis[KEY]?.dispose();
   const session = navigator.mediaSession;
