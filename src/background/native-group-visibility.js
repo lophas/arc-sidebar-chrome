@@ -27,7 +27,7 @@ export async function syncNativeGroupVisibility(windowId, canContinue = () => tr
       if (current.collapsed !== collapsed) await chrome.tabGroups.update(group.id, { collapsed });
     } catch (error) {
       // A tab/group can disappear while its window is closing.
-      console.warn('Arc Sidebar: group visibility update skipped', error);
+      console.warn('Arc Side of the Chrome: group visibility update skipped', error);
     }
   }
 }
@@ -49,7 +49,7 @@ async function flushVisibility() {
       if (groupingHolds) pendingWindows.add(windowId);
     }
   } catch (error) {
-    console.warn('Arc Sidebar: group visibility failed', error);
+    console.warn('Arc Side of the Chrome: group visibility failed', error);
   } finally {
     running = false;
     if (pendingWindows.size && !timer && !groupingHolds) timer = setTimeout(flushVisibility, 60);

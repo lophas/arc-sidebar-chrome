@@ -37,8 +37,8 @@ jobs:
         run: |
           set -euo pipefail
           VERSION="${RELEASE_TAG#v}"
-          PACKAGE_DIR="dist/arc-sidebar-chrome-v${VERSION}"
-          ZIP_FILE="dist/arc-sidebar-chrome-v${VERSION}.zip"
+          PACKAGE_DIR="dist/arc-side-of-the-chrome-v${VERSION}"
+          ZIP_FILE="dist/arc-side-of-the-chrome-v${VERSION}.zip"
 
           mkdir -p "$PACKAGE_DIR"
           cp manifest.json "$PACKAGE_DIR/"
@@ -46,7 +46,7 @@ jobs:
 
           (
             cd "$PACKAGE_DIR"
-            zip -qr "../arc-sidebar-chrome-v${VERSION}.zip" manifest.json src
+            zip -qr "../arc-side-of-the-chrome-v${VERSION}.zip" manifest.json src
           )
 
           echo "Built $ZIP_FILE"
@@ -59,7 +59,7 @@ jobs:
         run: |
           set -euo pipefail
           VERSION="${RELEASE_TAG#v}"
-          ZIP_FILE="dist/arc-sidebar-chrome-v${VERSION}.zip"
+          ZIP_FILE="dist/arc-side-of-the-chrome-v${VERSION}.zip"
           EXTRA_ARGS=()
           if [[ "$VERSION" == *-* ]]; then
             EXTRA_ARGS+=(--prerelease)
@@ -73,6 +73,6 @@ jobs:
           gh release create "$RELEASE_TAG" \
             "$ZIP_FILE" \
             --target "$GITHUB_SHA" \
-            --title "Arc Sidebar for Chrome ${VERSION}" \
+            --title "Arc Side of the Chrome ${VERSION}" \
             --notes-file RELEASE_NOTES.md \
             "${EXTRA_ARGS[@]}"

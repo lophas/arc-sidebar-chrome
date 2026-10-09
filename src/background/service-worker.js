@@ -87,7 +87,7 @@ async function readSyncedModel() {
     const model = JSON.parse(decodeBase64Utf8(encoded));
     return { model, meta };
   } catch (error) {
-    console.warn('Arc Sidebar: synced model could not be decoded', error);
+    console.warn('Arc Side of the Chrome: synced model could not be decoded', error);
     return null;
   }
 }
@@ -118,7 +118,7 @@ async function writeSyncedModel(model) {
     await chrome.storage.sync.set(values);
     await sidebarStorage.local.set({ [LOCAL_MODEL_UPDATED_KEY]: updatedAt });
   } catch (error) {
-    console.warn('Arc Sidebar: Chrome Sync write failed; local data is unchanged', error);
+    console.warn('Arc Side of the Chrome: Chrome Sync write failed; local data is unchanged', error);
     return { ok: false, reason: error?.message || 'sync-write-failed' };
   }
 
@@ -183,7 +183,7 @@ async function reconcileSidebarSync() {
     if (localModel) return writeSyncedModel(localModel);
     return { ok: true, direction: 'none', updatedAt: null };
   } catch (error) {
-    console.warn('Arc Sidebar: Chrome Sync reconciliation failed', error);
+    console.warn('Arc Side of the Chrome: Chrome Sync reconciliation failed', error);
     return { ok: false, reason: error?.message || 'sync-reconcile-failed' };
   }
 }
@@ -197,7 +197,7 @@ function queueModelSyncPush(delay = 350) {
       const local = await sidebarStorage.local.get(STORAGE_KEY);
       if (local[STORAGE_KEY]) await writeSyncedModel(local[STORAGE_KEY]);
     } catch (error) {
-      console.warn('Arc Sidebar: Chrome Sync push failed', error);
+      console.warn('Arc Side of the Chrome: Chrome Sync push failed', error);
     }
   }, delay);
 }
@@ -210,7 +210,7 @@ function queueModelSyncPull(delay = 250) {
       if (!await isSidebarSyncEnabled()) return;
       await reconcileSidebarSync();
     } catch (error) {
-      console.warn('Arc Sidebar: Chrome Sync pull failed', error);
+      console.warn('Arc Side of the Chrome: Chrome Sync pull failed', error);
     }
   }, delay);
 }
@@ -391,7 +391,7 @@ async function syncNativeGroupsNow() {
       try {
         await ensureGroupForSpace(entry.windowId, entry.space, entry.tabs, groupMap);
       } catch (error) {
-        console.warn('Arc Sidebar: native tab group sync failed', error);
+        console.warn('Arc Side of the Chrome: native tab group sync failed', error);
       }
     }
 
@@ -417,7 +417,7 @@ function queueNativeGroupSync(delay = 120) {
   groupSyncTimer = setTimeout(() => {
     groupSyncTimer = null;
     syncNativeGroupsNow().catch(error => {
-      console.warn('Arc Sidebar: native tab group sync error', error);
+      console.warn('Arc Side of the Chrome: native tab group sync error', error);
     });
   }, delay);
 }
@@ -457,7 +457,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
   if (area === 'sync') {
     if (changes[SYNC_ENABLED_KEY]) {
       if (changes[SYNC_ENABLED_KEY].newValue === true) {
-        reconcileSidebarSync().catch(error => console.warn('Arc Sidebar: enabling Chrome Sync failed', error));
+        reconcileSidebarSync().catch(error => console.warn('Arc Side of the Chrome: enabling Chrome Sync failed', error));
       } else {
         if (modelSyncPushTimer) clearTimeout(modelSyncPushTimer);
         if (modelSyncPullTimer) clearTimeout(modelSyncPullTimer);
@@ -475,7 +475,7 @@ chrome.tabs.onCreated.addListener(tab => {
     if (!destination) return;
     pendingFavoriteChildren.set(destination.tabId, destination);
     queueNativeGroupSync(80);
-  }).catch(error => console.warn('Arc Sidebar: Favorite child routing failed', error));
+  }).catch(error => console.warn('Arc Side of the Chrome: Favorite child routing failed', error));
 });
 chrome.tabs.onRemoved.addListener(() => queueNativeGroupSync(100));
 chrome.tabs.onReplaced.addListener(() => queueNativeGroupSync(100));

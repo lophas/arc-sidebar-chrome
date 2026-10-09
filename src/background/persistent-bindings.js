@@ -65,7 +65,7 @@ function scheduleSnapshot(itemId, tabId, delay = SNAPSHOT_DELAY) {
     snapshotTimers.delete(itemId);
     if (sessionBindings[itemId] !== tabId) return;
     try { if (await snapshotBinding(itemId, tabId)) await persistBindings(); }
-    catch (error) { console.warn('Arc Sidebar: binding snapshot failed', error); }
+    catch (error) { console.warn('Arc Side of the Chrome: binding snapshot failed', error); }
   }, delay));
 }
 
@@ -195,4 +195,4 @@ chrome.tabs.onReplaced.addListener((addedTabId, removedTabId) => {
   if (itemId) scheduleSnapshot(itemId, addedTabId, 0);
 });
 
-export const bindingsReady = initialize().catch(error => console.warn('Arc Sidebar: persistent binding restore failed', error));
+export const bindingsReady = initialize().catch(error => console.warn('Arc Side of the Chrome: persistent binding restore failed', error));

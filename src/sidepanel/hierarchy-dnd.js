@@ -235,7 +235,7 @@ function decorateFolderDropTarget(element, indicator, targetId) {
 function decorateHierarchyDnD() {
   decorateSpaceReordering();
   decorateFolderReordering().catch(error => {
-    console.warn('Arc Sidebar: folder reorder decoration failed', error);
+    console.warn('Arc Side of the Chrome: folder reorder decoration failed', error);
   });
 }
 

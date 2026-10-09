@@ -1,4 +1,6 @@
-# Arc Sidebar for Chrome
+# Arc Side of the Chrome
+
+*Spaces, tabs & a little harmony.*
 
 ## Mission
 
@@ -6,7 +8,7 @@ Bring Arc Browser’s organized, sidebar-first browsing experience to Google Chr
 
 Saved links stay in the sidebar when their browser tabs close. Click a saved item to open it or return to its existing tab, even after navigating away from the saved URL.
 
-> **Disclaimer:** Arc Sidebar for Chrome is an independent extension developed entirely from scratch. It is not affiliated with, endorsed by or sponsored by The Browser Company or Arc Browser.
+> **Disclaimer:** Arc Side of the Chrome is an independent extension developed entirely from scratch. It is not affiliated with, endorsed by or sponsored by The Browser Company or Arc Browser.
 
 ## Main features
 
@@ -52,7 +54,7 @@ Start with **🚀 My Space** and an empty Favorites collection. Open the sidebar
 
 - Add a pinned link with **+** beside the Space’s heading, or use the folder button to add a folder.
 - Add a Favorite with **+** beside search. All link destination selectors list **Favorites** first, followed by your Spaces.
-- Right-click a webpage or link and choose **Pin to Arc Sidebar** to save it directly. Pinning the current page connects its existing tab to the saved item.
+- Right-click a webpage or link and choose **Pin to Arc Side of the Chrome** to save it directly. Pinning the current page connects its existing tab to the saved item.
 - Add or select Spaces using the switcher at the bottom.
 - Open **Extension options** from the sidebar footer to adjust preferences, import Arc Browser data or restore a backup.
 

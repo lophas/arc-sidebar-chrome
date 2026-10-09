@@ -77,7 +77,7 @@ async function rebuildPinContextMenuNow() {
 
     await createMenuItem({
       id: MENU_ROOT_ID,
-      title: 'Pin to Arc Sidebar',
+      title: 'Pin to Arc Side of the Chrome',
       contexts: ['page', 'link'],
       enabled: true
     });
@@ -96,7 +96,7 @@ async function rebuildPinContextMenuNow() {
       });
     }
   } catch (error) {
-    console.warn('Arc Sidebar: context menu rebuild failed', error);
+    console.warn('Arc Side of the Chrome: context menu rebuild failed', error);
   }
 }
 
@@ -156,7 +156,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
 
 chrome.contextMenus.onClicked.addListener((info, tab) => {
   pinFromContextMenu(info, tab).catch(error => {
-    console.warn('Arc Sidebar: context-menu pin failed', error);
+    console.warn('Arc Side of the Chrome: context-menu pin failed', error);
   });
 });
 

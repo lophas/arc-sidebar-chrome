@@ -137,7 +137,7 @@ function isValidSidebarModel(model) {
 
 function backupFilename() {
   const stamp = new Date().toISOString().replace(/[:.]/g, '-');
-  return `arc-sidebar-backup-${stamp}.json`;
+  return `arc-side-of-the-chrome-backup-${stamp}.json`;
 }
 
 async function renderSyncStatus(message = '') {
@@ -190,7 +190,7 @@ async function load() {
 
 async function resetExtensionData() {
   const confirmed = window.confirm(
-    'Reset all Arc Sidebar data and settings on this computer, including the Chrome Sync snapshot?\n\n' +
+    'Reset all Arc Side of the Chrome data and settings on this computer, including the Chrome Sync snapshot?\n\n' +
     'Your currently open browser tabs will stay open. This cannot be undone unless you have a backup.'
   );
   if (!confirmed) return;
@@ -278,7 +278,7 @@ restoreBackup.addEventListener('change', async event => {
   try {
     const payload = JSON.parse(await file.text());
     const model = payload?.format === BACKUP_FORMAT ? payload.model : payload;
-    if (!isValidSidebarModel(model)) throw new Error('Not a valid Arc Sidebar backup.');
+    if (!isValidSidebarModel(model)) throw new Error('Not a valid Arc Side of the Chrome backup.');
 
     const settings = restoreBackupSettings(payload?.format === BACKUP_FORMAT ? payload.settings : undefined);
     await sidebarStorage.local.get(Object.keys(settings));

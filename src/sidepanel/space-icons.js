@@ -333,7 +333,7 @@ document.addEventListener('click', event => {
   }
   if (event.target?.id === 'spaceSave') {
     armSpaceSave();
-    setTimeout(() => applyPendingExistingSpaceIcon().catch(error => console.warn('Arc Sidebar: Space image icon save fallback failed', error)), 80);
+    setTimeout(() => applyPendingExistingSpaceIcon().catch(error => console.warn('Arc Side of the Chrome: Space image icon save fallback failed', error)), 80);
   }
 }, true);
 

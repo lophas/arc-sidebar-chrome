@@ -10,7 +10,7 @@ chrome.commands.onCommand.addListener(async (command, tab) => {
     await chrome.windows.create({ type: 'popup', url: chrome.runtime.getURL(`src/sidepanel/command.html?windowId=${source.id}`), width, height,
       left: Math.max(0, Math.round((source.left || 0) + ((source.width || width) - width) / 2)),
       top: Math.max(0, Math.round((source.top || 0) + ((source.height || height) - height) / 3)) });
-  } catch (error) { console.error('Arc command bar:', error); }
+  } catch (error) { console.error('Arc Side of the Chrome search:', error); }
 });
 
 chrome.runtime.onMessage.addListener((message, sender, respond) => {

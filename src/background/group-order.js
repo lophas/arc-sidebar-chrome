@@ -86,7 +86,7 @@ async function reorderNativeGroupsNow() {
         try {
           await chrome.tabs.move(desiredIds, { index: firstIndex });
         } catch (error) {
-          console.warn('Arc Sidebar: native group ordering failed', error);
+          console.warn('Arc Side of the Chrome: native group ordering failed', error);
         }
       }
     }
@@ -104,7 +104,7 @@ function queueNativeGroupReorder(delay = 260) {
   reorderTimer = setTimeout(() => {
     reorderTimer = null;
     reorderNativeGroupsNow().catch(error => {
-      console.warn('Arc Sidebar: native group ordering error', error);
+      console.warn('Arc Side of the Chrome: native group ordering error', error);
     });
   }, delay);
 }

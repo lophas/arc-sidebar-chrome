@@ -21,7 +21,7 @@ async function reloadActiveWebTabIfOverlay(windowId) {
     const [tab] = await chrome.tabs.query({ windowId, active: true });
     if (tab?.id != null && isWebTab(tab)) await chrome.tabs.reload(tab.id);
   } catch (error) {
-    console.debug('Arc Sidebar: native-panel page reload skipped', error?.message || error);
+    console.debug('Arc Side of the Chrome: native-panel page reload skipped', error?.message || error);
   }
 }
 

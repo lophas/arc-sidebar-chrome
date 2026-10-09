@@ -253,7 +253,7 @@ function scheduleTabRefresh(delay = TAB_REFRESH_DELAY) {
   if (refreshTimer) clearTimeout(refreshTimer);
   refreshTimer = setTimeout(() => {
     refreshTimer = null;
-    refreshOpenTabsNow().catch(error => console.error('Arc Sidebar: tab refresh failed', error));
+    refreshOpenTabsNow().catch(error => console.error('Arc Side of the Chrome: tab refresh failed', error));
   }, delay);
 }
 

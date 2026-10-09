@@ -102,7 +102,7 @@
       </style>
       <div class="edge" aria-hidden="true"></div>
       <div class="resize-handle" title="Drag to resize sidebar" aria-hidden="true"></div>
-      <div class="panel" role="complementary" aria-label="Arc Sidebar"><iframe title="Arc Sidebar" data-sidebar-src="${sidebarUrl.href}"></iframe></div>`;
+      <div class="panel" role="complementary" aria-label="Arc Side of the Chrome"><iframe title="Arc Side of the Chrome" data-sidebar-src="${sidebarUrl.href}"></iframe></div>`;
 
     const edge = shadow.querySelector('.edge');
     const panel = shadow.querySelector('.panel');
