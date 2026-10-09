@@ -7,7 +7,7 @@ function isYouTube(tab) {
     return url.protocol === 'https:' && (url.hostname === 'youtube.com' || url.hostname.endsWith('.youtube.com'));
   } catch { return false; }
 }
-async function apply(tabId, activated) {
+async function apply(tabId, activatedAt) {
   const tab = await chrome.tabs.get(tabId);
   if (!isYouTube(tab)) return;
   await chrome.scripting.executeScript({ target: { tabId }, world: 'MAIN', files: ['src/media/auto-pip.js'] });
@@ -15,12 +15,14 @@ async function apply(tabId, activated) {
   const current = await chrome.tabs.get(tabId);
   await chrome.scripting.executeScript({
     target: { tabId }, world: 'MAIN',
-    func: (enabled, active, activated) => globalThis.__arcSidebarAutoPip?.configure(enabled, active, activated),
-    args: [stored[KEY] !== false, current.active, activated && current.active]
+    func: (enabled, active, activatedAt) => globalThis.__arcSidebarAutoPip?.configure(enabled, active, activatedAt),
+    // Preserve WHEN activation happened, rather than converting an old queued
+    // event into a new activation after asynchronous injection/storage reads.
+    args: [stored[KEY] !== false, current.active, current.active && activeTabs.get(current.windowId) === tabId ? activatedAt : 0]
   });
 }
-function sync(tabId, activated = false) {
-  const operation = (pending.get(tabId) || Promise.resolve()).then(() => apply(tabId, activated)).catch(() => {});
+function sync(tabId, activatedAt = 0) {
+  const operation = (pending.get(tabId) || Promise.resolve()).then(() => apply(tabId, activatedAt)).catch(() => {});
   pending.set(tabId, operation);
   operation.finally(() => { if (pending.get(tabId) === operation) pending.delete(tabId); });
   return operation;
@@ -37,10 +39,11 @@ chrome.runtime.onMessage.addListener((message, sender, respond) => {
   return true;
 });
 chrome.tabs.onActivated.addListener(({ tabId, windowId }) => {
+  const activatedAt = Date.now();
   const previous = activeTabs.get(windowId);
   activeTabs.set(windowId, tabId);
   if (previous != null && previous !== tabId) sync(previous);
-  sync(tabId, true);
+  sync(tabId, activatedAt);
 });
 chrome.windows.onRemoved.addListener(windowId => { activeTabs.delete(windowId); });
 chrome.tabs.onUpdated.addListener((tabId, info, tab) => {

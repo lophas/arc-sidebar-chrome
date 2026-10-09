@@ -31,6 +31,7 @@ fs.writeFileSync(path.join(profile,'player.html'),`<!doctype html><title>Auto Pi
  // Model YouTube's stale placeholder after automatic PiP has already closed.
  video.addEventListener('leavepictureinpicture',()=>{if(player.manual)player.classList.remove('stale');});
  __arcSidebarAutoPip.configure(true);
+ window.oldActivationAt=Date.now()-1000;
  play.onclick=async()=>{await video.play();navigator.mediaSession.playbackState='playing';};
  manual.onclick=()=>{player.manual=true;video.requestPictureInPicture();};
  </script>`);
@@ -55,6 +56,12 @@ try {
  await page.waitForTimeout(1200);
  const other=await context.newPage();await other.goto('about:blank');await other.bringToFront();
  await page.waitForFunction(()=>!!document.pictureInPictureElement||!!window.documentPictureInPicture?.window,{},{timeout:15000});
+ // Replay an old background configuration after Chrome has opened PiP. It
+ // contains a formerly active snapshot and must not cause an immediate flash.
+ await page.evaluate(()=>__arcSidebarAutoPip.configure(true,false));
+ await page.evaluate(()=>__arcSidebarAutoPip.configure(true,true,oldActivationAt));
+ await page.waitForTimeout(150);
+ assert.equal(await page.evaluate(()=>!!document.pictureInPictureElement||!!window.documentPictureInPicture?.window),true,'queued pre-request activation must not close the new mini player');
  if(mode==='document') {
   assert.equal(await page.evaluate(()=>video.ownerDocument===window.documentPictureInPicture.window.document),true);
   assert.equal(await page.evaluate(()=>player.ownerDocument===video.ownerDocument),true);

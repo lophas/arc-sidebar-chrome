@@ -140,7 +140,7 @@ test('source activation cancels a delayed Document PiP without moving the player
  for(const inactiveObserved of [true,false]){
   const s=portalSetup({deferred:true});s.controller.configure(true,false);const pending=s.auto();
   if(!inactiveObserved)s.controller.configure(true,true);
-  s.controller.configure(true,true,true);
+  s.controller.configure(true,true,Date.now()+1000);
   s.resolveWindow();await pending;
   assert.equal(s.video.ownerDocument,s.document);assert.equal(s.pipWindow.closed,true);
   assert.deepEqual(s.order(),['before','player','after']);
@@ -151,7 +151,7 @@ test('return restores YouTube inline dimensions using the original page layout',
  s.player.setDocumentPictureInPicture=value=>{if(value)width=480;};
  s.player.setSize=()=>{assert.equal(s.player.ownerDocument,s.document);width=1100;};
  s.controller.configure(true,false);await s.auto();assert.equal(width,480);
- s.controller.configure(true,true);await s.frames();
+ s.controller.configure(true,true,Date.now()+1000);await s.frames();
  assert.equal(width,1100);assert.equal(s.video.ownerDocument,s.document);assert.equal(s.pipWindow.closed,true);
 });
 test('Document PiP reporting its background opener focused does not cancel the window',async()=>{
@@ -163,4 +163,17 @@ test('explicit Chrome action can start before focus loss without cancelling a va
  const pending=s.actions.get('enterpictureinpicture')({enterPictureInPictureReason:'contentoccluded'});
  s.document.focused=false;s.resolveWindow();await pending;
  assert.equal(s.video.ownerDocument,s.pipDoc);assert.equal(s.pipWindow.closed,false);
+});
+test('old queued source activations and cached active snapshots cannot close a new mini player',async()=>{
+ const s=portalSetup({deferred:true});s.controller.configure(true,true,10);
+ const pending=s.auto();
+ s.controller.configure(true,true,11); // A pre-request activation arrives during requestWindow().
+ s.resolveWindow();await pending;assert.equal(s.video.ownerDocument,s.pipDoc);
+ s.controller.configure(true,false);
+ s.controller.configure(true,true); // A cached tab.active snapshot is not an activation event.
+ s.controller.configure(true,true,12); // Another old event arrives after adoption.
+ assert.equal(s.video.ownerDocument,s.pipDoc);assert.equal(s.pipWindow.closed,false);
+ s.controller.configure(true,true,Date.now()+1000);
+ assert.equal(s.video.ownerDocument,s.document);assert.equal(s.pipWindow.closed,true);
+ assert.equal(s.controller.getState().recentEvents.some(item=>item.event==='extension-close:tab-activation'),true);
 });
