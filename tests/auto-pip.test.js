@@ -14,7 +14,7 @@ function setup({ deferred=false }={}) {
   const controller=context.__arcSidebarAutoPip;
   const auto=()=>{document.visibilityState='hidden';return actions.get('enterpictureinpicture')({enterPictureInPictureReason:'contentoccluded'});};
   const visible=()=>{document.visibilityState='visible';events.visibilitychange();};
-  return {source,context,controller,video,document,session,actions,auto,visible,frames:async()=>{await new Promise(setImmediate);while(frames.length)frames.shift()();},requests:()=>requests,exits:()=>exits,resolve:()=>resolveRequest()};
+  return {source,context,controller,video,document,session,actions,auto,visible,emit:name=>events[name]?.(),frames:async()=>{await new Promise(setImmediate);while(frames.length)frames.shift()();},requests:()=>requests,exits:()=>exits,resolve:()=>resolveRequest()};
 }
 test('native automatic PiP returns only its own video to the source page; manual PiP stays open',async()=>{
  const s=setup();s.controller.configure(true);await s.auto();assert.equal(s.requests(),1);s.visible();assert.equal(s.exits(),1);
@@ -84,4 +84,40 @@ test('legacy YouTube player receives a leave event only if its PiP UI is stuck',
  s.video.dispatchEvent=event=>{assert.equal(event.type,'leavepictureinpicture');leaves++;state=0;};
  s.controller.configure(true);await s.frames();assert.equal(leaves,0);
  await s.auto();state=7;s.visible();await s.frames();assert.equal(leaves,1);assert.equal(s.video.paused,false);
+});
+function portalSetup({ deferred=false, reject=false }={}) {
+ const s=setup();let resolveWindow;
+ const events={};const doc=s.document;
+ const before={id:'before'},after={id:'after'},player={id:'player',ownerDocument:doc,parentNode:null};
+ const parent={children:[],appendChild:node=>move(node,parent),insertBefore:(node,ref)=>move(node,parent,parent.children.indexOf(ref)),replaceChild:(node,ref)=>{move(node,parent,parent.children.indexOf(ref));parent.children.splice(parent.children.indexOf(ref),1);ref.parentNode=null;}};
+ function move(node,target,index=target.children.length){if(node.parentNode){const old=node.parentNode.children;const from=old.indexOf(node);old.splice(from,1);if(node.parentNode===target&&from<index)index--;}target.children.splice(index,0,node);node.parentNode=target;if(node===player){player.ownerDocument=target===parent?doc:pipDoc;s.video.ownerDocument=player.ownerDocument;}}
+ parent.appendChild(before);parent.appendChild(player);parent.appendChild(after);
+ const pipDoc={createElement:()=>({}),head:{appendChild(){}},body:{children:[],appendChild:node=>move(node,pipDoc.body)}};
+ const pipWindow={closed:false,document:pipDoc,addEventListener:(name,fn)=>events[name]=fn,close(){events.pagehide?.();this.closed=true;api.window=null;}};
+ const api={window:null,requestWindow(){if(reject)return Promise.reject(new Error('NotAllowedError'));api.window=pipWindow;return deferred?new Promise(resolve=>{resolveWindow=()=>resolve(pipWindow);}):Promise.resolve(pipWindow);}};
+ doc.createComment=()=>({marker:true,parentNode:null});doc.styleSheets=[];s.video.closest=()=>player;s.video.isConnected=true;s.video.ownerDocument=doc;s.context.window.documentPictureInPicture=api;
+ return {...s,parent,player,pipDoc,pipWindow,resolveWindow:()=>resolveWindow(),order:()=>parent.children.map(node=>node.id||'marker')};
+}
+test('document PiP keeps the same live player and restores its original DOM slot before close',async()=>{
+ const s=portalSetup();s.controller.configure(true);await s.auto();
+ assert.equal(s.video.ownerDocument,s.pipDoc);assert.equal(s.pipDoc.body.children[0],s.player);assert.deepEqual(s.order(),['before','marker','after']);assert.equal(s.requests(),0);
+ const close=s.pipWindow.close;s.pipWindow.close=function(){assert.equal(s.video.ownerDocument,s.document);close.call(this);};
+ s.visible();await s.frames();assert.equal(s.player.ownerDocument,s.document);assert.deepEqual(s.order(),['before','player','after']);assert.equal(s.video.paused,false);
+});
+test('Chrome or user closing the document PiP restores the player even before source visibility changes',async()=>{
+ const s=portalSetup();s.controller.configure(true);await s.auto();s.pipWindow.close();
+ assert.equal(s.player.ownerDocument,s.document);assert.deepEqual(s.order(),['before','player','after']);assert.equal(s.video.paused,false);
+ await s.auto();assert.equal(s.pipWindow.closed,true);assert.equal(s.video.ownerDocument,s.document);
+});
+test('disable, disposal and YouTube navigation return the adopted player',async()=>{
+ for(const action of ['disable','dispose','navigate']){
+  const s=portalSetup();s.controller.configure(true);await s.auto();
+  if(action==='disable')s.controller.configure(false);else if(action==='dispose')s.controller.dispose();else s.emit('yt-navigate-start');
+  await s.frames();assert.equal(s.player.ownerDocument,s.document,action);assert.deepEqual(s.order(),['before','player','after']);assert.equal(s.pipWindow.closed,true);
+ }
+});
+test('quick return and rejected document PiP leave the original player in place without orphan markers',async()=>{
+ const denied=portalSetup({reject:true});denied.controller.configure(true);await denied.auto();assert.deepEqual(denied.order(),['before','player','after']);assert.equal(denied.requests(),0);
+ const s=portalSetup({deferred:true});s.controller.configure(true);const pending=s.auto();s.visible();s.resolveWindow();await pending;
+ assert.equal(s.video.ownerDocument,s.document);assert.deepEqual(s.order(),['before','player','after']);assert.equal(s.pipWindow.closed,true);
 });

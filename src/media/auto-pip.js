@@ -1,7 +1,7 @@
 (() => {
   if (window.top !== window || !navigator.mediaSession || !document.pictureInPictureEnabled) return;
   const KEY = '__arcSidebarAutoPip';
-  const VERSION = 2;
+  const VERSION = 3;
   if (globalThis[KEY]?.version === VERSION) return;
   globalThis[KEY]?.dispose();
   const session = navigator.mediaSession;
@@ -10,6 +10,7 @@
   let enabled = false;
   let ownedVideo = null;
   let returnVideo = null;
+  let ownedPortal = null;
   let opening = false;
   let dismissed = false;
   let disposed = false;
@@ -33,6 +34,14 @@
     });
   };
   const closeOwned = async () => {
+    const portal = ownedPortal;
+    ownedPortal = null;
+    if (portal) {
+      // Move the live player out BEFORE closing its document. Closing first can
+      // strand a still-playing YouTube player in a discarded PiP document.
+      portal.restore();
+      try { portal.window.close(); } catch {}
+    }
     const video = ownedVideo;
     ownedVideo = null;
     if (video && document.pictureInPictureElement === video) {
@@ -40,12 +49,74 @@
     }
     restorePlayer(video);
   };
+  const openPortal = async video => {
+    const player = video.closest('.html5-video-player') || video;
+    const parent = player.parentNode;
+    if (!parent) return;
+    const marker = document.createComment('arc-mini-player-return');
+    parent.insertBefore(marker, player);
+    let pipWindow;
+    let returned = false;
+    const restore = () => {
+      if (returned) return;
+      returned = true;
+      if (marker.parentNode) marker.parentNode.replaceChild(player, marker);
+      else parent.appendChild(player);
+      try { player.setDocumentPictureInPicture?.(false); } catch {}
+    };
+    try {
+      pipWindow = await window.documentPictureInPicture.requestWindow({ width: 480, height: Math.round(480 * video.videoHeight / video.videoWidth) });
+      // The source tab may have returned while Chrome was creating the window.
+      if (!enabled || disposed || pipWindow.closed || document.visibilityState !== 'hidden') {
+        restore(); pipWindow.close(); return;
+      }
+      const portal = { window: pipWindow, restore };
+      // Register BEFORE adoption; this also handles Chrome closing Auto PiP on
+      // activation before the source document receives visibilitychange.
+      pipWindow.addEventListener('pagehide', () => {
+        restore();
+        if (ownedPortal === portal) {
+          ownedPortal = null;
+          if (document.visibilityState === 'hidden') dismissed = true;
+        }
+      }, { once: true, capture: true });
+      const pipDocument = pipWindow.document;
+      for (const sheet of document.styleSheets) {
+        try {
+          const style = pipDocument.createElement('style');
+          style.textContent = [...sheet.cssRules].map(rule => rule.cssText).join('\n');
+          pipDocument.head.appendChild(style);
+        } catch {
+          if (!sheet.href) continue;
+          const link = pipDocument.createElement('link');
+          link.rel = 'stylesheet'; link.href = sheet.href;
+          pipDocument.head.appendChild(link);
+        }
+      }
+      const layout = pipDocument.createElement('style');
+      layout.textContent = 'html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#000}.html5-video-player,.html5-video-container{width:100vw!important;height:100vh!important}video{width:100vw!important;height:100vh!important;left:0!important;top:0!important;object-fit:contain!important;visibility:visible!important}';
+      pipDocument.head.appendChild(layout);
+      ownedPortal = portal;
+      pipDocument.body.appendChild(player);
+      try { player.setDocumentPictureInPicture?.(true); } catch {}
+    } catch {
+      restore();
+      if (ownedPortal?.window === pipWindow) ownedPortal = null;
+      try { pipWindow?.close(); } catch {}
+    }
+  };
   const enterAutomatic = async () => {
     if (!enabled || disposed || opening || dismissed || document.pictureInPictureElement || window.documentPictureInPicture?.window) return;
     const video = playingVideo();
     if (!video) return;
     opening = true;
     try {
+      // YouTube's native-video PiP bookkeeping can leave its watch page blank.
+      // Document PiP keeps the SAME player and explicitly returns its DOM node.
+      if (typeof window.documentPictureInPicture?.requestWindow === 'function') {
+        await openPortal(video);
+        return;
+      }
       await video.requestPictureInPicture();
       if (document.pictureInPictureElement === video) { ownedVideo = video; returnVideo = video; }
       // The user may return to the source tab or disable the setting mid-request.
@@ -90,8 +161,12 @@
   };
   document.addEventListener('visibilitychange', onVisibility);
   document.addEventListener('leavepictureinpicture', onLeave, true);
+  document.addEventListener('yt-navigate-start', closeOwned);
   globalThis[KEY] = {
     version: VERSION,
+    getState() {
+      return { version: VERSION, enabled, opening, player: ownedPortal ? 'document' : ownedVideo ? 'video' : 'none', visibility: document.visibilityState };
+    },
     configure(value) {
       if (disposed) return false;
       enabled = value === true;
@@ -105,6 +180,7 @@
       disposed = true; enabled = false; closeOwned();
       document.removeEventListener('visibilitychange', onVisibility);
       document.removeEventListener('leavepictureinpicture', onLeave, true);
+      document.removeEventListener('yt-navigate-start', closeOwned);
       if (session.setActionHandler === wrappedSetter) session.setActionHandler = originalSetter;
       try { setHandler(siteHandler); } catch {}
     }
