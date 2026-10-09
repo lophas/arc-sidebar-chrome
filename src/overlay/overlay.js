@@ -10,7 +10,37 @@
   let overlayInitialized = false;
   let applyInitializedMode = null;
 
+  let contextInvalid = false;
+  let disposeOverlay = () => {};
+  const listeners = [];
+  const listen = (target, event, callback, options) => {
+    target.addEventListener(event, callback, options);
+    listeners.push(() => target.removeEventListener?.(event, callback, options));
+  };
+  const listenChrome = (event, callback) => {
+    try {
+      event.addListener(callback);
+      listeners.push(() => event.removeListener?.(callback));
+    } catch (error) { handleApiError(error); }
+  };
+  const stopInvalidContext = () => {
+    if (contextInvalid) return;
+    contextInvalid = true;
+    disposeOverlay();
+    for (const remove of listeners.splice(0)) { try { remove(); } catch {} }
+  };
+  const handleApiError = error => {
+    if (/extension context invalidated/i.test(error?.message || String(error))) stopInvalidContext();
+  };
+  // Chrome can throw before returning a Promise after extension reload.
+  const callChrome = async operation => {
+    if (contextInvalid) return undefined;
+    try { return await operation(); }
+    catch (error) { handleApiError(error); return undefined; }
+  };
+
   function initOverlay() {
+    if (contextInvalid) return;
     if (overlayInitialized) {
       applyInitializedMode?.(OVERLAY_MODE);
       return;
@@ -34,6 +64,7 @@
     };
 
     const host = document.createElement('div');
+    disposeOverlay = () => host.remove?.();
     host.id = 'arc-sidebar-overlay-host';
     host.style.all = 'initial';
     host.style.colorScheme = currentTheme();
@@ -93,8 +124,8 @@
     const ensureSidebarLoaded = () => {
       if (!iframe.hasAttribute('src')) iframe.src = sidebarUrl.href;
     };
-    iframe.addEventListener('load', () => { sendTheme(); notifyVisibility(); });
-    themeMedia.addEventListener('change', sendTheme);
+    listen(iframe, 'load', () => { sendTheme(); notifyVisibility(); });
+    listen(themeMedia, 'change', sendTheme);
     sendTheme();
 
     const applyWidth = value => {
@@ -121,13 +152,13 @@
     const refreshLayout = async () => {
       const request = ++layoutRequest;
       try {
-        const layout = await chrome.runtime.sendMessage({ type: 'arc-sidebar-panel-layout' });
-        if (request === layoutRequest && (layout?.side === 'left' || layout?.side === 'right')) applyEdgeSide(layout.side);
+        const layout = await callChrome(() => chrome.runtime.sendMessage({ type: 'arc-sidebar-panel-layout' }));
+        if (!contextInvalid && request === layoutRequest && (layout?.side === 'left' || layout?.side === 'right')) applyEdgeSide(layout.side);
       } catch {}
     };
     refreshLayout();
-    chrome.storage.local.get(WIDTH_STORAGE_KEY).then(stored => applyWidth(stored[WIDTH_STORAGE_KEY])).catch(() => applyWidth(DEFAULT_PANEL_WIDTH));
-    chrome.storage.onChanged.addListener((changes, area) => {
+    callChrome(() => chrome.storage.local.get(WIDTH_STORAGE_KEY)).then(stored => { if (!contextInvalid) applyWidth(stored?.[WIDTH_STORAGE_KEY]); });
+    listenChrome(chrome.storage.onChanged, (changes, area) => {
       if (area === 'local' && changes[WIDTH_STORAGE_KEY] && !isResizing) applyWidth(changes[WIDTH_STORAGE_KEY].newValue);
     });
 
@@ -170,7 +201,7 @@
     };
 
     const openPanel = () => {
-      if (sidebarMode !== OVERLAY_MODE || nativePanelOpen || document.visibilityState === 'hidden') return;
+      if (contextInvalid || sidebarMode !== OVERLAY_MODE || nativePanelOpen || document.visibilityState === 'hidden') return;
       cancelClose();
       ensureSidebarLoaded();
       sendTheme();
@@ -193,7 +224,7 @@
     };
 
     const scheduleOpen = () => {
-      if (sidebarMode !== OVERLAY_MODE || nativePanelOpen || document.visibilityState === 'hidden') return;
+      if (contextInvalid || sidebarMode !== OVERLAY_MODE || nativePanelOpen || document.visibilityState === 'hidden') return;
       cancelClose();
       if (isOpen || showTimer) return;
       showTimer = setTimeout(() => {
@@ -225,8 +256,8 @@
       }
     };
 
-    chrome.runtime.sendMessage({ type: 'arc-native-sidepanel-is-open' }).then(response => setNativePanelOpen(response?.open)).catch(() => {});
-    chrome.runtime.onMessage.addListener(message => {
+    callChrome(() => chrome.runtime.sendMessage({ type: 'arc-native-sidepanel-is-open' })).then(response => { if (!contextInvalid) setNativePanelOpen(response?.open); });
+    listenChrome(chrome.runtime.onMessage, message => {
       if (message?.type === 'arc-sidebar-tab-activated') {
         cancelResize?.();
         editorActive = false;
@@ -236,43 +267,43 @@
       if (message?.type === 'arc-sidebar-editor-state') setEditorActive(message.open);
     });
 
-    window.addEventListener('message', event => {
+    listen(window, 'message', event => {
       if (event.source !== iframe.contentWindow || event.data?.type !== 'arc-sidebar-editor-state') return;
       setEditorActive(event.data.open);
     });
 
     // Opening requires pointer movement, never a synthesized enter on tab return.
-    window.addEventListener('blur', () => {
+    listen(window, 'blur', () => {
       if (showTimer) clearTimeout(showTimer);
       showTimer = null;
     });
-    edge.addEventListener('mouseleave', () => {
+    listen(edge, 'mouseleave', () => {
       if (!isOpen && showTimer) {
         clearTimeout(showTimer);
         showTimer = null;
       }
     });
 
-    panel.addEventListener('mouseenter', cancelClose);
-    iframe.addEventListener('mouseenter', cancelClose);
-    iframe.addEventListener('pointerenter', cancelClose);
-    resizeHandle.addEventListener('mouseenter', cancelClose);
+    listen(panel, 'mouseenter', cancelClose);
+    listen(iframe, 'mouseenter', cancelClose);
+    listen(iframe, 'pointerenter', cancelClose);
+    listen(resizeHandle, 'mouseenter', cancelClose);
 
-    panel.addEventListener('mouseleave', event => {
+    listen(panel, 'mouseleave', event => {
       const target = event.relatedTarget;
       if (target === iframe || target === resizeHandle || (target instanceof Node && panel.contains(target))) return;
       scheduleClose();
     });
-    iframe.addEventListener('mouseleave', event => {
+    listen(iframe, 'mouseleave', event => {
       if (event.relatedTarget === resizeHandle) return;
       scheduleClose();
     });
-    resizeHandle.addEventListener('mouseleave', event => {
+    listen(resizeHandle, 'mouseleave', event => {
       if (isResizing || event.relatedTarget === panel || event.relatedTarget === iframe) return;
       scheduleClose();
     });
 
-    resizeHandle.addEventListener('pointerdown', event => {
+    listen(resizeHandle, 'pointerdown', event => {
       if (sidebarMode !== OVERLAY_MODE || nativePanelOpen || event.button !== 0) return;
       event.preventDefault();
       event.stopPropagation();
@@ -298,7 +329,7 @@
         resizeHandle.removeEventListener('pointerup', finishResize);
         resizeHandle.removeEventListener('pointercancel', finishResize);
         try { if (resizeHandle.hasPointerCapture(upEvent.pointerId)) resizeHandle.releasePointerCapture(upEvent.pointerId); } catch {}
-        await chrome.storage.local.set({ [WIDTH_STORAGE_KEY]: currentWidth });
+        await callChrome(() => chrome.storage.local.set({ [WIDTH_STORAGE_KEY]: currentWidth }));
       };
       cancelResize = () => { finishResize({ pointerId: event.pointerId }).catch(() => {}); };
       resizeHandle.addEventListener('pointermove', onPointerMove);
@@ -328,7 +359,7 @@
     const documentObserver = new MutationObserver(scheduleHostRepair);
     const hostObserver = new MutationObserver(scheduleHostRepair);
     const ensureHost = () => {
-      if (suspended) return;
+      if (suspended || contextInvalid) return;
       const root = document.documentElement;
       if (!root) return;
       if (observedRoot !== root) {
@@ -363,14 +394,29 @@
         if (!suspended) observeHost();
       }
     };
+    disposeOverlay = () => {
+      suspended = true;
+      // Cancellation of a resize must never write through an invalid context.
+      cancelResize?.();
+      editorActive = false;
+      forceClosePanel();
+      if (repairTimer !== null) clearTimeout(repairTimer);
+      repairTimer = null;
+      rootObserver.disconnect();
+      documentObserver.disconnect();
+      hostObserver.disconnect();
+      iframe.removeAttribute('src');
+      host.remove?.();
+    };
     const resume = () => {
+      if (contextInvalid) return;
       suspended = false;
       documentObserver.observe(document, { childList: true });
       ensureHost();
-      chrome.runtime.sendMessage({ type: 'arc-native-sidepanel-is-open' })
-        .then(response => setNativePanelOpen(response?.open)).catch(() => {});
+      callChrome(() => chrome.runtime.sendMessage({ type: 'arc-native-sidepanel-is-open' }))
+        .then(response => { if (!contextInvalid) setNativePanelOpen(response?.open); });
     };
-    window.addEventListener('pagehide', () => {
+    listen(window, 'pagehide', () => {
       cancelResize?.();
       forceClosePanel();
       suspended = true;
@@ -382,9 +428,9 @@
       hostObserver.disconnect();
       observedRoot = null;
     });
-    window.addEventListener('pageshow', resume);
-    window.addEventListener('focus', () => { refreshLayout(); resume(); notifyVisibility(); });
-    document.addEventListener('visibilitychange', () => {
+    listen(window, 'pageshow', resume);
+    listen(window, 'focus', () => { refreshLayout(); resume(); notifyVisibility(); });
+    listen(document, 'visibilitychange', () => {
       if (document.visibilityState === 'visible') { refreshLayout(); resume(); notifyVisibility(); }
       else {
         cancelResize?.();
@@ -394,7 +440,7 @@
       }
     });
     // Capture fallback also works when a webpage's own overlay covers the edge.
-    document.addEventListener('pointermove', event => {
+    listen(document, 'pointermove', event => {
       if (sidebarMode !== OVERLAY_MODE || nativePanelOpen || suspended) return;
       const distanceFromEdge = edgeSide === 'left' ? event.clientX : window.innerWidth - event.clientX;
       if (distanceFromEdge >= 0 && distanceFromEdge <= EDGE_WIDTH && event.isTrusted && (event.movementX !== 0 || event.movementY !== 0)) {
@@ -409,32 +455,36 @@
     }, { capture: true, passive: true });
     resume();
 
-    window.addEventListener('resize', () => applyWidth(currentWidth));
-    document.addEventListener('keydown', event => {
+    listen(window, 'resize', () => applyWidth(currentWidth));
+    listen(document, 'keydown', event => {
       if (event.key === 'Escape' && isOpen && !editorActive) closePanel();
     }, true);
-    window.addEventListener('beforeunload', clearTimers, { once: true });
+    listen(window, 'beforeunload', clearTimers, { once: true });
   }
 
   const applyMode = mode => {
+    if (contextInvalid) return;
     const normalized = mode === NATIVE_MODE ? NATIVE_MODE : OVERLAY_MODE;
     if (normalized === OVERLAY_MODE) initOverlay();
     else if (overlayInitialized) applyInitializedMode?.(NATIVE_MODE);
   };
 
-  const refreshMode = () => chrome.storage.local.get([SIDEBAR_MODE_KEY, TIMEOUT_KEY])
-    .then(stored => {
-      const value = stored[TIMEOUT_KEY];
+  const refreshMode = async () => {
+    const stored = await callChrome(() => chrome.storage.local.get([SIDEBAR_MODE_KEY, TIMEOUT_KEY]));
+    if (contextInvalid) return;
+    try {
+      const value = stored?.[TIMEOUT_KEY];
       const timeout = TIMEOUTS.has(value) && value > 0 ? value : 800;
       hideDelay = timeout;
-      const mode = value === 0 ? NATIVE_MODE : stored[SIDEBAR_MODE_KEY] || (TIMEOUTS.has(value) ? OVERLAY_MODE : NATIVE_MODE);
+      const mode = value === 0 ? NATIVE_MODE : stored?.[SIDEBAR_MODE_KEY] || (TIMEOUTS.has(value) ? OVERLAY_MODE : NATIVE_MODE);
       applyMode(mode);
-    }).catch(() => applyMode(NATIVE_MODE));
-  window.addEventListener('focus', refreshMode);
-  document.addEventListener('visibilitychange', () => {
+    } catch (error) { handleApiError(error); }
+  };
+  listen(window, 'focus', refreshMode);
+  listen(document, 'visibilitychange', () => {
     if (document.visibilityState === 'visible') refreshMode();
   });
-  chrome.runtime.onMessage.addListener(message => {
+  listenChrome(chrome.runtime.onMessage, message => {
     if (message?.type === 'arc-sidebar-refresh-mode' || message?.type === 'arc-sidebar-tab-activated') refreshMode();
   });
   refreshMode();

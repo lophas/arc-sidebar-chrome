@@ -42,6 +42,17 @@ try {
     assert.equal(geometry.left,0);assert.equal(geometry.edge,0);
     assert.ok(Math.abs(geometry.handle-(geometry.width-7))<=1);
     await page.mouse.move(700,300);await page.waitForFunction(()=>!arcTestShadow.querySelector('.panel').classList.contains('open'));
+    await page.evaluate(()=>{
+      window.arcInvalidApiCalls=0;
+      chrome.storage.local.get=()=>{window.arcInvalidApiCalls++;throw new Error('Extension context invalidated.');};
+      window.dispatchEvent(new Event('focus'));
+    });
+    await page.waitForFunction(()=>!document.querySelector('#arc-sidebar-overlay-host'));
+    await page.evaluate(()=>{window.dispatchEvent(new Event('focus'));window.dispatchEvent(new Event('pageshow'));});
+    await page.mouse.move(700,300);await page.mouse.move(1,300);await page.waitForTimeout(150);
+    assert.equal(await page.evaluate(()=>window.arcInvalidApiCalls),1,'obsolete context stops calling Chrome APIs');
+    assert.equal(await page.evaluate(()=>!!document.querySelector('#arc-sidebar-overlay-host')),false,'obsolete overlay stays removed');
+    console.log('PASS real Chromium: invalid extension context stops listeners and removes its overlay');
     console.log('PASS real Chromium: left edge and sidebar geometry, opposite edge ignored, leave closes');
     console.log('PASS real Chromium: editor messages cannot open closed panels; hidden/returned tabs require fresh hover and retain editor contents');
   }

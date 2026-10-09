@@ -3,7 +3,7 @@ function setup(mode='overlay',side='right',timeout) {
  const events={window:{},document:{}},changes=[],messages=[],observers=[],timers=new Map(),mutations=new Set();const delays=[];let seq=0,styleWrites=0;
  const mutate=target=>observers.filter(o=>o.targets.has(target)).forEach(o=>mutations.add(o));
  const listener=(map,name,fn)=>(map[name]||=[]).push(fn);
- const element=()=>({id:'',parentNode:null,hidden:false,attributes:new Map(),events:{},style:{properties:new Map(),setProperty(n,v,p){styleWrites++;this.properties.set(n,{v,p});mutate(this.owner);},getPropertyValue(n){const value=this.properties.get(n)?.v||'';return n==='all'&&this.properties.size>1?'':value;},getPropertyPriority(n){return this.properties.get(n)?.p||'';}},classList:{values:new Set(),add(...names){names.forEach(n=>this.values.add(n));},remove(...names){names.forEach(n=>this.values.delete(n));}},addEventListener(n,fn){listener(this.events,n,fn);},removeEventListener(){},hasAttribute(n){return this.attributes.has(n);},removeAttribute(n){this.attributes.delete(n);},setPointerCapture(){},hasPointerCapture(){return false;},contains(){return false;}});
+ const element=()=>({id:'',parentNode:null,hidden:false,remove(){this.parentNode=null;},attributes:new Map(),events:{},style:{properties:new Map(),setProperty(n,v,p){styleWrites++;this.properties.set(n,{v,p});mutate(this.owner);},getPropertyValue(n){const value=this.properties.get(n)?.v||'';return n==='all'&&this.properties.size>1?'':value;},getPropertyPriority(n){return this.properties.get(n)?.p||'';}},classList:{values:new Set(),add(...names){names.forEach(n=>this.values.add(n));},remove(...names){names.forEach(n=>this.values.delete(n));}},addEventListener(n,fn){listener(this.events,n,fn);},removeEventListener(){},hasAttribute(n){return this.attributes.has(n);},removeAttribute(n){this.attributes.delete(n);},setPointerCapture(){},hasPointerCapture(){return false;},contains(){return false;}});
  const nodes={'.edge':element(),'.panel':element(),iframe:element(),'.resize-handle':element()};
  Object.defineProperty(nodes.iframe,'src',{get(){return this.attributes.get('src');},set(v){this.attributes.set('src',v);}});
  nodes.iframe.contentWindow={postMessage:message=>messages.push(message)};
@@ -19,7 +19,7 @@ function setup(mode='overlay',side='right',timeout) {
  vm.createContext(context);vm.runInContext(fs.readFileSync('src/overlay/overlay.js','utf8'),context);
  return {delays,context,nodes,host,messages,observers,changes,styleWrites:()=>styleWrites,drainMutations:()=>{let rounds=0;while(mutations.size){if(++rounds>20)throw new Error('Mutation observer starved page event loop');const pending=[...mutations];mutations.clear();pending.forEach(o=>o.fn());}return rounds;},emit:(surface,type,event)=>(events[surface][type]||[]).forEach(fn=>fn(event)),tick:()=>{const fns=[...timers.values()];timers.clear();fns.forEach(fn=>fn());}};
 }
-async function settled(){await Promise.resolve();await Promise.resolve();await Promise.resolve();}
+async function settled(){for(let i=0;i<12;i++)await Promise.resolve();}
 test('lazy overlay loads only on hover and releases idle hidden-tab UI',async()=>{const s=setup();await settled();assert.equal(s.nodes.iframe.hasAttribute('src'),false);s.emit('document','pointermove',{isTrusted:true,movementX:1,movementY:0,clientX:999});s.tick();assert.equal(s.nodes.iframe.hasAttribute('src'),true);assert.equal(s.nodes['.panel'].classList.values.has('open'),true);assert.equal(s.messages.at(-1).open,true);s.context.document.visibilityState='hidden';s.emit('document','visibilitychange');assert.equal(s.nodes.iframe.hasAttribute('src'),false);assert.equal(s.nodes['.panel'].classList.values.has('open'),false);});
 test('open editors survive tab switches and hidden native mode never loads UI',async()=>{const s=setup();await settled();s.emit('document','pointermove',{isTrusted:true,movementX:1,movementY:0,clientX:999});s.tick();s.changes.forEach(fn=>fn({type:'arc-sidebar-editor-state',open:true}));s.context.document.visibilityState='hidden';s.emit('document','visibilitychange');assert.equal(s.nodes.iframe.hasAttribute('src'),true);assert.equal(s.messages.at(-1).open,false);const native=setup('native');await settled();native.emit('document','pointermove',{isTrusted:true,movementX:1,movementY:0,clientX:999});native.tick();assert.equal(native.nodes.iframe.hasAttribute('src'),false);});
 test('DOM repair reuses the same overlay host without duplicating listeners',async()=>{const s=setup();await settled();const original=s.host;for(let i=0;i<5;i++){s.host.parentNode=null;s.observers.forEach(o=>o.fn());s.tick();assert.equal(s.host.parentNode,s.context.document.documentElement);}assert.equal(s.host,original);assert.equal(s.observers.length,3);s.context.document.documentElement={append(node){node.parentNode=this;}};s.observers.forEach(o=>o.fn());s.tick();assert.equal(s.host.parentNode,s.context.document.documentElement);});
@@ -150,4 +150,26 @@ test('fresh profile stays fixed; explicit active refresh and later focus apply m
  assert.equal(s.nodes['.panel'].classList.values.has('open'),true);
  s.emit('window','focus');await settled();
  assert.equal(s.nodes['.panel'].classList.values.has('open'),false);
+});
+
+test('extension reload catches synchronous storage throws and disposes obsolete overlay without another API call',async()=>{
+ const s=setup();await settled();
+ s.emit('document','pointermove',{isTrusted:true,movementX:1,movementY:0,clientX:999});s.tick();
+ assert.equal(s.nodes['.panel'].classList.values.has('open'),true);
+ let calls=0;s.context.chrome.storage.local.get=()=>{calls++;throw new Error('Extension context invalidated.');};
+ s.emit('window','focus');await settled();
+ assert.equal(calls,1);assert.equal(s.host.parentNode,null);
+ assert.equal(s.nodes['.panel'].classList.values.has('open'),false);
+ assert.equal(s.nodes.iframe.hasAttribute('src'),false);
+ assert.equal(s.observers.every(observer=>observer.targets.size===0),true);
+ s.emit('window','focus');s.emit('window','pageshow');s.emit('document','pointermove',{isTrusted:true,movementX:1,movementY:0,clientX:999});s.tick();await settled();
+ assert.equal(calls,1);assert.equal(s.host.parentNode,null);
+});
+test('rejected runtime promises invalidate the old overlay and cancel pending edge opens',async()=>{
+ const s=setup();await settled();
+ s.emit('document','pointermove',{isTrusted:true,movementX:1,movementY:0,clientX:999});
+ s.context.chrome.runtime.sendMessage=()=>Promise.reject(new Error('Extension context invalidated.'));
+ s.emit('window','focus');await settled();s.tick();
+ assert.equal(s.host.parentNode,null);assert.equal(s.nodes['.panel'].classList.values.has('open'),false);
+ assert.equal(s.nodes.iframe.hasAttribute('src'),false);
 });
