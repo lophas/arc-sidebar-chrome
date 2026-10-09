@@ -3,6 +3,22 @@ import { savedItemIds, spaceGroupIds } from '../shared/space-tabs.js';
 import { bindingsReady, restoreSessionBindings, preserveWindowBindings } from './persistent-bindings.js';
 import { serializeState } from './state-controller.js';
 const MODEL = 'arcSidebarModel', STATE = 'arcSidebarState', BINDINGS = 'arcSidebarBindings';
+async function keepWindowsOpen(tabIds) {
+  const closing = new Set(tabIds);
+  if (!closing.size) return;
+  const windows = new Map();
+  for (const tab of await chrome.tabs.query({})) {
+    if (!windows.has(tab.windowId)) windows.set(tab.windowId, []);
+    windows.get(tab.windowId).push(tab);
+  }
+  for (const [windowId, tabs] of windows) {
+    if (tabs.every(tab => closing.has(tab.id))) {
+      // Create before removing the last tab: afterwards its window is gone.
+      // Omitting URL honors Chrome's default New Tab page, including overrides.
+      await chrome.tabs.create({ windowId, active: true });
+    }
+  }
+}
 function findSaved(model, id) {
   const walk = (nodes, spaceId, ancestors = []) => {
     for (const node of nodes || []) {
@@ -73,6 +89,7 @@ export async function closeSavedItems(itemIds) {
       }
       delete bindings[id];
     }
+    await keepWindowsOpen(tabs);
     await chrome.storage.session.set({ [BINDINGS]: bindings });
     // A missing tab should not prevent the remaining tabs from closing.
     await Promise.allSettled([...tabs].map(id => chrome.tabs.remove(id)));
@@ -109,6 +126,7 @@ export async function closeSpaceTabs(spaceId) {
     // Refresh membership when clicked: include tabs opened since the menu and
     // leave tabs that have since moved out of the Space's groups untouched.
     const { tabIds, bindings } = await spaceCloseTargets(spaceId);
+    await keepWindowsOpen(tabIds);
     const results = await Promise.allSettled(tabIds.map(id => chrome.tabs.remove(id)));
     const closed = new Set(tabIds.filter((_, i) => results[i].status === 'fulfilled'));
     for (const [id, tabId] of Object.entries(bindings)) if (closed.has(Number(tabId))) delete bindings[id];
@@ -121,6 +139,7 @@ export async function closeLiveTab(tabId) {
   return serializeState(async () => {
     const tab = await chrome.tabs.get(tabId);
     if (tab.pinned) throw new Error('Chrome pinned tabs are read-only.');
+    await keepWindowsOpen([tabId]);
     await chrome.tabs.remove(tabId);
   });
 }
@@ -142,6 +161,7 @@ export async function closeWindowTabs(windowId, groupId = null) {
     const tabs = (await chrome.tabs.query({ windowId })).filter(tab => !tab.pinned && tab.windowId === windowId && (groupId == null || tab.groupId === groupId));
     const session = await chrome.storage.session.get(BINDINGS);
     const bindings = session[BINDINGS] || {};
+    await keepWindowsOpen(tabs.map(tab => tab.id));
     const results = await Promise.allSettled(tabs.map(tab => chrome.tabs.remove(tab.id)));
     const closed = new Set(tabs.filter((_, index) => results[index].status === 'fulfilled').map(tab => tab.id));
     for (const [id, tabId] of Object.entries(bindings)) if (closed.has(Number(tabId))) delete bindings[id];

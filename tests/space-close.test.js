@@ -21,7 +21,9 @@ test('Space close includes workflow tabs across its groups/windows and preserves
  seed(); const original=structuredClone(mock.data.local.arcSidebarModel);
  assert.deepEqual(await getSpaceCloseInfo('s'),{count:3,groupCount:2});
  await closeSpaceTabs('s'); await serializeState(async()=>{});
- assert.deepEqual([...mock.tabs.keys()],[20,30,40]);assert.deepEqual(mock.data.session.arcSidebarBindings,{b:20,fav:30});assert.deepEqual(mock.data.local.arcSidebarModel,original);
+ const remaining=[...mock.tabs.values()];assert.deepEqual(remaining.filter(tab=>tab.windowId===1).map(tab=>tab.id),[20,30,40]);
+ const replacement=remaining.filter(tab=>tab.windowId===2);assert.equal(replacement.length,1);assert.equal(replacement[0].url,undefined);assert.equal(replacement[0].active,true);
+ assert.deepEqual(mock.data.session.arcSidebarBindings,{b:20,fav:30});assert.deepEqual(mock.data.local.arcSidebarModel,original);
 });
 test('workflow-only mapped groups can close after every pinned tab has closed',async()=>{
  seed();mock.tabs.delete(10);delete mock.data.session.arcSidebarBindings.a;
@@ -45,4 +47,11 @@ test('a deleted Space cannot close any tabs',async()=>{
 test('failed tab closures keep their bindings and report the partial failure',async()=>{
  seed();const remove=mock.chrome.tabs.remove;mock.chrome.tabs.remove=async id=>{if(id===10)throw Error('Busy');return remove(id);};
  try {await assert.rejects(closeSpaceTabs('s'),/Some tabs/);assert.equal(mock.tabs.has(10),true);assert.equal(mock.data.session.arcSidebarBindings.a,10);assert.equal(mock.tabs.has(11),false);} finally {mock.chrome.tabs.remove=remove;}
+});
+test('closing a Space that empties several windows leaves one default tab in each',async()=>{
+ seed();for(const id of [20,30,40])mock.tabs.delete(id);
+ const creates=mock.counts().creates;await closeSpaceTabs('s');await serializeState(async()=>{});
+ const remaining=[...mock.tabs.values()];assert.equal(remaining.length,2);assert.equal(mock.counts().creates-creates,2);
+ for(const windowId of [1,2]){const tabs=remaining.filter(tab=>tab.windowId===windowId);assert.equal(tabs.length,1);assert.equal(tabs[0].url,undefined);assert.equal(tabs[0].active,true);}
+ assert.equal(mock.data.session.arcSidebarBindings.a,undefined);
 });
