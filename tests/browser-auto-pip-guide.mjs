@@ -13,7 +13,7 @@ const settingsURL='chrome://settings/content/autoPictureInPicture';
 const video=Buffer.from(fs.readFileSync('tests/fixtures/pip-video.webm.b64','utf8'),'base64');
 const controller=fs.readFileSync('src/media/auto-pip.js','utf8');
 const bridge=fs.readFileSync('src/media/auto-pip-bridge.js','utf8');
-const markup=`<!doctype html><title>Mini player setup</title><style>body{margin:0;padding:48px;background:#111;color:#eee;font:18px system-ui}video{display:block;margin:24px 0}button{padding:12px}</style><script src="controller.js"></script><h1>HTML5 video</h1><video id="video" src="video.webm" width="480" controls loop></video><button id="play">Play</button><script>
+const markup=`<!doctype html><meta charset="utf-8"><title>Mini player setup</title><style>body{margin:0;padding:48px;background:#111;color:#eee;font:18px system-ui}video{display:block;margin:24px 0}button{padding:12px}</style><script src="controller.js"></script><h1>HTML5 video</h1><video id="video" src="video.webm" width="480" controls loop></video><button id="play">Play</button><script>
 const event=()=>{const listeners=new Set();return {addListener:fn=>listeners.add(fn),removeListener:fn=>listeners.delete(fn),emit:(...args)=>listeners.forEach(fn=>fn(...args))};};
 const changes=event(),messages=event(),data={};
 window.chrome={runtime:{id:'guide-test',onMessage:messages,sendMessage:async message=>{if(message.type==='arc-auto-pip-open-settings')await window.openGuideSettings();return {ok:true};}},storage:{local:{get:async keys=>Object.fromEntries(keys.filter(key=>key in data).map(key=>[key,data[key]])),set:async values=>{Object.assign(data,values);changes.emit(Object.fromEntries(Object.entries(values).map(([key,value])=>[key,{newValue:value}])),'local');}},onChanged:changes}};
@@ -44,6 +44,7 @@ try{
  await page.waitForTimeout(2000);assert.equal(await page.evaluate(()=>__arcSidebarAutoPip.getState().player),'none','default Ask with low media engagement does not open a player');
  await page.bringToFront();await page.evaluate(()=>fixture.focus(true,Date.now()));
  const popup=page.locator('#arc-auto-pip-guide dialog');await popup.waitFor({state:'visible'});
+ assert.equal(await popup.locator('.close').textContent(),'×');
  assert.equal(await page.locator('#arc-auto-pip-guide #siteAddress').inputValue(),origin);
  assert.equal(await page.evaluate(()=>video.paused),false,'setup dialog does not pause or move the video');
  const bounds=await popup.boundingBox();assert.ok(bounds.width<=440&&bounds.width>300);
