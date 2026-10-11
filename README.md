@@ -66,7 +66,7 @@ The automatic mini player is **on by default**. When a video is playing with sou
 
 Use **Extension options → Automatic video mini player** to turn the feature on or off. Changes apply to already-open video tabs, and the preference is included in backups.
 
-If Chrome asks for permission, allow **Automatic picture-in-picture** for the video site through the site controls next to the address bar. If Auto PiP is disabled in your Chrome build, enable **Auto picture in picture for video playback** at `chrome://flags/#auto-picture-in-picture-for-video-playback` and restart Chrome.
+To enable a new video site, open it and click the **mini player icon beside the sidebar search bar**. This opens that website’s Chrome settings: choose **Automatic picture-in-picture → Allow**, then return to the video. You only need to do this once per website. You can also change the permission through the site controls next to the address bar. If Auto PiP is disabled in your Chrome build, enable **Auto picture in picture for video playback** at `chrome://flags/#auto-picture-in-picture-for-video-playback` and restart Chrome.
 
 ### Spaces and folders
 

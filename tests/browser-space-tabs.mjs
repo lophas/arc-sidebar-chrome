@@ -365,5 +365,44 @@ try{
  await page.waitForFunction(()=>fixture.data.local.arcSidebarModel.favorites.some(item=>item.url==='https://live-favorite.test'));
  assert.equal(await page.evaluate(()=>{const item=fixture.data.local.arcSidebarModel.favorites.find(item=>item.url==='https://live-favorite.test');return fixture.data.session.arcSidebarBindings[item.id];}),777);
  console.log('PASS real Chrome: shared Favorites-first destination picker creates Favorites, moves existing links with stable IDs and protects folders');
+ // Exercise the permission shortcut in the same sidebar, including a tab switch
+ // between displaying the icon and clicking it. The source must be resolved anew.
+ await page.evaluate(async () => {
+  fixture.tabs.forEach(tab=>{tab.active=false;});
+  fixture.tabs.push({id:810,windowId:1,index:0,active:true,groupId:-1,url:'https://a.test'},
+   {id:811,windowId:1,index:5,active:false,groupId:-1,url:'https://video.test/watch?private=value'},
+   {id:812,windowId:2,index:0,active:true,groupId:-1,url:'https://other-window.test'});
+  const originalQuery=chrome.tabs.query;
+  chrome.tabs.query=async query=>(await originalQuery(query)).filter(tab=>(query.windowId==null||tab.windowId===query.windowId)&&(!query.active||tab.active));
+  fixture.settingsTabs=[];
+  chrome.tabs.create=async options=>{fixture.settingsTabs.push(options);return {id:900,...options};};
+  await import('/src/sidepanel/auto-pip-settings.js');
+ });
+ const miniPlayerButton=page.locator('#autoPipSiteSettings');
+ await miniPlayerButton.waitFor({state:'visible'});
+ assert.match(await miniPlayerButton.getAttribute('title'),/a.test/);
+ await page.evaluate(()=>{
+  fixture.tabs.filter(tab=>tab.windowId===1).forEach(tab=>{tab.active=tab.id===811;});
+ });
+ await miniPlayerButton.click();
+ await page.waitForFunction(()=>fixture.settingsTabs.length===1);
+ assert.deepEqual(await page.evaluate(()=>fixture.settingsTabs[0]),{windowId:1,index:6,url:'chrome://settings/content/siteDetails?site=https%3A%2F%2Fvideo.test'});
+ await page.waitForFunction(()=>document.querySelector('#autoPipSiteSettings').title.includes('video.test'));
+ await page.evaluate(()=>fixture.write('local',{arcSidebarAutoPipEnabled:false}));
+ await miniPlayerButton.waitFor({state:'hidden'});
+ await page.evaluate(()=>fixture.write('local',{arcSidebarAutoPipEnabled:true}));
+ await miniPlayerButton.waitFor({state:'visible'});
+ await page.evaluate(()=>{
+  const tab=fixture.tabs.find(tab=>tab.id===811);tab.url='chrome://settings/';
+  chrome.tabs.onUpdated.emit(tab.id,{url:tab.url},tab);
+ });
+ await miniPlayerButton.waitFor({state:'hidden'});
+ // Verify that the constructed Chrome URL reaches the actual permission row.
+ const settingsPage=await browser.newPage();
+ await settingsPage.goto('chrome://settings/content/siteDetails?site=https%3A%2F%2Fvideo.test');
+ await settingsPage.getByText('Automatic picture-in-picture',{exact:true}).waitFor();
+ assert.ok(settingsPage.url().includes('siteDetails?site=https%3A%2F%2Fvideo.test'));
+ await settingsPage.close();
+ console.log('PASS real Chrome: mini player site shortcut resolves current window/tab, hides when off or unsupported, and reaches the Auto PiP permission row');
  assert.deepEqual(errors,[]);console.log('PASS real Chrome: Space workflow rendering, drag-to-pin/pin/activate/close, group changes and Open-tabs view');
 }finally{await browser.close();await new Promise(resolve=>server.close(resolve));}
