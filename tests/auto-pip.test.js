@@ -201,3 +201,40 @@ test('old queued source activations and cached active snapshots cannot close a n
  assert.equal(s.video.ownerDocument,s.document);assert.equal(s.pipWindow.closed,true);
  assert.equal(s.controller.getState().recentEvents.some(item=>item.event==='extension-close:tab-activation'),true);
 });
+test('generic HTML5 videos use native PiP even when Document PiP exists',async()=>{
+ const s=setup();let portals=0;
+ s.context.window.documentPictureInPicture={window:null,requestWindow:()=>{portals++;throw new Error('generic player must stay in its document');}};
+ s.controller.configure(true);await s.auto();assert.equal(s.requests(),1);assert.equal(portals,0);
+});
+test('same-origin iframe and open shadow videos use their own PiP root and leave listener',async()=>{
+ for(const shadow of [false,true]){
+  const s=setup();let exits=0;const listeners=new Map();
+  const child={pictureInPictureEnabled:true,pictureInPictureElement:null,querySelectorAll:selector=>selector==='video'?[s.video]:[],exitPictureInPicture:async()=>{exits++;child.pictureInPictureElement=null;listeners.get('leavepictureinpicture')?.({target:s.video});}};
+  const doc=shadow?s.document:child;
+  const host=shadow?{shadowRoot:child}:{localName:'iframe',contentDocument:child};
+  const inaccessible={localName:'iframe',get contentDocument(){throw new Error('cross-origin');}};
+  s.document.querySelectorAll=selector=>selector==='video'||selector==='.html5-video-player'?[]:[host,inaccessible];
+  s.video.ownerDocument=doc;s.video.getRootNode=()=>child;
+  s.video.addEventListener=(name,fn)=>listeners.set(name,fn);s.video.removeEventListener=name=>listeners.delete(name);
+  s.video.requestPictureInPicture=async()=>{child.pictureInPictureElement=s.video;};
+  if(shadow)s.document.exitPictureInPicture=child.exitPictureInPicture;
+  s.controller.configure(true);await s.auto();assert.equal(s.controller.getState().player,'video');assert.equal(s.controller.getState().videos.length,1);
+  s.controller.configure(false);await s.frames();assert.equal(exits,1);assert.equal(child.pictureInPictureElement,null);assert.equal(listeners.size,0);
+  s.controller.configure(true);await s.auto();await doc.exitPictureInPicture();assert.equal(s.controller.getState().player,'none');
+  await s.auto();assert.equal(s.controller.getState().lastSkip,'dismissed');
+ }
+});
+test('manual embedded PiP and a player whose document forbids PiP are left alone',async()=>{
+ const s=setup();const child={pictureInPictureEnabled:true,pictureInPictureElement:s.video,querySelectorAll:selector=>selector==='video'?[s.video]:[]};
+ s.document.querySelectorAll=selector=>selector==='video'||selector==='.html5-video-player'?[]:[{localName:'iframe',contentDocument:child}];
+ s.video.ownerDocument=child;s.controller.configure(true);await s.auto();assert.equal(s.requests(),0);assert.equal(s.controller.getState().lastSkip,'existing-video-pip');
+ child.pictureInPictureElement=null;child.pictureInPictureEnabled=false;await s.auto();assert.equal(s.requests(),0);assert.equal(s.controller.getState().lastSkip,'no-eligible-video');
+});
+test('generic selection prefers the largest playing eligible video and finds replacements on demand',async()=>{
+ const s=setup();const large={...s.video,videoWidth:1920,videoHeight:1080};let selected;
+ for(const video of [s.video,large])video.requestPictureInPicture=async()=>{selected=video;s.document.pictureInPictureElement=video;};
+ let candidates=[s.video,large];s.document.querySelectorAll=selector=>selector==='video'?candidates:[];
+ s.controller.configure(true);await s.auto();assert.equal(selected,large);
+ await s.document.exitPictureInPicture();s.visible();await s.frames();
+ candidates=[s.video];await s.auto();assert.equal(selected,s.video);
+});

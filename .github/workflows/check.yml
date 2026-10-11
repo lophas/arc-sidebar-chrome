@@ -19,3 +19,17 @@ jobs:
       - run: node tests/browser-space-tabs.mjs
       - run: xvfb-run -a node tests/browser-auto-pip.mjs --regression-ref=3e33f9de7e2784175a7198c2a14d70dbff66306f
       - run: xvfb-run -a node tests/browser-auto-pip.mjs
+      - run: xvfb-run -a node tests/browser-html5-pip.mjs
+      - name: Verify HTML5 PiP in current stable Chrome
+        run: |
+          python3 - <<'PYCHROME'
+          import json, urllib.request, zipfile, os
+          release = json.load(urllib.request.urlopen('https://googlechromelabs.github.io/chrome-for-testing/last-known-good-versions-with-downloads.json'))['channels']['Stable']
+          url = next(item['url'] for item in release['downloads']['chrome'] if item['platform'] == 'linux64')
+          urllib.request.urlretrieve(url, '/tmp/arc-stable-chrome.zip')
+          with zipfile.ZipFile('/tmp/arc-stable-chrome.zip') as archive:
+              archive.extractall('/tmp/arc-stable-chrome')
+          for name in ['chrome', 'chrome_crashpad_handler', 'chrome_sandbox']:
+              os.chmod('/tmp/arc-stable-chrome/chrome-linux64/' + name, 0o755)
+          PYCHROME
+          ASOTC_CHROME_BINARY=/tmp/arc-stable-chrome/chrome-linux64/chrome xvfb-run -a node tests/browser-html5-pip.mjs

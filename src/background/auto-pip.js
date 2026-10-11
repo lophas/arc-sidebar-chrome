@@ -1,15 +1,16 @@
 const KEY = 'arcSidebarAutoPipEnabled';
 const pending = new Map();
 const activeTabs = new Map();
-function isYouTube(tab) {
+function supportsAutoPip(tab) {
   try {
     const url = new URL(tab?.pendingUrl || tab?.url || '');
-    return url.protocol === 'https:' && (url.hostname === 'youtube.com' || url.hostname.endsWith('.youtube.com'));
+    // Chrome's automatic media PiP is available on secure web pages.
+    return url.protocol === 'https:';
   } catch { return false; }
 }
 async function apply(tabId, activatedAt) {
   const tab = await chrome.tabs.get(tabId);
-  if (!isYouTube(tab)) return;
+  if (!supportsAutoPip(tab)) return;
   await chrome.scripting.executeScript({ target: { tabId }, world: 'MAIN', files: ['src/media/auto-pip.js'] });
   const stored = await chrome.storage.local.get(KEY);
   const current = await chrome.tabs.get(tabId);
@@ -30,11 +31,11 @@ function sync(tabId, activatedAt = 0) {
 async function syncAll() {
   const tabs = await chrome.tabs.query({});
   for (const tab of tabs) if (tab.active && !activeTabs.has(tab.windowId)) activeTabs.set(tab.windowId, tab.id);
-  await Promise.all(tabs.filter(isYouTube).map(tab => sync(tab.id)));
+  await Promise.all(tabs.filter(supportsAutoPip).map(tab => sync(tab.id)));
 }
 chrome.runtime.onMessage.addListener((message, sender, respond) => {
   if (message?.type !== 'arc-auto-pip-ready') return;
-  if (sender.id !== chrome.runtime.id || !isYouTube(sender.tab) || sender.tab?.id == null) { respond({ ok: false }); return; }
+  if (sender.id !== chrome.runtime.id || sender.frameId !== 0 || !supportsAutoPip(sender.tab) || sender.tab?.id == null) { respond({ ok: false }); return; }
   sync(sender.tab.id).then(() => respond({ ok: true }));
   return true;
 });
@@ -47,7 +48,7 @@ chrome.tabs.onActivated.addListener(({ tabId, windowId }) => {
 });
 chrome.windows.onRemoved.addListener(windowId => { activeTabs.delete(windowId); });
 chrome.tabs.onUpdated.addListener((tabId, info, tab) => {
-  if (isYouTube(tab) && (info.status === 'complete' || info.url)) sync(tabId);
+  if (supportsAutoPip(tab) && (info.status === 'complete' || info.url)) sync(tabId);
 });
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area === 'local' && changes[KEY]) syncAll().catch(() => {});

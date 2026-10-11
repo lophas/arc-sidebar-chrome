@@ -7,16 +7,17 @@ async function run(url,enabled) {
  const context={chrome,URL};vm.createContext(context);vm.runInContext(fs.readFileSync('src/background/auto-pip.js','utf8'),context);
  await vm.runInContext('sync(7)',context);return calls;
 }
-test('automatic PiP defaults enabled, prepares YouTube in page world and applies explicit off',async()=>{
- const on=await run('https://www.youtube.com/watch?v=test');
+test('automatic PiP defaults enabled, prepares secure video pages in page world and applies explicit off',async()=>{
+ const on=await run('https://example.test/player');
  assert.equal(on[0].world,'MAIN');assert.equal(on[0].files[0],'src/media/auto-pip.js');assert.equal(on.at(-1).args[0],true);
  assert.equal(on.at(-1).args[1],true);
  const off=await run('https://music.youtube.com/watch?v=test',false);assert.equal(off.at(-1).args[0],false);
 });
-test('PiP injection excludes other sites, embedded lookalikes and browser pages',async()=>{
- for(const url of ['https://youtube.com.evil.test/watch','https://example.test','chrome://settings','http://youtube.com/watch'])assert.equal((await run(url)).length,0,url);
+test('PiP injection accepts all HTTPS sites and excludes unsupported schemes',async()=>{
+ for(const url of ['https://example.test','https://rtl.hu/video','https://youtube.com.evil.test/watch'])assert.equal((await run(url)).at(-1).args[0],true,url);
+ for(const url of ['chrome://settings','http://example.test/video','file:///video.html','about:blank','invalid'])assert.equal((await run(url)).length,0,url);
 });
-test('tab activation updates the previous YouTube tab and sends fresh active state to the destination',async()=>{
+test('tab activation updates the previous video tab and sends fresh active state to the destination',async()=>{
  const calls=[],handlers={};let active=7;
  const tabs=[{id:7,windowId:1,url:'https://www.youtube.com/watch?v=test'},{id:8,windowId:1,url:'https://example.test'}];
  const chrome={runtime:{onMessage:{addListener(){}}},windows:{onRemoved:{addListener(){}}},tabs:{get:async id=>({...tabs.find(tab=>tab.id===id),active:id===active}),query:async()=>tabs.map(tab=>({...tab,active:tab.id===active})),onActivated:{addListener:fn=>handlers.activate=fn},onUpdated:{addListener(){}}},storage:{local:{get:async()=>({})},onChanged:{addListener(){}}},scripting:{executeScript:async request=>{if(request.args)calls.push({id:request.target.tabId,args:request.args});}}};
