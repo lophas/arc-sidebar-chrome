@@ -1,7 +1,7 @@
 (() => {
   if (window.top !== window || !navigator.mediaSession || !document.pictureInPictureEnabled) return;
   const KEY = '__arcSidebarAutoPip';
-  const VERSION = 7;
+  const VERSION = 8;
   if (globalThis[KEY]?.version === VERSION) return;
   globalThis[KEY]?.dispose();
   const session = navigator.mediaSession;
@@ -9,6 +9,7 @@
   let siteHandler = null;
   let enabled = false;
   let ownedVideo = null;
+  let observedVideo = null;
   let returnVideo = null;
   let ownedPortal = null;
   let opening = false;
@@ -40,17 +41,44 @@
     requestAnimationFrame(resize);
   };
   const setHandler = handler => originalSetter.call(session, 'enterpictureinpicture', handler);
-  const playingVideo = () => [...document.querySelectorAll('video')]
-    .filter(video => !video.paused && !video.ended && !video.muted && video.volume > 0 && video.readyState >= 2 && video.videoWidth > 0 && !video.disablePictureInPicture)
+  // Scan only when selecting a player, not on a timer or every DOM mutation.
+  // One top-frame Media Session handles ordinary, shadow and same-origin
+  // embedded videos. Cross-origin/sandboxed frames remain browser boundaries.
+  const mediaRoots = () => {
+    const roots = new Set();
+    const visit = root => {
+      if (!root || roots.has(root)) return;
+      roots.add(root);
+      for (const element of root.querySelectorAll('*')) {
+        if (element.shadowRoot) visit(element.shadowRoot);
+        if (element.localName === 'iframe' || element.localName === 'frame') {
+          try { visit(element.contentDocument); } catch {}
+        }
+      }
+    };
+    visit(document);
+    return [...roots];
+  };
+  const videosIn = roots => [...new Set(roots.flatMap(root => [...root.querySelectorAll('video')]))];
+  const videoDocument = video => video.ownerDocument || document;
+  const inNativePip = video => video && (video.getRootNode?.().pictureInPictureElement || videoDocument(video).pictureInPictureElement) === video;
+  const playingVideo = (roots = mediaRoots()) => videosIn(roots)
+    .filter(video => !video.paused && !video.ended && !video.muted && video.volume > 0 && video.readyState >= 2 && video.videoWidth > 0 && !video.disablePictureInPicture && typeof video.requestPictureInPicture === 'function' && videoDocument(video).pictureInPictureEnabled !== false)
     .sort((a, b) => b.videoWidth * b.videoHeight - a.videoWidth * a.videoHeight)[0];
+  const watchVideo = video => {
+    observedVideo?.removeEventListener?.('leavepictureinpicture', onLeave);
+    observedVideo = video;
+    // An iframe/shadow event does not reach the top document reliably.
+    observedVideo?.addEventListener?.('leavepictureinpicture', onLeave);
+  };
   const restorePlayer = video => {
     if (!video) return;
     // Native leave events and YouTube's visibility handlers can arrive in either
     // order. Let them finish before correcting a stale player-side PiP state.
     requestAnimationFrame(() => {
-      if (document.visibilityState !== 'visible' || document.pictureInPictureElement || window.documentPictureInPicture?.window || !video.isConnected) return;
-      const player = video.closest('.html5-video-player');
-      if (!player) return;
+      if (document.visibilityState !== 'visible' || inNativePip(video) || window.documentPictureInPicture?.window || !video.isConnected) return;
+      const player = video.closest?.('.html5-video-player');
+      if (!player) { if (returnVideo === video) returnVideo = null; return; }
       const automaticReturn = returnVideo === video;
       try {
         // YouTube can report background state (3) until focus catches up with
@@ -78,8 +106,9 @@
     }
     const video = ownedVideo;
     ownedVideo = null;
-    if (video && document.pictureInPictureElement === video) {
-      try { await document.exitPictureInPicture(); } catch {}
+    watchVideo(null);
+    if (inNativePip(video)) {
+      try { await videoDocument(video).exitPictureInPicture(); } catch {}
     }
     restorePlayer(video || returnVideo);
   };
@@ -150,9 +179,11 @@
     } finally { portalOpening = false; }
   };
   const enterAutomatic = async () => {
-    lastSkip = !enabled ? 'disabled' : disposed ? 'disposed' : opening ? 'pending' : dismissed ? 'dismissed' : document.pictureInPictureElement ? 'existing-video-pip' : window.documentPictureInPicture?.window ? 'existing-document-pip' : null;
+    lastSkip = !enabled ? 'disabled' : disposed ? 'disposed' : opening ? 'pending' : dismissed ? 'dismissed' : window.documentPictureInPicture?.window ? 'existing-document-pip' : null;
     if (lastSkip) return;
-    const video = playingVideo();
+    const roots = mediaRoots();
+    if (roots.some(root => root.pictureInPictureElement)) { lastSkip = 'existing-video-pip'; return; }
+    const video = playingVideo(roots);
     if (!video) { lastSkip = 'no-eligible-video'; return; }
     const epoch = activationEpoch;
     requestStartedAt = Date.now();
@@ -162,16 +193,21 @@
     try {
       // YouTube's native-video PiP bookkeeping can leave its watch page blank.
       // Document PiP keeps the SAME player and explicitly returns its DOM node.
-      if (!(preferNativeVideo && typeof video.requestPictureInPicture === 'function') && typeof window.documentPictureInPicture?.requestWindow === 'function') {
+      // Keep the proven YouTube adapter. Other HTML5 players stay in their own
+      // document and use native video PiP without adopting/moving any DOM.
+      if (!preferNativeVideo && videoDocument(video) === document && video.closest?.('.html5-video-player') && typeof window.documentPictureInPicture?.requestWindow === 'function') {
         await openPortal(video, epoch);
         return;
       }
+      watchVideo(video);
       await video.requestPictureInPicture();
-      if (document.pictureInPictureElement === video) { ownedVideo = video; returnVideo = video; trace('video-player-opened'); }
+      if (inNativePip(video)) { ownedVideo = video; returnVideo = video; trace('video-player-opened'); }
+      else watchVideo(null);
       // PiP can also make a native video's background opener visible. Chrome
       // owns automatic return/closure; we close explicitly only when disabled.
       if (!enabled || disposed || epoch !== activationEpoch) await closeOwned();
     } catch (error) {
+      watchVideo(null);
       lastError = `${error.name}: ${error.message}`;
       // Permission denial/unsupported media must not create extension errors.
     } finally { opening = false; }
@@ -202,7 +238,7 @@
       dismissed = false;
       // Automatic Document PiP is returned by pagehide, including when Chrome
       // closes it before the source tab's activation/visibility events arrive.
-      if (portalOpening || ownedPortal || (ownedVideo && document.pictureInPictureElement === ownedVideo)) return;
+      if (portalOpening || ownedPortal || inNativePip(ownedVideo)) return;
       const video = returnVideo;
       closeOwned('visibility-recovery').then(() => restorePlayer(video));
     }
@@ -211,6 +247,7 @@
     if (event.target !== ownedVideo) return;
     trace('video-player-left');
     ownedVideo = null;
+    watchVideo(null);
     if (document.visibilityState === 'hidden') dismissed = true;
     else restorePlayer(event.target);
   };
@@ -221,7 +258,7 @@
     version: VERSION,
     getState() {
       return { version: VERSION, enabled, opening, player: ownedPortal ? 'document' : ownedVideo ? 'video' : 'none', visibility: document.visibilityState, focused: hasFocus(), sourceActive, lastAction, lastSkip, lastError, recentEvents: recentEvents.map(event => ({ ...event })),
-        videos: [...document.querySelectorAll('video')].map(video => ({ paused: video.paused, muted: video.muted, volume: video.volume, readyState: video.readyState, videoWidth: video.videoWidth, disablePictureInPicture: video.disablePictureInPicture })) };
+        videos: videosIn(mediaRoots()).map(video => ({ paused: video.paused, muted: video.muted, volume: video.volume, readyState: video.readyState, videoWidth: video.videoWidth, disablePictureInPicture: video.disablePictureInPicture })) };
     },
     configure(value, active, activatedAt = 0) {
       if (disposed) return false;
@@ -240,7 +277,7 @@
       }
       if (!enabled) closeOwned('disabled');
       // Also recover a stale player left by the previous injected version.
-      if (document.visibilityState === 'visible') restorePlayer(playingVideo());
+      if (document.visibilityState === 'visible' && document.querySelectorAll('.html5-video-player').length) restorePlayer(playingVideo());
       try { setHandler(enabled ? handler : siteHandler); return true; }
       catch { enabled = false; return false; }
     },
