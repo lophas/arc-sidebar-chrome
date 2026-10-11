@@ -62,7 +62,7 @@ Search and Favorites stay at the top, the Space switcher stays at the bottom, an
 
 ### Automatic Picture-in-Picture (PiP)
 
-The automatic mini player is **on by default**. When a video is playing with sound, switching to another tab opens it in a floating Picture-in-Picture window. Returning to the video tab puts the video back in its page without restarting playback. Supported HTML5 videos on HTTPS pages can use the mini player, including videos inside open shadow roots and accessible same-origin embeds. Player support and Chrome’s per-site Auto PiP permission determine availability. Paused or muted videos stay in the page. A Picture-in-Picture window you open manually stays open when you return.
+The automatic mini player is **on by default**. When a video is playing with sound, switching to another tab opens it in a floating Picture-in-Picture window. Returning to the video tab puts the video back in its page without restarting playback. Works with compatible HTML5 players on HTTPS websites, including YouTube and supported embedded videos. Availability depends on the player and Chrome’s per-site Auto PiP permission. Paused or muted videos stay in the page. A Picture-in-Picture window you open manually stays open when you return.
 
 Use **Extension options → Automatic video mini player** to turn the feature on or off. Changes apply to already-open video tabs, and the preference is included in backups.
 

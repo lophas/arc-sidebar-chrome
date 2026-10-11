@@ -7,6 +7,7 @@ import { execFileSync } from 'node:child_process';
 import { chromium } from 'playwright-core';
 const executable = ['google-chrome', 'chromium', 'chromium-browser'].map(name => { try { return execFileSync('which', [name], { encoding: 'utf8' }).trim(); } catch { return null; } }).find(Boolean);
 assert.ok(executable, 'Chrome executable required');
+const baseURL = 'https://example.com/arc-pip-test/';
 const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'arc-html5-pip-'));
 const video = '<video id="video" src="video.webm" loop controls width="320"></video><button id="play">Play</button><button id="manual">Manual PiP</button>';
 const controls = '<script>play.onclick=()=>video.play();manual.onclick=()=>video.requestPictureInPicture();</script>';
@@ -25,10 +26,15 @@ try {
     if (mode === 'embedded' || mode === 'nested') markup = `<iframe src="${mode === 'nested' ? 'nested' : 'embedded'}.html" allow="picture-in-picture"></iframe>`;
     fs.writeFileSync(path.join(directory, 'player.html'), '<!doctype html><title>Generic HTML5 PiP</title><script src="agent.js"></script>'+markup+'<script>__arcSidebarAutoPip.configure(true);</script>');
     context = await chromium.launchPersistentContext(profile, { executablePath: executable, headless: false, ignoreDefaultArgs: ['--mute-audio'], args: ['--no-sandbox', '--allow-file-access-from-files', '--enable-features=AutoPictureInPictureForVideoPlayback,MediaSessionEnterPictureInPicture'] });
+    await context.route(baseURL+'**', async route => {
+      const name = path.basename(new URL(route.request().url()).pathname);
+      const type = name.endsWith('.js') ? 'text/javascript' : name.endsWith('.webm') ? 'video/webm' : 'text/html';
+      await route.fulfill({ status: 200, contentType: type, body: fs.readFileSync(path.join(directory, name)) });
+    });
     const page = await context.newPage();
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
-    await page.goto(pathToFileURL(path.join(directory, 'player.html')).href);
+    await page.goto(mode === 'embedded' || mode === 'nested' ? baseURL+'player.html' : pathToFileURL(path.join(directory, 'player.html')).href);
     await page.bringToFront();
     let frame = page.mainFrame();
     if (mode === 'embedded' || mode === 'nested') {
@@ -43,7 +49,7 @@ try {
     const other = await context.newPage();
     await other.goto('about:blank');await other.bringToFront();
     try { await page.waitForFunction(() => __arcSidebarAutoPip.getState().player === 'video', {}, { timeout: 15000 }); }
-    catch (error) { console.error(mode, await page.evaluate(() => __arcSidebarAutoPip.getState())); throw error; }
+    catch (error) { console.error(mode, await page.evaluate(() => __arcSidebarAutoPip.getState()));console.error('Frame PiP support:',await frame.evaluate(()=>({enabled:document.pictureInPictureEnabled,active:navigator.userActivation.isActive,origin:location.origin}))); throw error; }
     await page.evaluate(() => __arcSidebarAutoPip.configure(true, false));
     await page.evaluate(() => __arcSidebarAutoPip.configure(true, true, Date.now()-10000));
     await page.waitForTimeout(200);
