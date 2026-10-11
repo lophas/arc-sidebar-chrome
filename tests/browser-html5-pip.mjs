@@ -31,6 +31,7 @@ try {
       const type = name.endsWith('.js') ? 'text/javascript' : name.endsWith('.webm') ? 'video/webm' : 'text/html';
       await route.fulfill({ status: 200, contentType: type, body: fs.readFileSync(path.join(directory, name)) });
     });
+    console.log('Chrome version:', context.browser().version());
     const page = await context.newPage();
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
@@ -44,7 +45,9 @@ try {
     }
     await frame.locator('#play').click();
     await frame.waitForFunction(() => { const video=document.querySelector('video')||document.getElementById('host')?.shadowRoot.querySelector('video');return !video.paused&&video.videoWidth>0; });
-    await page.waitForTimeout(1200);
+    // Expire the Play click’s transient activation. This must exercise the
+    // browser’s automatic PiP grant, not a recent user gesture.
+    await page.waitForTimeout(6500);
     const previous = await frame.evaluate(() => { const video=document.querySelector('video')||document.getElementById('host')?.shadowRoot.querySelector('video');window.originalVideo=video;window.originalParent=video.parentNode;return video.getVideoPlaybackQuality().totalVideoFrames; });
     const other = await context.newPage();
     await other.goto('about:blank');await other.bringToFront();
