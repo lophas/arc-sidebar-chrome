@@ -1,7 +1,7 @@
 (() => {
   if (window.top !== window || !navigator.mediaSession || !document.pictureInPictureEnabled) return;
   const KEY = '__arcSidebarAutoPip';
-  const VERSION = 8;
+  const VERSION = 9;
   if (globalThis[KEY]?.version === VERSION) return;
   globalThis[KEY]?.dispose();
   const session = navigator.mediaSession;
@@ -23,8 +23,10 @@
   let activationEpoch = 0;
   let requestStartedAt = 0;
   let lastActivationAt = 0;
+  let lastAutomaticOpenAt = 0;
   const recentEvents = [];
   const trace = event => {
+    if (event === 'video-player-opened' || event === 'document-player-opened') lastAutomaticOpenAt = Date.now();
     recentEvents.push({ event, at: Date.now(), sourceActive });
     if (recentEvents.length > 12) recentEvents.shift();
   };
@@ -256,6 +258,12 @@
   document.addEventListener('yt-navigate-start', closeOwned);
   globalThis[KEY] = {
     version: VERSION,
+    getGuideState(inspectVideo = false) {
+      const roots = inspectVideo && enabled ? mediaRoots() : null;
+      const hasPip = Boolean(ownedPortal || ownedVideo || document.pictureInPictureElement || window.documentPictureInPicture?.window);
+      return { lastAutomaticOpenAt, opening, hasPip,
+        eligible: Boolean(roots && !opening && !hasPip && !roots.some(root => root.pictureInPictureElement) && playingVideo(roots)) };
+    },
     getState() {
       return { version: VERSION, enabled, opening, player: ownedPortal ? 'document' : ownedVideo ? 'video' : 'none', visibility: document.visibilityState, focused: hasFocus(), sourceActive, lastAction, lastSkip, lastError, recentEvents: recentEvents.map(event => ({ ...event })),
         videos: videosIn(mediaRoots()).map(video => ({ paused: video.paused, muted: video.muted, volume: video.volume, readyState: video.readyState, videoWidth: video.videoWidth, disablePictureInPicture: video.disablePictureInPicture })) };

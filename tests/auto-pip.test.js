@@ -20,6 +20,18 @@ test('native automatic PiP returns only its own video to the source page; manual
  const s=setup();s.controller.configure(true);await s.auto();assert.equal(s.requests(),1);await s.document.exitPictureInPicture();s.visible();assert.equal(s.exits(),1);
  s.document.pictureInPictureElement=s.video;await s.auto();s.visible();assert.equal(s.requests(),1);assert.equal(s.exits(),1);
 });
+test('guide diagnostics detect eligible video and retain successful PiP after return without affecting playback',async()=>{
+ const s=setup();s.controller.configure(true,true);
+ assert.equal(s.controller.getGuideState(true).eligible,true);
+ assert.equal(s.controller.getGuideState(false).eligible,false);
+ assert.equal(s.controller.getGuideState(false).lastAutomaticOpenAt,0);
+ await s.auto();const opened=s.controller.getGuideState(false).lastAutomaticOpenAt;
+ assert.ok(opened>0);assert.equal(s.controller.getGuideState(true).eligible,false);
+ await s.document.exitPictureInPicture();s.visible();
+ assert.equal(s.controller.getGuideState(true).lastAutomaticOpenAt,opened);
+ s.video.muted=true;assert.equal(s.controller.getGuideState(true).eligible,false);
+ s.controller.configure(false);assert.equal(s.controller.getGuideState(true).eligible,false);
+});
 test('paused, muted, ended and unsupported players never enter automatic PiP',async()=>{
  for(const [key,value] of [['paused',true],['muted',true],['volume',0],['ended',true],['readyState',1],['videoWidth',0],['disablePictureInPicture',true]]){
   const s=setup();s.controller.configure(true);s.video[key]=value;await s.auto();assert.equal(s.requests(),0,key);
