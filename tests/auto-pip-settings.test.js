@@ -2,67 +2,32 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
-import { autoPipSite, openAutoPipSiteSettings } from '../src/shared/auto-pip-settings.js';
+import { autoPipSite, openAutoPipSiteSettings, AUTO_PIP_SETTINGS_URL } from '../src/shared/auto-pip-settings.js';
 
-test('site permission links use only the HTTPS origin, including ports and pending navigation', () => {
-  const site = autoPipSite({ url: 'https://user:secret@example.test:8443/video?token=private#time' });
-  assert.equal(site.host, 'example.test:8443');
-  assert.equal(site.settingsUrl, 'chrome://settings/content/siteDetails?site=https%3A%2F%2Fexample.test%3A8443');
-  assert.equal(autoPipSite({ url: 'https://old.test', pendingUrl: 'https://new.test/player' }).host, 'new.test');
-  for (const url of ['chrome://settings', 'http://example.test', 'file:///video', 'about:blank', 'invalid']) {
-    assert.equal(autoPipSite({ url }), null);
-  }
+test('guide uses the HTTPS origin without credentials, path or private query data', () => {
+ const site=autoPipSite({url:'https://user:secret@example.test:8443/video?token=private#time'});
+ assert.deepEqual(site,{host:'example.test:8443',origin:'https://example.test:8443',settingsUrl:AUTO_PIP_SETTINGS_URL});
+ assert.equal(autoPipSite({url:'https://old.test',pendingUrl:'https://new.test/player'}).host,'new.test');
+ for(const url of ['chrome://settings','http://example.test','file:///video','about:blank','invalid'])assert.equal(autoPipSite({url}),null);
 });
 
-test('click resolves the current source in the sidebar window and preserves the video tab', async () => {
-  const calls = [];
-  let active = { url: 'https://first.test', index: 2 };
-  const browser = { tabs: {
-    async query(options) { calls.push(options); return [active]; },
-    async create(options) { calls.push(options); }
-  } };
-  active = { url: 'https://current.test/watch', index: 5 };
-  await openAutoPipSiteSettings(7, browser);
-  assert.deepEqual(calls, [
-    { active: true, windowId: 7 },
-    { url: 'chrome://settings/content/siteDetails?site=https%3A%2F%2Fcurrent.test', windowId: 7, index: 6 }
-  ]);
-  active = { url: 'chrome://settings' };
-  await assert.rejects(openAutoPipSiteSettings(7, browser), /HTTPS video page/);
-  assert.equal(calls.length, 3, 'no settings tab created for a protected source');
+test('settings open beside the guide source tab in its own window and never navigate the video',async()=>{
+ const calls=[];let tab={id:12,windowId:7,url:'https://video.test/watch',index:5};
+ const browser={tabs:{get:async id=>{calls.push(['get',id]);return tab;},create:async options=>calls.push(options)}};
+ await openAutoPipSiteSettings(12,browser);
+ assert.deepEqual(calls,[['get',12],{url:AUTO_PIP_SETTINGS_URL,windowId:7,index:6}]);
+ tab={url:'chrome://settings'};await assert.rejects(openAutoPipSiteSettings(12,browser),/HTTPS video page/);
+ assert.equal(calls.length,3);
 });
 
-test('sleeping overlays do no reads, and stale tab queries cannot restore a previous site', async () => {
-  const handlers = {}, queries = [];
-  let active = false;
-  const button = { hidden: true, setAttribute() {}, addEventListener() {} };
-  const event = key => ({ addListener: fn => { handlers[key] = fn; } });
-  const chrome = {
-    windows: { getCurrent: async () => ({ id: 7 }) },
-    tabs: {
-      query: options => new Promise((resolve, reject) => queries.push({ options, resolve, reject })),
-      onActivated: event('activate'), onUpdated: event('update'), onRemoved: event('remove'), onReplaced: event('replace')
-    },
-    storage: { local: { get: async () => ({}) }, onChanged: event('storage') }
-  };
-  const source = fs.readFileSync('src/sidepanel/auto-pip-settings.js', 'utf8').replace(/^import .*;\n/gm, '');
-  const context = vm.createContext({ chrome, autoPipSite, openAutoPipSiteSettings, isSidebarActive: () => active,
-    document: { querySelector: () => button }, window: { addEventListener: (key, fn) => { handlers[key] = fn; } } });
-  await vm.runInContext(`(async () => { ${source} })()`, context);
-  assert.equal(queries.length, 0);
-  active = true; handlers['arc-sidebar-activity']({ detail: { active: true } });
-  handlers.activate({ windowId: 8 });
-  assert.equal(queries.length, 1, 'other windows do not change the button');
-  handlers.activate({ windowId: 7 });
-  queries[1].resolve([{ id: 2, url: 'https://new.test' }]);
-  await new Promise(resolve => setImmediate(resolve));
-  assert.equal(button.hidden, false); assert.match(button.title, /new.test/);
-  queries[0].reject(new Error('Old tab closed'));
-  await new Promise(resolve => setImmediate(resolve));
-  assert.equal(button.hidden, false, 'stale failures do not hide current site');
-  handlers.activate({ windowId: 7 });
-  active = false; handlers['arc-sidebar-activity']({ detail: { active: false } });
-  queries[2].resolve([{ id: 3, url: 'https://other.test' }]);
-  await new Promise(resolve => setImmediate(resolve));
-  assert.equal(button.hidden, true, 'sleeping overlay cannot reappear after an in-flight read');
+test('only the extension top-frame guide can open the fixed PiP route, without trusting a supplied tab or URL',async()=>{
+ let listener;const calls=[];
+ const chrome={runtime:{id:'test',onMessage:{addListener:fn=>{listener=fn;}}}};
+ const source=fs.readFileSync('src/background/auto-pip-settings.js','utf8').replace(/^import .*;\n/gm,'');
+ vm.runInNewContext(source,{chrome,autoPipSite,openAutoPipSiteSettings:async id=>calls.push(id)});
+ const sender={id:'test',frameId:0,tab:{id:12,url:'https://video.test'}};
+ const send=s=>new Promise(resolve=>listener({type:'arc-auto-pip-open-settings',tabId:99,url:'https://untrusted.test'},s,resolve));
+ assert.equal((await send(sender)).ok,true);assert.deepEqual(calls,[12]);
+ for(const s of [{...sender,id:'other'}, {...sender,frameId:2}, {...sender,tab:{id:12,url:'chrome://settings'}}])assert.equal((await send(s)).ok,false);
+ assert.deepEqual(calls,[12]);
 });

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 async function run(url,enabled) {
- const calls=[];const handlers={};const chrome={runtime:{onMessage:{addListener:fn=>handlers.message=fn}},windows:{onRemoved:{addListener(){}}},tabs:{get:async id=>({id,url,active:true}),query:async()=>[{id:7,url}],onActivated:{addListener(){}},onUpdated:{addListener(){}}},storage:{local:{get:async()=>({arcSidebarAutoPipEnabled:enabled})},onChanged:{addListener(){}}},scripting:{executeScript:async request=>calls.push({world:request.world,files:request.files,args:request.args})}};
+ const calls=[];const handlers={};const chrome={runtime:{onMessage:{addListener:fn=>handlers.message=fn}},windows:{onRemoved:{addListener(){}}},tabs:{onRemoved:{addListener(){}},get:async id=>({id,url,active:true}),query:async()=>[{id:7,url}],onActivated:{addListener(){}},onUpdated:{addListener(){}}},storage:{local:{get:async()=>({arcSidebarAutoPipEnabled:enabled})},onChanged:{addListener(){}}},scripting:{executeScript:async request=>calls.push({world:request.world,files:request.files,args:request.args})}};
  const context={chrome,URL};vm.createContext(context);vm.runInContext(fs.readFileSync('src/background/auto-pip.js','utf8'),context);
  await vm.runInContext('sync(7)',context);return calls;
 }
@@ -20,7 +20,7 @@ test('PiP injection accepts all HTTPS sites and excludes unsupported schemes',as
 test('tab activation updates the previous video tab and sends fresh active state to the destination',async()=>{
  const calls=[],handlers={};let active=7;
  const tabs=[{id:7,windowId:1,url:'https://www.youtube.com/watch?v=test'},{id:8,windowId:1,url:'https://example.test'}];
- const chrome={runtime:{onMessage:{addListener(){}}},windows:{onRemoved:{addListener(){}}},tabs:{get:async id=>({...tabs.find(tab=>tab.id===id),active:id===active}),query:async()=>tabs.map(tab=>({...tab,active:tab.id===active})),onActivated:{addListener:fn=>handlers.activate=fn},onUpdated:{addListener(){}}},storage:{local:{get:async()=>({})},onChanged:{addListener(){}}},scripting:{executeScript:async request=>{if(request.args)calls.push({id:request.target.tabId,args:request.args});}}};
+ const chrome={runtime:{onMessage:{addListener(){}}},windows:{onRemoved:{addListener(){}}},tabs:{onRemoved:{addListener(){}},get:async id=>({...tabs.find(tab=>tab.id===id),active:id===active}),query:async()=>tabs.map(tab=>({...tab,active:tab.id===active})),onActivated:{addListener:fn=>handlers.activate=fn},onUpdated:{addListener(){}}},storage:{local:{get:async()=>({})},onChanged:{addListener(){}}},scripting:{executeScript:async request=>{if(request.args)calls.push({id:request.target.tabId,args:request.args});}}};
  const context={chrome,URL};vm.createContext(context);vm.runInContext(fs.readFileSync('src/background/auto-pip.js','utf8'),context);
  await vm.runInContext('sync(7)',context);calls.length=0;
  active=8;handlers.activate({tabId:8,windowId:1});await vm.runInContext('sync(7)',context);

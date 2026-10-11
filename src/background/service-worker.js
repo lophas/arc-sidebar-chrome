@@ -1,5 +1,6 @@
 import './panel-layout.js';
 import './auto-pip.js';
+import './auto-pip-settings.js';
 import './sidebar-mode.js';
 import { refreshActiveSidebar } from './overlay-delivery.js';
 import { favoriteChildDestination, appendFavoriteChildren } from './favorite-child-tabs.js';
