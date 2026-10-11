@@ -5,7 +5,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { execFileSync } from 'node:child_process';
 import { chromium } from 'playwright-core';
-const executable = ['google-chrome', 'chromium', 'chromium-browser'].map(name => { try { return execFileSync('which', [name], { encoding: 'utf8' }).trim(); } catch { return null; } }).find(Boolean);
+const executable = process.env.ASOTC_CHROME_BINARY || ['google-chrome', 'chromium', 'chromium-browser'].map(name => { try { return execFileSync('which', [name], { encoding: 'utf8' }).trim(); } catch { return null; } }).find(Boolean);
 assert.ok(executable, 'Chrome executable required');
 const baseURL = 'https://example.com/arc-pip-test/';
 const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'arc-html5-pip-'));
