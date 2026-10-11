@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import { readFile } from 'node:fs/promises';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { resolve, extname } from 'node:path';
 import { chromium } from 'playwright-core';
 const root=process.cwd();
@@ -398,11 +400,19 @@ try{
  });
  await miniPlayerButton.waitFor({state:'hidden'});
  // Verify that the constructed Chrome URL reaches the actual permission row.
- const settingsPage=await browser.newPage();
- await settingsPage.goto('chrome://settings/content/siteDetails?site=https%3A%2F%2Fvideo.test');
- await settingsPage.getByText('Automatic picture-in-picture',{exact:true}).waitFor();
- assert.ok(settingsPage.url().includes('siteDetails?site=https%3A%2F%2Fvideo.test'));
- await settingsPage.close();
+ // Settings redirects out of incognito, so use a regular temporary profile.
+ const settingsProfile=mkdtempSync(resolve(tmpdir(),'arc-pip-permissions-'));
+ let settingsContext;
+ try {
+  settingsContext=await chromium.launchPersistentContext(settingsProfile,{executablePath:process.argv[2]||'/usr/bin/google-chrome',headless:true,args:['--no-sandbox']});
+  const settingsPage=await settingsContext.newPage();
+  await settingsPage.goto('chrome://settings/content/siteDetails?site=https%3A%2F%2Fvideo.test');
+  await settingsPage.getByText('Automatic picture-in-picture',{exact:true}).waitFor();
+  assert.ok(settingsPage.url().includes('siteDetails?site=https%3A%2F%2Fvideo.test'));
+ } finally {
+  await settingsContext?.close();
+  rmSync(settingsProfile,{recursive:true,force:true});
+ }
  console.log('PASS real Chrome: mini player site shortcut resolves current window/tab, hides when off or unsupported, and reaches the Auto PiP permission row');
  assert.deepEqual(errors,[]);console.log('PASS real Chrome: Space workflow rendering, drag-to-pin/pin/activate/close, group changes and Open-tabs view');
 }finally{await browser.close();await new Promise(resolve=>server.close(resolve));}
