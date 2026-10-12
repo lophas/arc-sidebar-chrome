@@ -84,6 +84,13 @@ try {
       await open();
       await page.waitForTimeout(750);
       assert.equal(await f.isOpen(), true, 'slide animation and delayed iframe initialization cannot close the panel');
+      if (side === 'right') {
+        const browserWidth = await page.evaluate(() => innerWidth);
+        await page.mouse.move(browserWidth - 1, 300); await page.waitForTimeout(650);
+        assert.equal(await f.isOpen(), true, 'moving right onto the native scrollbar retains the sidebar');
+        await page.mouse.move(browserWidth, 300); await page.waitForTimeout(650);
+        assert.equal(await f.isOpen(), true, 'the exact outer scrollbar boundary also retains the sidebar');
+      }
       await page.mouse.move(inside, 300);
       await page.waitForFunction(() => !!arcTestShadow.querySelector('iframe').contentDocument?.querySelector('#inside'));
       const frame = page.frames().find(frame => frame.url().includes('/src/sidepanel/index.html'));
@@ -117,7 +124,7 @@ try {
       await other.close(); await open();
       await page.mouse.move(640, 300);
       await page.waitForFunction(() => !arcTestShadow.querySelector('.panel').classList.contains('open'));
-      console.log(`PASS real Chrome edge hover: ${side}, DPR ${scale}, zero deltas, scrollbars, iframe handoff, stable deadlines, repeated opening and actual tab return`);
+      console.log(`PASS real Chrome edge hover: ${side}, DPR ${scale}, zero deltas, scrollbar retention, iframe handoff, stable deadlines, repeated opening and actual tab return`);
     }
     assert.deepEqual(f.errors, []);
     assert.equal(await page.locator('#arc-sidebar-overlay-host').count(), 1);

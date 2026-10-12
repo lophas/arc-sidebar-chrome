@@ -279,3 +279,34 @@ test('boundary events after tab return cannot manufacture pointer movement',asyn
  s.emit('document','pointermove',{clientX:990,movementX:0,movementY:0});s.advance(80);
  assert.equal(s.nodes['.panel'].classList.values.has('open'),true,'real coordinate movement still opens without movementX');
 });
+
+test('all scrollbar handoff events retain an open sidebar, including overlay scrollbars and the exact outer boundary',async()=>{
+ for(const contentWidth of [980,1000]){
+  const s=setup();await settled();s.context.document.documentElement.clientWidth=contentWidth;
+  s.emit('document','pointermove',{clientX:contentWidth-1,movementX:1});s.advance(80);
+  for(const x of [contentWidth,1000]){
+   const event={isTrusted:true,clientX:x,clientY:300,relatedTarget:null,target:s.context.document};
+   s.nodes.iframe.events.pointerleave[0](event);s.advance(100);
+   s.nodes['.panel'].events.pointerleave[0](event);s.advance(100);
+   s.emit('document','pointerleave',event);s.advance(100);
+   s.emit('document','pointermove',{clientX:x,movementX:1});s.advance(100);
+   s.changes.forEach(fn=>fn({type:'arc-sidebar-editor-state',open:false}));s.advance(1000);
+   assert.equal(s.nodes['.panel'].classList.values.has('open'),true,`scrollbar ${contentWidth}/${x} belongs to the retained sidebar area`);
+  }
+  s.emit('document','pointerleave',{target:s.context.document,clientX:1001,clientY:300});s.advance(800);
+  assert.equal(s.nodes['.panel'].classList.values.has('open'),false,'actually leaving the browser still closes');
+ }
+});
+test('scrollbar handoff preserves armed opening, but cannot open an idle panel',async()=>{
+ const s=setup();await settled();s.context.document.documentElement.clientWidth=980;
+ s.emit('document','pointermove',{clientX:990,movementX:1});
+ s.emit('document','pointerleave',{target:s.context.document,clientX:990,clientY:300});s.advance(100);
+ assert.equal(s.nodes['.panel'].classList.values.has('open'),false);
+ s.emit('document','pointermove',{clientX:979,movementX:-1});s.advance(40);
+ s.nodes['.edge'].events.pointerleave[0]({isTrusted:true,clientX:990,clientY:300,relatedTarget:null});
+ s.emit('document','pointermove',{clientX:990,movementX:1});
+ s.emit('document','pointerleave',{target:s.context.document,clientX:1000,clientY:300});s.advance(40);
+ assert.equal(s.nodes['.panel'].classList.values.has('open'),true,'all handoff events preserve the first opening deadline');
+ s.emit('document','pointermove',{clientX:400,movementX:-1});s.advance(800);
+ assert.equal(s.nodes['.panel'].classList.values.has('open'),false,'leaving inward toward page content still closes');
+});

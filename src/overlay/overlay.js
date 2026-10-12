@@ -1,7 +1,7 @@
 (() => {
   if (window.top !== window) return;
   const CONTROLLER_KEY = '__arcSidebarOverlayController';
-  const VERSION = 'edge-intent-v2';
+  const VERSION = 'edge-intent-v3';
   const previous = globalThis[CONTROLLER_KEY];
   if (previous?.version === VERSION && previous.active()) { previous.refresh(); return; }
   previous?.dispose();
@@ -60,9 +60,12 @@
       ? { x: event.clientX, y: event.clientY } : null;
     const distance = (p, s) => s.side === 'left' ? p.x : s.viewportWidth - p.x;
     const inViewport = (p, s) => p && p.x >= 0 && p.x <= s.viewportWidth && p.y >= 0 && p.y < s.viewportHeight;
-    const inPanel = (p, s) => inViewport(p, s) && distance(p, s) <= s.panelWidth + s.handleWidth;
+    // Native/overlay scrollbar events can land beyond the content viewport or
+    // exactly on its outer boundary. Every event uses the same retention area.
+    const inBrowser = (p, s) => p && p.x >= 0 && p.x <= s.browserWidth && p.y >= 0 && p.y < s.viewportHeight;
+    const inPanel = (p, s) => inBrowser(p, s) && distance(p, s) <= s.panelWidth + s.handleWidth;
     // Small inward jitter after reaching the edge must not cancel the intent.
-    const inOpeningZone = (p, s) => inViewport(p, s) && distance(p, s) <= s.edgeWidth + 8;
+    const inOpeningZone = (p, s) => inBrowser(p, s) && distance(p, s) <= s.edgeWidth + 8;
     const cancelOpen = () => { if (showTimer !== null) clearTimeout(showTimer); showTimer = null; };
     const cancelClose = () => { if (hideTimer !== null) clearTimeout(hideTimer); hideTimer = null; };
     const refreshClose = () => {
@@ -100,12 +103,14 @@
       },
       viewportLeave(event) {
         const s = state(), p = position(event);
-        // Classic scrollbars belong to Chrome, outside the content viewport.
-        // Preserve an already armed edge intent while crossing into that gutter.
-        if (s.side === 'right' && s.browserWidth > s.viewportWidth && p &&
-            p.x >= s.viewportWidth && p.x < s.browserWidth && p.y >= 0 && p.y < s.viewportHeight) {
-          point = { x: s.viewportWidth, y: p.y };
-          if (s.open) { overPanel = true; cancelClose(); }
+        if (s.open && inPanel(p, s)) {
+          point = p; overPanel = true; cancelClose();
+          return;
+        }
+        // Moving into the right scrollbar preserves existing intent; it never
+        // creates a new opening without preceding motion in the page.
+        if (s.side === 'right' && showTimer !== null && inOpeningZone(p, s)) {
+          point = p;
           return;
         }
         cancelOpen(); point = null; motionPoint = null; overPanel = false; refreshClose();

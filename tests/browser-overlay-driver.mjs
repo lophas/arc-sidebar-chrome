@@ -51,9 +51,9 @@ try {
       for(const listener of window.arcTestRuntimeListeners || []) listener({type:'arc-sidebar-apply-mode',mode,timeout:700},{},value=>{response=value;});
       return response?.version;
     },mode);
-    assert.equal(await applyMode('native'),'edge-intent-v2');
+    assert.equal(await applyMode('native'),'edge-intent-v3');
     assert.equal(await page.evaluate(()=>getComputedStyle(document.querySelector('#arc-sidebar-overlay-host')).display),'none');
-    assert.equal(await applyMode('overlay'),'edge-intent-v2');
+    assert.equal(await applyMode('overlay'),'edge-intent-v3');
     await hover();await page.waitForFunction(()=>arcTestShadow.querySelector('.panel').classList.contains('open'));
     await page.mouse.move(700,300);await page.waitForFunction(()=>!arcTestShadow.querySelector('.panel').classList.contains('open'));
     console.log('PASS real Chromium: reinjection reuses one overlay; Fixed deactivates it and Autohide reactivates it');
