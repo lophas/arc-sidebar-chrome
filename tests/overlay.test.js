@@ -267,3 +267,15 @@ test('right trigger follows the content viewport and preserves intent across the
  s.emit('document','pointerleave',{target:s.context.document,clientX:1001,clientY:300});s.advance(80);
  assert.equal(s.nodes['.panel'].classList.values.has('open'),false,'leaving the browser cancels a pending opening');
 });
+
+test('boundary events after tab return cannot manufacture pointer movement',async()=>{
+ const s=setup();await settled();
+ s.emit('document','pointermove',{clientX:999,movementX:1});s.advance(80);
+ s.context.document.visibilityState='hidden';s.emit('document','visibilitychange');
+ s.context.document.visibilityState='visible';s.emit('document','visibilitychange');await settled();
+ s.nodes['.panel'].events.pointerleave[0]({isTrusted:true,clientX:800,clientY:300,relatedTarget:null});
+ s.emit('document','pointermove',{clientX:999,movementX:0,movementY:0});s.advance(80);
+ assert.equal(s.nodes['.panel'].classList.values.has('open'),false,'geometry from a synthetic boundary change is not a motion baseline');
+ s.emit('document','pointermove',{clientX:990,movementX:0,movementY:0});s.advance(80);
+ assert.equal(s.nodes['.panel'].classList.values.has('open'),true,'real coordinate movement still opens without movementX');
+});

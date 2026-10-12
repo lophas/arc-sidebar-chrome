@@ -40,6 +40,9 @@ async function fixture(code, scale = 1) {
     return route.fulfill({ contentType: 'text/html', body: `<!doctype html><meta charset="utf-8"><title>Edge hover</title><body style="margin:0;height:1800px;background:#eee"><h1>Page content</h1><script>
       window.arcSettings={arcSidebarMode:'overlay',arcSidebarAutohideTimeout:500};
       window.arcTestRuntimeListeners=[];window.arcZeroMovement=true;
+      window.arcPointerLog=[];
+      document.addEventListener('pointermove',e=>{arcPointerLog.push({event:'move',x:e.clientX,y:e.clientY,dx:e.movementX,dy:e.movementY,visibility:document.visibilityState});if(arcPointerLog.length>20)arcPointerLog.shift();},true);
+      document.addEventListener('visibilitychange',()=>arcPointerLog.push({event:document.visibilityState}));
       window.chrome={storage:{local:{get:async()=>({...arcSettings}),set:async value=>Object.assign(arcSettings,value)},onChanged:{addListener(){},removeListener(){}}},runtime:{id:'test',getURL:path=>location.origin+'/'+path,sendMessage:async message=>message.type==='arc-sidebar-panel-layout'?{side:window.arcSide||'right'}:{open:false},onMessage:{addListener:fn=>arcTestRuntimeListeners.push(fn),removeListener:fn=>{arcTestRuntimeListeners=arcTestRuntimeListeners.filter(value=>value!==fn);}}}};
       </script>` });
   });
@@ -107,6 +110,7 @@ try {
       await page.bringToFront(); await page.waitForTimeout(250);
       assert.equal(await f.isOpen(), false, 'actual tab return does not reopen the sidebar');
       await page.mouse.move(edge, 300); await page.waitForTimeout(150);
+      if(await f.isOpen())console.log('Unexpected return hover:',JSON.stringify(await page.evaluate(()=>arcPointerLog)));
       assert.equal(await f.isOpen(), false, 'stationary zero-delta event after return cannot open');
       await other.close(); await open();
       await page.mouse.move(640, 300);

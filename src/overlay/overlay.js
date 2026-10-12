@@ -52,6 +52,7 @@
   // only actual pointer motion can arm an opening.
   function createEdgeHover({ state, open, close, showDelay }) {
     let point = null;
+    let motionPoint = null;
     let overPanel = false;
     let showTimer = null;
     let hideTimer = null;
@@ -77,8 +78,8 @@
     };
     return {
       cancelClose,
-      reset() { cancelOpen(); cancelClose(); point = null; overPanel = false; },
-      cancelOpening() { cancelOpen(); point = null; },
+      reset() { cancelOpen(); cancelClose(); point = null; motionPoint = null; overPanel = false; },
+      cancelOpening() { cancelOpen(); point = null; motionPoint = null; },
       refreshLocks: refreshClose,
       enter(event) {
         const p = position(event);
@@ -107,14 +108,15 @@
           if (s.open) { overPanel = true; cancelClose(); }
           return;
         }
-        cancelOpen(); point = null; overPanel = false; refreshClose();
+        cancelOpen(); point = null; motionPoint = null; overPanel = false; refreshClose();
       },
       move(event) {
         if (!event.isTrusted || event.pointerType === 'touch') return;
         const next = position(event);
         if (!next) return;
         const moved = Boolean(event.movementX || event.movementY) ||
-          Boolean(point && (next.x !== point.x || next.y !== point.y));
+          Boolean(motionPoint && (next.x !== motionPoint.x || next.y !== motionPoint.y));
+        motionPoint = next;
         point = next;
         const s = state();
         if (!s.enabled) { this.reset(); return; }
