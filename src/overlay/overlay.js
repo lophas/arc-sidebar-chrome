@@ -97,7 +97,18 @@
         overPanel = inPanel(p, s);
         refreshClose();
       },
-      viewportLeave() { cancelOpen(); point = null; overPanel = false; refreshClose(); },
+      viewportLeave(event) {
+        const s = state(), p = position(event);
+        // Classic scrollbars belong to Chrome, outside the content viewport.
+        // Preserve an already armed edge intent while crossing into that gutter.
+        if (s.side === 'right' && s.browserWidth > s.viewportWidth && p &&
+            p.x >= s.viewportWidth && p.x < s.browserWidth && p.y >= 0 && p.y < s.viewportHeight) {
+          point = { x: s.viewportWidth, y: p.y };
+          if (s.open) { overPanel = true; cancelClose(); }
+          return;
+        }
+        cancelOpen(); point = null; overPanel = false; refreshClose();
+      },
       move(event) {
         if (!event.isTrusted || event.pointerType === 'touch') return;
         const next = position(event);
@@ -137,7 +148,7 @@
     const MIN_PANEL_WIDTH = 120;
     const MAX_PANEL_WIDTH = 720;
     const WIDTH_STORAGE_KEY = 'arcSidebarOverlayWidth';
-    const EDGE_WIDTH = 7;
+    const EDGE_WIDTH = 16;
     const RESIZE_HANDLE_WIDTH = 14;
     const SHOW_DELAY = 80;
     const themeMedia = window.matchMedia('(prefers-color-scheme: dark)');
@@ -304,7 +315,8 @@
     const hover = createEdgeHover({
       state: () => ({ open: isOpen, locked: isResizing || editorActive, side: edgeSide,
         enabled: !contextInvalid && !suspended && sidebarMode === OVERLAY_MODE && !nativePanelOpen && document.visibilityState !== 'hidden',
-        viewportWidth: window.innerWidth, viewportHeight: window.innerHeight,
+        viewportWidth: document.documentElement.clientWidth || window.innerWidth,
+        viewportHeight: document.documentElement.clientHeight || window.innerHeight, browserWidth: window.innerWidth,
         panelWidth: currentWidth, edgeWidth: EDGE_WIDTH, handleWidth: RESIZE_HANDLE_WIDTH, hideDelay }),
       open: () => { ensureHost(); openPanel(); }, close: closePanel, showDelay: SHOW_DELAY
     });
@@ -354,7 +366,7 @@
       });
     }
     listen(document, 'pointerleave', event => {
-      if (event.target === document || event.target === document.documentElement) hover.viewportLeave();
+      if (event.target === document || event.target === document.documentElement) hover.viewportLeave(event);
     });
 
     listen(resizeHandle, 'pointerdown', event => {

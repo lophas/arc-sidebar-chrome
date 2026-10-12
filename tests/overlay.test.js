@@ -255,3 +255,15 @@ test('untrusted and touch motion cannot arm an edge hover',async()=>{
  const s=setup();await settled();
  for(const event of [{clientX:999,movementX:1,isTrusted:false},{clientX:999,movementX:1,pointerType:'touch'}]){s.emit('document','pointermove',event);s.advance(100);assert.equal(s.nodes['.panel'].classList.values.has('open'),false);}
 });
+
+test('right trigger follows the content viewport and preserves intent across the native scrollbar gutter',async()=>{
+ const s=setup();await settled();s.context.document.documentElement.clientWidth=980;
+ s.emit('document','pointermove',{clientX:979,movementX:1});
+ s.emit('document','pointerleave',{target:s.context.document,clientX:990,clientY:300});s.advance(80);
+ assert.equal(s.nodes['.panel'].classList.values.has('open'),true,'browser scrollbar width cannot make the DOM edge unreachable');
+ s.emit('document','pointerleave',{target:s.context.document,clientX:1001,clientY:300});s.advance(800);
+ assert.equal(s.nodes['.panel'].classList.values.has('open'),false,'actually leaving Chrome still closes');
+ s.emit('document','pointermove',{clientX:979,movementX:1});
+ s.emit('document','pointerleave',{target:s.context.document,clientX:1001,clientY:300});s.advance(80);
+ assert.equal(s.nodes['.panel'].classList.values.has('open'),false,'leaving the browser cancels a pending opening');
+});

@@ -10,7 +10,7 @@ assert.ok(executablePath, 'Chrome executable required');
 const reference = process.argv.find(arg => arg.startsWith('--regression-ref='))?.split('=')[1];
 const source = fs.readFileSync('src/overlay/overlay.js', 'utf8');
 const origin = 'https://edge.test';
-const browser = await chromium.launch({ executablePath, headless: true, args: ['--no-sandbox'] });
+const browser = await chromium.launch({ executablePath, headless: false, args: ['--no-sandbox', '--disable-features=OverlayScrollbar'] });
 
 async function fixture(code, scale = 1) {
   const context = await browser.newContext({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: scale });
@@ -56,7 +56,8 @@ try {
   if (reference) {
     const old = execFileSync('git', ['show', reference + ':src/overlay/overlay.js'], { encoding: 'utf8' });
     const f = await fixture(old);
-    await f.page.mouse.move(500, 300); await f.page.mouse.move(1279, 300);
+    const edge = await f.page.evaluate(() => arcTestShadow.querySelector('.edge').getBoundingClientRect().left + 1);
+    await f.page.mouse.move(500, 300); await f.page.mouse.move(edge, 300);
     await f.page.waitForTimeout(250);
     assert.equal(await f.isOpen(), false, 'known-bad controller fails with trusted zero-delta pointer events');
     await f.context.close();
@@ -68,7 +69,9 @@ try {
     for (const side of ['right', 'left']) {
       await page.evaluate(side => { window.arcSide = side; window.dispatchEvent(new Event('focus')); }, side);
       await page.waitForFunction(side => arcTestShadow.querySelector('.panel').classList.contains('left') === (side === 'left'), side);
-      const edge = side === 'left' ? 1 : 1279;
+      const edge = await page.evaluate(() => {
+        const r = arcTestShadow.querySelector('.edge').getBoundingClientRect(); return (r.left + r.right) / 2;
+      });
       const inside = side === 'left' ? 140 : 1140;
       const open = async () => {
         await page.mouse.move(640, 300); await page.mouse.move(edge, 300);
@@ -108,7 +111,7 @@ try {
       await other.close(); await open();
       await page.mouse.move(640, 300);
       await page.waitForFunction(() => !arcTestShadow.querySelector('.panel').classList.contains('open'));
-      console.log(`PASS real Chrome edge hover: ${side}, DPR ${scale}, zero deltas, iframe handoff, stable deadlines, repeated opening and actual tab return`);
+      console.log(`PASS real Chrome edge hover: ${side}, DPR ${scale}, zero deltas, scrollbars, iframe handoff, stable deadlines, repeated opening and actual tab return`);
     }
     assert.deepEqual(f.errors, []);
     assert.equal(await page.locator('#arc-sidebar-overlay-host').count(), 1);
