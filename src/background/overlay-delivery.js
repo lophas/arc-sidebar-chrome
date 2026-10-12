@@ -1,5 +1,5 @@
 import { sidebarPreferences } from '../shared/sidebar-preferences.js';
-const VERSION = 'focus-injection-v1';
+const VERSION = 'edge-intent-v2';
 const pending = new Map();
 async function applyToTab(tabId) {
   const tab = await chrome.tabs.get(tabId);
