@@ -1,7 +1,7 @@
 (() => {
   if (window.top !== window) return;
   const CONTROLLER_KEY = '__arcSidebarOverlayController';
-  const VERSION = 'focus-injection-v1';
+  const VERSION = 'edge-intent-v2';
   const previous = globalThis[CONTROLLER_KEY];
   if (previous?.version === VERSION && previous.active()) { previous.refresh(); return; }
   previous?.dispose();
@@ -46,6 +46,84 @@
     }
     catch (error) { handleApiError(error); return undefined; }
   };
+
+  // One owner for hover intent, pointer handoffs and both deadlines. Enter/leave
+  // events can be synthesized by focus, iframe loading or the slide animation;
+  // only actual pointer motion can arm an opening.
+  function createEdgeHover({ state, open, close, showDelay }) {
+    let point = null;
+    let overPanel = false;
+    let showTimer = null;
+    let hideTimer = null;
+    const position = event => Number.isFinite(event?.clientX) && Number.isFinite(event?.clientY)
+      ? { x: event.clientX, y: event.clientY } : null;
+    const distance = (p, s) => s.side === 'left' ? p.x : s.viewportWidth - p.x;
+    const inViewport = (p, s) => p && p.x >= 0 && p.x <= s.viewportWidth && p.y >= 0 && p.y < s.viewportHeight;
+    const inPanel = (p, s) => inViewport(p, s) && distance(p, s) <= s.panelWidth + s.handleWidth;
+    // Small inward jitter after reaching the edge must not cancel the intent.
+    const inOpeningZone = (p, s) => inViewport(p, s) && distance(p, s) <= s.edgeWidth + 8;
+    const cancelOpen = () => { if (showTimer !== null) clearTimeout(showTimer); showTimer = null; };
+    const cancelClose = () => { if (hideTimer !== null) clearTimeout(hideTimer); hideTimer = null; };
+    const refreshClose = () => {
+      const s = state();
+      if (!s.open || !s.enabled || s.locked || overPanel) { cancelClose(); return; }
+      // Measure from leaving, not from the last mousemove outside the sidebar.
+      if (hideTimer !== null) return;
+      hideTimer = setTimeout(() => {
+        hideTimer = null;
+        const current = state();
+        if (current.open && current.enabled && !current.locked && !overPanel) close();
+      }, s.hideDelay);
+    };
+    return {
+      cancelClose,
+      reset() { cancelOpen(); cancelClose(); point = null; overPanel = false; },
+      cancelOpening() { cancelOpen(); point = null; },
+      refreshLocks: refreshClose,
+      enter(event) {
+        const p = position(event);
+        if (event?.isTrusted && p) point = p;
+        if (!state().open) return;
+        overPanel = true;
+        cancelClose();
+      },
+      leave(event) {
+        const s = state();
+        const p = position(event);
+        if (!p || event?.isTrusted === false) return;
+        point = p;
+        if (!s.open) { if (!inOpeningZone(p, s)) cancelOpen(); return; }
+        // A leave during animation or iframe load is not a geometric departure.
+        overPanel = inPanel(p, s);
+        refreshClose();
+      },
+      viewportLeave() { cancelOpen(); point = null; overPanel = false; refreshClose(); },
+      move(event) {
+        if (!event.isTrusted || event.pointerType === 'touch') return;
+        const next = position(event);
+        if (!next) return;
+        const moved = Boolean(event.movementX || event.movementY) ||
+          Boolean(point && (next.x !== point.x || next.y !== point.y));
+        point = next;
+        const s = state();
+        if (!s.enabled) { this.reset(); return; }
+        if (s.open) {
+          overPanel = inPanel(point, s);
+          refreshClose();
+          return;
+        }
+        if (!inOpeningZone(point, s)) cancelOpen();
+        if (!moved || !inViewport(point, s) || distance(point, s) > s.edgeWidth || showTimer !== null) return;
+        showTimer = setTimeout(() => {
+          showTimer = null;
+          const current = state();
+          if (!current.enabled || !inOpeningZone(point, current)) return;
+          open();
+          overPanel = state().open;
+        }, showDelay);
+      }
+    };
+  }
 
   function initOverlay() {
     if (contextInvalid) return;
@@ -108,8 +186,6 @@
     const panel = shadow.querySelector('.panel');
     const iframe = shadow.querySelector('iframe');
     const resizeHandle = shadow.querySelector('.resize-handle');
-    let showTimer = null;
-    let hideTimer = null;
     let isOpen = false;
     let isResizing = false;
     let cancelResize = null;
@@ -118,6 +194,8 @@
     let currentWidth = DEFAULT_PANEL_WIDTH;
     let sidebarMode = OVERLAY_MODE;
     let edgeSide = 'right';
+    let suspended = false;
+    let lastOpenedAt = 0;
 
     const sendTheme = () => {
       const theme = currentTheme();
@@ -171,17 +249,8 @@
       if (area === 'local' && changes[WIDTH_STORAGE_KEY] && !isResizing) applyWidth(changes[WIDTH_STORAGE_KEY].newValue);
     });
 
-    const clearTimers = () => {
-      if (showTimer) clearTimeout(showTimer);
-      if (hideTimer) clearTimeout(hideTimer);
-      showTimer = null;
-      hideTimer = null;
-    };
-
-    const cancelClose = () => {
-      if (hideTimer) clearTimeout(hideTimer);
-      hideTimer = null;
-    };
+    const clearTimers = () => hover.reset();
+    const cancelClose = () => hover.cancelClose();
 
     const forceClosePanel = () => {
       clearTimers();
@@ -216,6 +285,7 @@
       sendTheme();
       if (isOpen) return;
       isOpen = true;
+      lastOpenedAt = Date.now();
       panel.classList.add('open');
       resizeHandle.classList.add('open');
       notifyVisibility();
@@ -223,8 +293,7 @@
 
     const closePanel = () => {
       if (isResizing || editorActive) return;
-      if (showTimer) clearTimeout(showTimer);
-      showTimer = null;
+      clearTimers();
       if (!isOpen) return;
       isOpen = false;
       panel.classList.remove('open');
@@ -232,27 +301,13 @@
       notifyVisibility();
     };
 
-    const scheduleOpen = () => {
-      if (contextInvalid || sidebarMode !== OVERLAY_MODE || nativePanelOpen || document.visibilityState === 'hidden') return;
-      cancelClose();
-      if (isOpen || showTimer) return;
-      showTimer = setTimeout(() => {
-        showTimer = null;
-        openPanel();
-      }, SHOW_DELAY);
-    };
-
-    const scheduleClose = () => {
-      if (isResizing || editorActive) return;
-      if (showTimer) clearTimeout(showTimer);
-      showTimer = null;
-      if (!isOpen) return;
-      cancelClose();
-      hideTimer = setTimeout(() => {
-        hideTimer = null;
-        closePanel();
-      }, hideDelay);
-    };
+    const hover = createEdgeHover({
+      state: () => ({ open: isOpen, locked: isResizing || editorActive, side: edgeSide,
+        enabled: !contextInvalid && !suspended && sidebarMode === OVERLAY_MODE && !nativePanelOpen && document.visibilityState !== 'hidden',
+        viewportWidth: window.innerWidth, viewportHeight: window.innerHeight,
+        panelWidth: currentWidth, edgeWidth: EDGE_WIDTH, handleWidth: RESIZE_HANDLE_WIDTH, hideDelay }),
+      open: () => { ensureHost(); openPanel(); }, close: closePanel, showDelay: SHOW_DELAY
+    });
 
     const setEditorActive = open => {
       // A stale editor message cannot create an open panel by itself.
@@ -260,19 +315,25 @@
       if (editorActive) {
         cancelClose();
         openPanel();
-      } else if (!panel.matches?.(':hover') && !resizeHandle.matches?.(':hover')) {
-        scheduleClose();
-      }
+      } else hover.refreshLocks();
     };
 
-    callChrome(() => chrome.runtime.sendMessage({ type: 'arc-native-sidepanel-is-open' })).then(response => { if (!contextInvalid) setNativePanelOpen(response?.open); });
+    let nativeStateRequest = 0;
+    const refreshNativeState = () => {
+      const request = ++nativeStateRequest;
+      callChrome(() => chrome.runtime.sendMessage({ type: 'arc-native-sidepanel-is-open' }))
+        .then(response => { if (!contextInvalid && request === nativeStateRequest) setNativePanelOpen(response?.open); });
+    };
+    refreshNativeState();
     listenChrome(chrome.runtime.onMessage, message => {
       if (message?.type === 'arc-sidebar-tab-activated') {
+        // Do not let a delayed activation close a fresh, deliberate edge hover.
+        if (message.activatedAt && document.visibilityState !== 'hidden' && lastOpenedAt > message.activatedAt) return;
         cancelResize?.();
         editorActive = false;
         forceClosePanel();
       }
-      if (message?.type === 'arc-native-sidepanel-state') setNativePanelOpen(message.open);
+      if (message?.type === 'arc-native-sidepanel-state') { ++nativeStateRequest; setNativePanelOpen(message.open); }
       if (message?.type === 'arc-sidebar-editor-state') setEditorActive(message.open);
     });
 
@@ -282,34 +343,18 @@
     });
 
     // Opening requires pointer movement, never a synthesized enter on tab return.
-    listen(window, 'blur', () => {
-      if (showTimer) clearTimeout(showTimer);
-      showTimer = null;
-    });
-    listen(edge, 'mouseleave', () => {
-      if (!isOpen && showTimer) {
-        clearTimeout(showTimer);
-        showTimer = null;
-      }
-    });
-
-    listen(panel, 'mouseenter', cancelClose);
-    listen(iframe, 'mouseenter', cancelClose);
-    listen(iframe, 'pointerenter', cancelClose);
-    listen(resizeHandle, 'mouseenter', cancelClose);
-
-    listen(panel, 'mouseleave', event => {
-      const target = event.relatedTarget;
-      if (target === iframe || target === resizeHandle || (target instanceof Node && panel.contains(target))) return;
-      scheduleClose();
-    });
-    listen(iframe, 'mouseleave', event => {
-      if (event.relatedTarget === resizeHandle) return;
-      scheduleClose();
-    });
-    listen(resizeHandle, 'mouseleave', event => {
-      if (isResizing || event.relatedTarget === panel || event.relatedTarget === iframe) return;
-      scheduleClose();
+    listen(window, 'blur', () => hover.cancelOpening());
+    listen(edge, 'pointerleave', event => hover.leave(event));
+    for (const surface of [panel, iframe, resizeHandle]) {
+      listen(surface, 'pointerenter', event => hover.enter(event));
+      listen(surface, 'pointerleave', event => {
+        const target = event.relatedTarget;
+        if (target === iframe || target === resizeHandle || target === panel || (target instanceof Node && panel.contains(target))) hover.enter(event);
+        else hover.leave(event);
+      });
+    }
+    listen(document, 'pointerleave', event => {
+      if (event.target === document || event.target === document.documentElement) hover.viewportLeave();
     });
 
     listen(resizeHandle, 'pointerdown', event => {
@@ -338,6 +383,8 @@
         resizeHandle.removeEventListener('pointerup', finishResize);
         resizeHandle.removeEventListener('pointercancel', finishResize);
         try { if (resizeHandle.hasPointerCapture(upEvent.pointerId)) resizeHandle.releasePointerCapture(upEvent.pointerId); } catch {}
+        hover.leave(upEvent);
+        hover.refreshLocks();
         await callChrome(() => chrome.storage.local.set({ [WIDTH_STORAGE_KEY]: currentWidth }));
       };
       cancelResize = () => { finishResize({ pointerId: event.pointerId }).catch(() => {}); };
@@ -350,7 +397,6 @@
     // content-script context. Restore the SAME host and listeners, not another
     // overlay instance. Observe only document/root children, not the page subtree.
     let observedRoot = null;
-    let suspended = false;
     let repairTimer = null;
     let styleSignature = '';
     let normalizedHostStyle = '';
@@ -422,8 +468,7 @@
       suspended = false;
       documentObserver.observe(document, { childList: true });
       ensureHost();
-      callChrome(() => chrome.runtime.sendMessage({ type: 'arc-native-sidepanel-is-open' }))
-        .then(response => { if (!contextInvalid) setNativePanelOpen(response?.open); });
+      refreshNativeState();
     };
     listen(window, 'pagehide', () => {
       cancelResize?.();
@@ -450,17 +495,7 @@
     });
     // Capture fallback also works when a webpage's own overlay covers the edge.
     listen(document, 'pointermove', event => {
-      if (sidebarMode !== OVERLAY_MODE || nativePanelOpen || suspended) return;
-      const distanceFromEdge = edgeSide === 'left' ? event.clientX : window.innerWidth - event.clientX;
-      if (distanceFromEdge >= 0 && distanceFromEdge <= EDGE_WIDTH && event.isTrusted && (event.movementX !== 0 || event.movementY !== 0)) {
-        ensureHost();
-        scheduleOpen();
-      } else if (isOpen && distanceFromEdge > currentWidth + RESIZE_HANDLE_WIDTH) {
-        scheduleClose();
-      } else if (!isOpen && showTimer) {
-        clearTimeout(showTimer);
-        showTimer = null;
-      }
+      hover.move(event);
     }, { capture: true, passive: true });
     resume();
 
