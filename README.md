@@ -1,3 +1,5 @@
+<img src="src/icons/icon128.png" width="64" height="64" alt="Arc Side of the Chrome icon">
+
 # Arc Side of the Chrome
 
 *Spaces, tabs & a little harmony.*

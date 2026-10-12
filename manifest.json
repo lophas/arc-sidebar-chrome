@@ -72,7 +72,13 @@
     }
   ],
   "action": {
-    "default_title": "Open Arc Side of the Chrome"
+    "default_title": "Open Arc Side of the Chrome",
+    "default_icon": {
+      "16": "src/icons/icon16.png",
+      "32": "src/icons/icon32.png",
+      "48": "src/icons/icon48.png",
+      "128": "src/icons/icon128.png"
+    }
   },
   "commands": {
     "arc-command-bar-v3": {
@@ -83,5 +89,11 @@
       "description": "Open Arc Side of the Chrome search"
     }
   },
-  "short_name": "ASotC"
+  "short_name": "ASotC",
+  "icons": {
+    "16": "src/icons/icon16.png",
+    "32": "src/icons/icon32.png",
+    "48": "src/icons/icon48.png",
+    "128": "src/icons/icon128.png"
+  }
 }
