@@ -1,21 +1,23 @@
-## Arc Side of the Chrome 3.1.0
+## Arc Side of the Chrome 3.1.1
 
 *Spaces, tabs & a little harmony.*
 
-### Automatic mini player for HTML5 videos
+### More reliable Autohide
 
-The automatic mini player now works with compatible HTML5 video players on HTTPS websites, beyond YouTube. A video playing with sound follows you into Picture-in-Picture when you switch tabs and returns to its page when you switch back, without restarting playback. Supported embedded videos and players in open shadow roots are included. The feature is on by default, and manually opened PiP windows remain under your control.
+- A wider edge trigger responds consistently to small pointer movements on either side.
+- The sidebar stays open as you move into it or onto the adjacent scrollbar, including the browser’s outer edge.
+- Leaving the sidebar starts the selected closing delay; moving back cancels it.
+- Returning to a tab keeps the sidebar closed until a fresh edge hover.
+- Open editors, sidebar resizing and switching between Fixed and Autohide retain their existing behavior.
 
-### Simple setup for new video websites
+### A new extension icon
 
-If the mini player does not open, a Chrome-style setup popup appears when you return to the playing video. **Copy site & open PiP settings** copies the website address and opens Chrome’s dedicated Automatic picture-in-picture settings. Use **Allowed → Add** to paste and save it, then return to the video and switch tabs again.
+A colorful arc on a dark background now identifies Arc Side of the Chrome in the toolbar and Chrome’s extension list. Icons are included at 16, 32, 48 and 128 pixels, with a 512-pixel version available in the repository.
 
-Dismiss the popup for the current visit or hide it permanently for that website. The sidebar search bar stays clear, and the same settings page is available from Extension options. The README and Options include the updated setup instructions.
-
-All Spaces, Favorites, pinned links, folders, search, drag-and-drop, Arc Browser import, sync and backup features are included.
+The complete 3.1 experience is included: automatic HTML5 video Picture-in-Picture, guided per-site Auto PiP setup, and all organization, search, Arc Browser import, sync and backup features.
 
 ### Install or update
 
-Download `arc-side-of-the-chrome-v3.1.0.zip`, extract it and open **chrome://extensions → Developer mode → Load unpacked**. Select the folder containing `manifest.json`.
+Download `arc-side-of-the-chrome-v3.1.1.zip`, extract it and open **chrome://extensions → Developer mode → Load unpacked**. Select the folder containing `manifest.json`.
 
-For an existing installation, replace the files in its current folder and click **Reload**. Reload already-open webpages, including video tabs, to apply the update. Your saved sidebar organization and preferences are retained.
+For an existing installation, replace the files in its current folder and click **Reload**. The active webpage receives the updated sidebar immediately; other open webpages receive it when you next focus them. Reload already-open video tabs to apply the updated mini player code. Your saved sidebar organization and preferences are retained.
