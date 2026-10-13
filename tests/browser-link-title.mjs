@@ -19,10 +19,16 @@ const server=createServer((req,res)=>{
 await new Promise(done=>server.listen(0,'127.0.0.1',done));
 let context;
 try{
- context=await chromium.launchPersistentContext('',{channel:'chromium',headless:false,args:['--no-sandbox',`--disable-extensions-except=${directory}`,`--load-extension=${directory}`]});
+ context=await chromium.launchPersistentContext('',{channel:'chromium',headless:false,ignoreDefaultArgs:['--disable-extensions'],args:['--no-sandbox',`--disable-extensions-except=${directory}`,`--load-extension=${directory}`]});
  let [worker]=context.serviceWorkers();if(!worker)worker=await context.waitForEvent('serviceworker');
  extensionId=worker.url().split('/')[2];
  console.log('Loaded extension worker:',worker.url());
+ context.on('requestfailed',request=>console.error('Browser request failed:',request.url(),request.failure()?.errorText));
+ const bootstrap=await context.newPage();
+ bootstrap.on('pageerror',error=>console.error('Extension startup error:',error.message));
+ bootstrap.on('console',message=>{if(message.type()==='error')console.error('Extension startup console:',message.text());});
+ await bootstrap.goto(`chrome-extension://${extensionId}/src/sidepanel/index.html`);
+ console.log('Extension startup:',await bootstrap.evaluate(()=>({runtime:!!chrome.runtime,storage:!!chrome.storage,styles:document.styleSheets.length,ready:document.readyState})));
  let frame;
  const waitForTitle=async title=>{
   for(let i=0;i<100;i++){
