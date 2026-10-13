@@ -20,7 +20,7 @@ jobs:
       - run: xvfb-run -a node tests/browser-edge-hover.mjs --regression-ref=4c4372371cec936e65c804a043cb00a8878a7eca
       - run: node tests/browser-space-tabs.mjs
       - run: npx playwright-core install chromium --no-shell
-      - run: node tests/browser-link-title.mjs
+      - run: xvfb-run -a node tests/browser-link-title.mjs
       - run: node tests/browser-command-search.mjs
       - run: xvfb-run -a node tests/browser-auto-pip-guide.mjs
       - run: xvfb-run -a node tests/browser-auto-pip.mjs --regression-ref=3e33f9de7e2784175a7198c2a14d70dbff66306f

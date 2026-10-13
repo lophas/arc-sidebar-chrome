@@ -19,9 +19,10 @@ const server=createServer((req,res)=>{
 await new Promise(done=>server.listen(0,'127.0.0.1',done));
 let context;
 try{
- context=await chromium.launchPersistentContext('',{channel:'chromium',headless:true,args:['--no-sandbox',`--disable-extensions-except=${directory}`,`--load-extension=${directory}`]});
+ context=await chromium.launchPersistentContext('',{channel:'chromium',headless:false,args:['--no-sandbox',`--disable-extensions-except=${directory}`,`--load-extension=${directory}`]});
  let [worker]=context.serviceWorkers();if(!worker)worker=await context.waitForEvent('serviceworker');
  extensionId=worker.url().split('/')[2];
+ console.log('Loaded extension worker:',worker.url());
  let frame;
  const waitForTitle=async title=>{
   for(let i=0;i<100;i++){
@@ -32,11 +33,13 @@ try{
   assert.fail('Saved Favorite title did not become '+title);
  };
 
- const page=await context.newPage();const errors=[];page.on('pageerror',error=>errors.push(error.message));
+ const page=await context.newPage();const errors=[];page.on('pageerror',error=>{errors.push(error.message);console.error('Sidebar page error:',error.message);});
+ page.on('console',message=>{if(message.type()==='error')console.error('Sidebar console:',message.text());});
  const port=server.address().port,host=`http://localhost:${port}/host`,target=`http://127.0.0.1:${port}/page`;
  await page.goto(host);
  const sidebar=page.frameLocator('#titleSidebar');
- await sidebar.locator('[data-space-id="__my_space__"]').waitFor();
+ try {await sidebar.locator('[data-space-id="__my_space__"]').waitFor({timeout:15000});}
+ catch(error){console.error('Sidebar initialization:',await Promise.all(page.frames().map(frame=>frame.evaluate(()=>({url:location.href,runtime:!!globalThis.chrome?.runtime,storage:!!globalThis.chrome?.storage,text:document.body?.innerText?.slice(0,1000)})).catch(error=>({error:error.message})))));throw error;}
  frame=page.frames().find(frame=>frame.url().startsWith(`chrome-extension://${extensionId}/src/sidepanel/index.html`));assert.ok(frame);
  const legacy=await frame.evaluate(async url=>{try{const response=await fetch(url,{credentials:'omit'});return {status:response.status};}catch(error){return {error:error.message};}},target);
  console.log('Embedded foreground fetch diagnostic:',JSON.stringify(legacy));
