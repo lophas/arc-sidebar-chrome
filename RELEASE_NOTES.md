@@ -18,6 +18,8 @@ Leave the title empty when adding or editing a pinned link or Favorite to use th
 
 Extension changes on main are now published automatically after all checks pass, with a new patch version, release notes and a ready-to-install ZIP.
 
+Quickly closing and reopening search also keeps the new search request active, including when its results are still loading.
+
 ### Install or update
 
 Download `arc-side-of-the-chrome-v3.1.3.zip`, extract it and open **chrome://extensions → Developer mode → Load unpacked**. Select the folder containing `manifest.json`.

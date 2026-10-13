@@ -45,10 +45,13 @@ try {
   await input.fill('Original saved page');
   assert.equal(await rows.count(), 2); // one bound tab and Google
   assert.ok((await rows.first().textContent()).includes('Work / Research'));
-  await input.press('Escape');
-  // Clear old results and wait for asynchronous storage, even for immediate Enter.
-  await page.evaluate(() => fixture.hold());
-  await page.keyboard.press('Control+k');
+  // Close and reopen in the same task, before Chrome delivers the queued
+  // old close event. It must not cancel the new delayed search refresh.
+  await page.evaluate(() => {
+    fixture.hold();
+    document.querySelector('dialog').close();
+    document.querySelector('#openCommandBar').click();
+  });
   assert.equal(await rows.count(), 0);
   await input.press('Enter');
   await page.evaluate(() => fixture.release());

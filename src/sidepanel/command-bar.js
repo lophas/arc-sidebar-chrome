@@ -87,7 +87,13 @@ input.addEventListener('keydown', event => {
   if (['ArrowDown', 'ArrowUp'].includes(event.key)) { event.preventDefault(); selected = results.length ? (selected + (event.key === 'ArrowDown' ? 1 : -1) + results.length) % results.length : 0; render(); }
   if (event.key === 'Enter') { event.preventDefault(); executeSelected(); }
 });
-dialog.addEventListener('close', () => { generation++; pendingRefresh = null; if (standalone) window.close(); });
+dialog.addEventListener('close', () => {
+  // Chrome queues this event: the same dialog may already have reopened by
+  // the time an older close is delivered. Keep the new search request alive.
+  if (dialog.open) return;
+  generation++; pendingRefresh = null;
+  if (standalone) window.close();
+});
 dialog.addEventListener('click', event => { if (event.target === dialog) { const r = dialog.getBoundingClientRect(); if (event.clientX < r.left || event.clientX > r.right || event.clientY < r.top || event.clientY > r.bottom) dialog.close(); } });
 document.querySelector('#openCommandBar')?.addEventListener('click', open);
 document.addEventListener('keydown', event => { if ((event.metaKey || event.ctrlKey) && !event.altKey && !event.shiftKey && event.code === 'KeyK') { event.preventDefault(); open(); } });
