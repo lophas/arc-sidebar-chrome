@@ -57,9 +57,14 @@ try {
   await page.keyboard.press('Control+k'); await input.press('Enter');
   await page.evaluate(() => fixture.release());
   await page.waitForFunction(() => fixture.calls.at(-1)?.item?.tabId === 1 && !document.querySelector('dialog').open);
+  await page.evaluate(() => fixture.hold());
+  await page.keyboard.press('Control+k'); await input.press('Enter'); await input.press('Escape');
+  await page.evaluate(() => fixture.release());
+  await page.waitForTimeout(100);
+  assert.equal(await page.evaluate(() => fixture.calls.length), 2, 'Escape cancels a queued Enter without activating a tab');
   console.log('PASS real Chrome: shared search Cmd+K → Enter toggles between a pinned and ungrouped tab, including delayed data');
   await page.keyboard.press('Control+k'); await rows.first().waitFor();
-  await input.fill('chrome://extensions/');
+  await input.fill('chrome://extensions');
   assert.equal(await rows.first().locator('strong').textContent(), 'Extensions');
   assert.equal(await rows.filter({ hasText: 'Open chrome://' }).count(), 0);
   await input.press('Enter');

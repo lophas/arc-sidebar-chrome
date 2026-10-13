@@ -1,7 +1,11 @@
 export function navigationUrl(value) {
   const text = value.trim();
   if (/^(https?|chrome|file):\/\//i.test(text)) {
-    try { return new URL(text).href; } catch { return null; }
+    try {
+      const url = new URL(text);
+      if (url.protocol === 'chrome:' && !url.pathname) url.pathname = '/';
+      return url.href;
+    } catch { return null; }
   }
   if (/^(localhost|(?:[\p{L}\d-]+\.)+[\p{L}\d-]+)(?::\d+)?(?:[/?#][^\s]*)?$/u.test(text)) {
     try { return new URL(`https://${text}`).href; } catch {}

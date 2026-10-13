@@ -41,7 +41,7 @@ test('equal URLs in separate tabs remain separate, including a saved but unbound
   assert.equal(rows.filter(item => item.kind === 'Pinned').length, 2);
 });
 test('existing URL input activates an existing tab; unopened URLs retain navigation and Google actions', () => {
-  for (const query of ['chrome://extensions/', 'https://free.test', 'free.test']) {
+  for (const query of ['chrome://extensions/', 'chrome://extensions', 'https://free.test', 'free.test']) {
     const rows = buildResults(data(), query);
     assert.equal(rows[0].kind, 'Open tab');
     assert.equal(rows.filter(item => item.kind === 'URL').length, 0);
