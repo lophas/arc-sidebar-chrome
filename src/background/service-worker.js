@@ -14,6 +14,7 @@ import { commitStorage } from './state-controller.js';
 const sidebarStorage = createStorageClient({ transact: commitStorage });
 import './command-bar.js';
 import './context-menu.js';
+import { hasSyncContent } from '../shared/sync-content.js';
 
 const STORAGE_KEY = 'arcSidebarModel';
 const BINDINGS_KEY = 'arcSidebarBindings';
@@ -39,6 +40,7 @@ let releaseGroupVisibility = null;
 let modelSyncPushTimer = null;
 let modelSyncPullTimer = null;
 let suppressLocalModelJson = null;
+let sidebarSyncTail = Promise.resolve();
 
 function modelJson(model) {
   return model ? JSON.stringify(model) : '';
@@ -94,7 +96,8 @@ async function readSyncedModel() {
 }
 
 async function writeSyncedModel(model) {
-  if (!model) return { ok: false, reason: 'no-model' };
+  if (!hasSyncContent(model)) return { ok: true, direction: 'none', reason: 'empty-local-model', updatedAt: null };
+  if (!await isSidebarSyncEnabled()) return { ok: false, reason: 'disabled' };
 
   const encoded = encodeBase64Utf8(JSON.stringify(model));
   const chunks = [];
@@ -116,6 +119,7 @@ async function writeSyncedModel(model) {
   };
 
   try {
+    if (!await isSidebarSyncEnabled()) return { ok: false, reason: 'disabled' };
     await chrome.storage.sync.set(values);
     await sidebarStorage.local.set({ [LOCAL_MODEL_UPDATED_KEY]: updatedAt });
   } catch (error) {
@@ -142,6 +146,7 @@ async function applySyncedModel(synced = null) {
   const local = await sidebarStorage.local.get(STORAGE_KEY);
   const syncedJson = modelJson(remote.model);
   const updatedAt = Number(remote.meta?.updatedAt) || Date.now();
+  if (!await isSidebarSyncEnabled()) return { ok: false, reason: 'disabled' };
   if (modelJson(local[STORAGE_KEY]) === syncedJson) {
     await sidebarStorage.local.set({ [LOCAL_MODEL_UPDATED_KEY]: updatedAt });
     return { ok: true, direction: 'none', updatedAt };
@@ -155,7 +160,15 @@ async function applySyncedModel(synced = null) {
   return { ok: true, direction: 'pull', updatedAt };
 }
 
-async function reconcileSidebarSync() {
+function reconcileSidebarSync() {
+  // Enabling Sync and Sync now can arrive together. Serialize every direction
+  // decision, and let queued pushes reconcile against the latest cloud data.
+  const result = sidebarSyncTail.then(reconcileSidebarSyncNow);
+  sidebarSyncTail = result.catch(() => {});
+  return result;
+}
+
+async function reconcileSidebarSyncNow() {
   try {
     if (!await isSidebarSyncEnabled()) return { ok: false, reason: 'disabled' };
 
@@ -167,22 +180,22 @@ async function reconcileSidebarSync() {
     const localModel = local[STORAGE_KEY];
     const localUpdatedAt = Number(local[LOCAL_MODEL_UPDATED_KEY]) || 0;
 
-    if (synced?.model) {
+    if (hasSyncContent(synced?.model)) {
       const remoteUpdatedAt = Number(synced.meta?.updatedAt) || 0;
       if (modelJson(localModel) === modelJson(synced.model)) {
         await sidebarStorage.local.set({ [LOCAL_MODEL_UPDATED_KEY]: Math.max(localUpdatedAt, remoteUpdatedAt) });
         return { ok: true, direction: 'none', updatedAt: remoteUpdatedAt || localUpdatedAt || null };
       }
 
-      if (localModel && localUpdatedAt > remoteUpdatedAt) {
+      if (hasSyncContent(localModel) && localUpdatedAt > remoteUpdatedAt) {
         return writeSyncedModel(localModel);
       }
 
       return applySyncedModel(synced);
     }
 
-    if (localModel) return writeSyncedModel(localModel);
-    return { ok: true, direction: 'none', updatedAt: null };
+    if (hasSyncContent(localModel)) return writeSyncedModel(localModel);
+    return { ok: true, direction: 'none', reason: 'empty-local-model', updatedAt: null };
   } catch (error) {
     console.warn('Arc Side of the Chrome: Chrome Sync reconciliation failed', error);
     return { ok: false, reason: error?.message || 'sync-reconcile-failed' };
@@ -196,7 +209,8 @@ function queueModelSyncPush(delay = 350) {
     try {
       if (!await isSidebarSyncEnabled()) return;
       const local = await sidebarStorage.local.get(STORAGE_KEY);
-      if (local[STORAGE_KEY]) await writeSyncedModel(local[STORAGE_KEY]);
+      if (!hasSyncContent(local[STORAGE_KEY])) return;
+      await reconcileSidebarSync();
     } catch (error) {
       console.warn('Arc Side of the Chrome: Chrome Sync push failed', error);
     }
@@ -217,7 +231,7 @@ function queueModelSyncPull(delay = 250) {
 }
 
 function isSidebarSyncDataChange(changes) {
-  return Boolean(changes?.[SYNC_META_KEY]);
+  return Boolean(changes?.[SYNC_META_KEY]) || Object.keys(changes || {}).some(key => key.startsWith(SYNC_CHUNK_PREFIX));
 }
 
 async function broadcastNativePanelState(windowId, open) {

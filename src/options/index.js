@@ -171,6 +171,7 @@ async function runSyncNow() {
 
     if (result.direction === 'pull') syncStatus.textContent = 'Synced from Chrome Sync.';
     else if (result.direction === 'push') syncStatus.textContent = 'Saved to Chrome Sync.';
+    else if (result.reason === 'empty-local-model') syncStatus.textContent = 'No saved sidebar data yet. Add a link, folder or customize a Space to start syncing.';
     else syncStatus.textContent = 'Already up to date.';
 
     setTimeout(() => renderSyncStatus(), 900);
@@ -190,8 +191,8 @@ async function load() {
 
 async function resetExtensionData() {
   const confirmed = window.confirm(
-    'Reset all Arc Side of the Chrome data and settings on this computer, including the Chrome Sync snapshot?\n\n' +
-    'Your currently open browser tabs will stay open. This cannot be undone unless you have a backup.'
+    'Reset all Arc Side of the Chrome data and settings on this computer?\n\n' +
+    'The Chrome Sync snapshot will be kept. Enable Sync again to restore it. Your currently open browser tabs will stay open.'
   );
   if (!confirmed) return;
 
@@ -200,15 +201,15 @@ async function resetExtensionData() {
   backupStatus.textContent = '';
 
   try {
-    // Clear the cloud snapshot first so clearing the local model cannot be
-    // immediately repopulated by Chrome Sync while testing backup restore.
-    await chrome.storage.sync.clear();
+    // Stop syncing before clearing this computer; retain the cloud snapshot
+    // so re-enabling Sync can restore the last saved organization.
+    await chrome.storage.sync.set({ [SYNC_ENABLED_KEY]: false });
     await sidebarStorage.session.clear();
     await sidebarStorage.local.clear();
 
     render(null);
     await renderSyncStatus();
-    status.textContent = 'Reset complete. All extension data and settings were cleared.';
+    status.textContent = 'Reset complete. Local data and settings were cleared; the Chrome Sync snapshot was kept.';
   } catch (error) {
     console.error(error);
     status.textContent = `Reset failed: ${error.message}`;

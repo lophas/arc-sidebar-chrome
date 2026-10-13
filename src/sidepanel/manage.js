@@ -1,3 +1,4 @@
+import { resolvePageTitle } from './link-title.js';
 import { prepareItemIconEditor, applyItemIconEditor } from './item-icons.js';
 import { fillSpaceSelect, FAVORITES_SPACE_ID } from './space-select.js';
 import { prepareFirstSpace } from '../shared/first-space.js';
@@ -118,6 +119,41 @@ function validateUrlInput(input) {
   }
 }
 
+function beginLinkEditing(d) {
+  d.dataset.editSession = uid();
+  delete d.dataset.saving;
+  const button = d.querySelector('#itemSave');
+  button.disabled = false;
+  button.textContent = 'Save';
+  button.removeAttribute('aria-busy');
+}
+
+async function prepareLinkSave(d) {
+  if (d.dataset.saving === '1') return null;
+  const titleInput = d.querySelector('#itemTitle'), urlInput = d.querySelector('#itemUrl');
+  const url = validateUrlInput(urlInput);
+  if (!url) return null;
+  const session = d.dataset.editSession, button = d.querySelector('#itemSave');
+  d.dataset.saving = '1';
+  button.disabled = true;
+  button.setAttribute('aria-busy', 'true');
+  try {
+    let title = titleInput.value.trim();
+    if (!title) { button.textContent = 'Fetching title…'; title = await resolvePageTitle(url); }
+    // Cancel, reopening the editor or editing the URL must not save the result
+    // of an older request into a different link. A newly typed title wins.
+    if (!d.open || d.dataset.editSession !== session || normalizeEnteredUrl(urlInput.value) !== url) return null;
+    return { url, title: titleInput.value.trim() || title || url };
+  } finally {
+    if (d.dataset.editSession === session) {
+      delete d.dataset.saving;
+      button.disabled = false;
+      button.removeAttribute('aria-busy');
+      button.textContent = 'Save';
+    }
+  }
+}
+
 function findNodeLocation(nodes, id) {
   for (let index = 0; index < (nodes || []).length; index += 1) {
     const node = nodes[index];
@@ -214,6 +250,7 @@ async function openFavoriteEditor(index = null) {
   model.favorites ||= [];
   const item = index == null ? null : model.favorites[index];
   const d = ensureDialog();
+  beginLinkEditing(d);
   prepareItemIconEditor(d.querySelector('.item-form'), item);
 
   d.querySelector('#itemDialogTitle').textContent = item ? 'Edit favorite' : 'Add favorite';
@@ -224,10 +261,9 @@ async function openFavoriteEditor(index = null) {
   fillSpaceSelect(d.querySelector('#itemSpace'), model.spaces, { selectedId: FAVORITES_SPACE_ID });
 
   d.querySelector('#itemSave').onclick = async () => {
-    const title = d.querySelector('#itemTitle').value.trim();
-    const url = validateUrlInput(d.querySelector('#itemUrl'));
-    if (!url) return;
-    const next = { ...item, type: 'tab', id: item?.id || uid(), title: title || url, url };
+    const resolved = await prepareLinkSave(d);
+    if (!resolved) return;
+    const next = { ...item, type: 'tab', id: item?.id || uid(), ...resolved };
     applyItemIconEditor(d.querySelector('.item-form'), next);
     const destination = d.querySelector('#itemSpace').value;
     const target = destination === FAVORITES_SPACE_ID ? model.favorites : model.spaces.find(space => space.id === destination)?.children;
@@ -267,6 +303,7 @@ async function openPinnedEditor(itemId = null) {
   if (itemId && (!item || item.type !== 'tab')) return;
 
   const d = ensureDialog();
+  beginLinkEditing(d);
   prepareItemIconEditor(d.querySelector('.item-form'), item);
   d.querySelector('#itemDialogTitle').textContent = item ? 'Edit pinned link' : `Add pinned link · ${space.title}`;
   d.querySelector('#itemTitle').value = item?.title || '';
@@ -276,10 +313,9 @@ async function openPinnedEditor(itemId = null) {
   fillSpaceSelect(d.querySelector('#itemSpace'), model.spaces, { selectedId: space.id });
 
   d.querySelector('#itemSave').onclick = async () => {
-    const title = d.querySelector('#itemTitle').value.trim();
-    const url = validateUrlInput(d.querySelector('#itemUrl'));
-    if (!url) return;
-    const next = { ...item, type: 'tab', id: item?.id || uid(), title: title || url, url };
+    const resolved = await prepareLinkSave(d);
+    if (!resolved) return;
+    const next = { ...item, type: 'tab', id: item?.id || uid(), ...resolved };
     applyItemIconEditor(d.querySelector('.item-form'), next);
     const destination = d.querySelector('#itemSpace').value;
     model.favorites ||= [];

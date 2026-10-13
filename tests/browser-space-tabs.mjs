@@ -8,6 +8,7 @@ let html=await readFile('src/sidepanel/index.html','utf8');
 html=html.replace(/<script[^>]*>[\s\S]*?<\/script>/g,'').replace('</body>',`<script src="/tests/fixtures/space-tabs-chrome.js"></script><script type="module" src="index.js"></script><script type="module" src="drag-scroll.js"></script><script type="module" src="manage.js"></script><script type="module" src="item-icons.js"></script><script type="module" src="folder-manage.js"></script><script type="module" src="space-dnd.js"></script><script type="module" src="hierarchy-dnd.js"></script><script type="module" src="root-drop.js"></script><script type="module" src="open-pin.js"></script><script type="module" src="workflow-pin-dnd.js"></script><script type="module" src="memory-controls.js"></script></body>`);
 const server=createServer(async(req,res)=>{
  const pathname=new URL(req.url,'http://localhost').pathname;
+ if(pathname==='/tests/title-page'){res.setHeader('Content-Type','text/html');res.end('<!doctype html><title>Fresh &amp; fetched page title</title>');return;}
  if(pathname==='/src/sidepanel/index.html'){res.setHeader('Content-Type','text/html');res.end(html);return;}
  const file=resolve(root,'.'+pathname);
  if(!file.startsWith(root+'/')){res.writeHead(403);res.end();return;}
@@ -21,6 +22,35 @@ try{
  const ids=()=>page.locator('#openTabs .row').evaluateAll(rows=>rows.map(row=>Number(row.dataset.liveTabId)));
  await page.waitForFunction(()=>document.querySelectorAll('#openTabs .row').length===3);
  assert.deepEqual(await ids(),[11,12,21]);assert.equal(await page.locator('.other-window-label').textContent(),'Other window');
+ {
+ // Both editors use the same title resolver; current URL/title and Cancel win.
+ const base=`http://127.0.0.1:${server.address().port}`;
+ await page.evaluate(()=>fixture.tabs.find(tab=>tab.id===10).title='Fresh live page title');
+ await page.locator('[data-saved-node-id="a"]').click({button:'right'});
+ let editor=page.locator('dialog[open]');
+ await editor.locator('#itemTitle').fill('');await editor.locator('#itemSave').click();
+ await page.waitForFunction(()=>fixture.data.local.arcSidebarModel.spaces[0].children[0].title==='Fresh live page title');
+ await page.locator('#addFavorite').click();editor=page.locator('dialog[open]');
+ await editor.locator('#itemUrl').fill(base+'/tests/title-page');await editor.locator('#itemSave').click();
+ await page.waitForFunction(()=>fixture.data.local.arcSidebarModel.favorites[0]?.title==='Fresh & fetched page title');
+ const id=await page.evaluate(()=>fixture.data.local.arcSidebarModel.favorites[0].id);
+ await page.locator(`[data-favorite-id="${id}"]`).click({button:'right'});
+ await editor.locator('#itemTitle').fill('');await editor.locator('#itemUrl').fill('https://a.test');await editor.locator('#itemSave').click();
+ await page.waitForFunction(()=>fixture.data.local.arcSidebarModel.favorites[0].title==='Fresh live page title');
+ let release,started;
+ const pending=new Promise(done=>release=done),requested=new Promise(done=>started=done);
+ await page.route(base+'/tests/slow-title',async route=>{started();await pending;await route.fulfill({contentType:'text/html',body:'<title>Stale title</title>'});});
+ await page.locator('#addFavorite').click();await editor.locator('#itemUrl').fill(base+'/tests/slow-title');await editor.locator('#itemSave').click();
+ await requested;await editor.locator('#itemCancel').click();
+ await page.locator('[data-saved-node-id="a"]').click({button:'right'});
+ await editor.locator('#itemTitle').fill('Manual title');await editor.locator('#itemSave').click();release();
+ await page.waitForFunction(()=>fixture.data.local.arcSidebarModel.spaces[0].children[0].title==='Manual title');
+ await page.waitForTimeout(100);
+ assert.equal(await page.evaluate(()=>fixture.data.local.arcSidebarModel.favorites.length),1,'Cancel during a title lookup cannot add a Favorite');
+ assert.equal(await page.evaluate(()=>fixture.data.local.arcSidebarModel.spaces[0].children[0].title),'Manual title');
+ await page.evaluate(async()=>{const model=fixture.data.local.arcSidebarModel;model.favorites=[];model.spaces[0].children[0].title='Saved A';fixture.tabs.find(tab=>tab.id===10).title='Saved A';await fixture.write('local',{arcSidebarModel:model});});
+ console.log('PASS real Chrome: pinned/Favorite empty titles, fetched HTML title entities, URL changes, manual titles and Cancel during lookup');
+ }
  {
  // A close-all dialog is created first: the link editor must still own its icon field.
  await page.locator('[data-space-id="__open_tabs__"]').click({button:'right'});

@@ -86,6 +86,8 @@ Favorites are shared across all Spaces. Pinned links belong to a Space or one of
 
 Click a saved link to open it or focus its existing tab. Right-click to edit its title, URL, icon or destination. Closing its live tab keeps the saved link; opening it again uses the saved URL.
 
+Leave the title empty when adding or editing a Favorite or pinned link to use the URL’s current page title. If the page title is unavailable, the URL is used.
+
 Drag links to place them before or after other links, inside a folder, between folders or at the Space’s root. Drop a link on another Space to move it there.
 
 Drag Favorites to change their order. Move pinned links into Favorites, or drag Favorites back between a Space’s pinned links and folders or into a folder. Their custom icons and live tabs follow the move. Drop onto **+ Favorite** when the Favorites collection is empty.
@@ -169,6 +171,8 @@ Enter `%LOCALAPPDATA%\Packages` in File Explorer’s address bar. Open the folde
 
 Enable **Chrome Sync** in Extension options to synchronize Spaces, Favorites, folders, pinned links, their order and custom icons across computers signed into the same Chrome Sync account.
 
+On a fresh installation or after a reset, enabling Sync restores the existing cloud snapshot. The empty starting layout is never uploaded. Sync starts uploading once you add a saved link, folder or customize your Spaces.
+
 Open tabs, the selected Space, folder expansion, scroll positions and sidebar preferences stay local to each computer. When different computers change the organization, the most recently updated sidebar becomes the synchronized version.
 
 ### Backup, restore and reset
@@ -177,7 +181,7 @@ Use **Extension options → Backup & restore** to download or restore a portable
 
 - **Download backup** saves Spaces, Favorites, folders, pinned links, custom icons, folder expanded/collapsed states, sidebar mode, autohide timeout, Favorite size, sidebar width and the automatic mini player preference.
 - **Restore backup** replaces the sidebar contents and restores the saved folder layout and preferences. Older backups preserve current preferences they do not contain.
-- **Reset all extension data** clears saved organization and settings, including synchronized data, then recreates Favorites and **🚀 My Space**. Your Chrome tabs stay open.
+- **Reset all extension data** clears local organization and settings, turns Sync off and recreates Favorites and **🚀 My Space**. The cloud snapshot is kept; enable Sync again to restore it. Your Chrome tabs stay open.
 
 Download a backup before importing, restoring or resetting if you want to preserve the current setup.
 
