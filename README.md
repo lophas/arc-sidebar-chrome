@@ -90,7 +90,7 @@ Drag links to place them before or after other links, inside a folder, between f
 
 Drag Favorites to change their order. Move pinned links into Favorites, or drag Favorites back between a Space’s pinned links and folders or into a folder. Their custom icons and live tabs follow the move. Drop onto **+ Favorite** when the Favorites collection is empty.
 
-New tabs opened from a Favorite go into the currently selected Space’s Chrome group.
+New tabs opened from a Favorite are ungrouped. New tabs opened from a Space’s pinned links stay in that Space’s Chrome group.
 
 ### Search
 

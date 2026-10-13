@@ -3,7 +3,7 @@ import './auto-pip.js';
 import './auto-pip-settings.js';
 import './sidebar-mode.js';
 import { refreshActiveSidebar } from './overlay-delivery.js';
-import { favoriteChildDestination, appendFavoriteChildren } from './favorite-child-tabs.js';
+import { favoriteChildCandidate, appendFavoriteChildrenToUngroup } from './favorite-child-tabs.js';
 import { watchNativeGroupVisibility, holdNativeGroupVisibility } from './native-group-visibility.js';
 import { orderNativeGroups } from './native-group-order.js';
 import { pruneGroupMap } from './native-group-map.js';
@@ -357,7 +357,7 @@ async function syncNativeGroupsNow() {
     const favoriteIds = buildFavoriteIds(model);
     const tabsById = new Map(tabs.filter(tab => tab.id != null).map(tab => [tab.id, tab]));
     const desired = new Map();
-    const ungroupedBoundTabs = [];
+    const tabsToUngroup = [];
 
     for (const [itemId, rawTabId] of Object.entries(bindings)) {
       const tab = tabsById.get(Number(rawTabId));
@@ -367,7 +367,7 @@ async function syncNativeGroupsNow() {
       if (!space && favoriteIds.has(itemId)) space = FAVORITES_GROUP;
 
       if (!space) {
-        ungroupedBoundTabs.push(tab);
+        tabsToUngroup.push(tab);
         continue;
       }
 
@@ -378,9 +378,9 @@ async function syncNativeGroupsNow() {
 
     const favoriteChildren = [...pendingFavoriteChildren.values()];
     pendingFavoriteChildren.clear();
-    appendFavoriteChildren(desired, favoriteChildren, model, bindings, tabsById);
+    appendFavoriteChildrenToUngroup(tabsToUngroup, favoriteChildren, bindings, tabsById);
 
-    const ungroupIds = ungroupedBoundTabs
+    const ungroupIds = tabsToUngroup
       .filter(tab => tab.groupId != null && tab.groupId !== TAB_ID_NONE)
       .map(tab => tab.id)
       .filter(id => id != null);
@@ -472,9 +472,9 @@ chrome.storage.onChanged.addListener((changes, area) => {
 
 chrome.tabs.onCreated.addListener(tab => {
   queueNativeGroupSync(250);
-  favoriteChildDestination(tab, sidebarStorage).then(destination => {
-    if (!destination) return;
-    pendingFavoriteChildren.set(destination.tabId, destination);
+  favoriteChildCandidate(tab, sidebarStorage).then(candidate => {
+    if (!candidate) return;
+    pendingFavoriteChildren.set(candidate.tabId, candidate);
     queueNativeGroupSync(80);
   }).catch(error => console.warn('Arc Side of the Chrome: Favorite child routing failed', error));
 });
