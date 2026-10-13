@@ -48,6 +48,8 @@ Saved links stay in the sidebar when their browser tabs close. Click a saved ite
 
 To update, replace the files in the existing installation folder and click **Reload** on the extension’s card. Reload already-open webpages to apply the updated extension. Your saved organization remains available.
 
+New extension versions are published automatically after all checks pass, with release notes and an installable ZIP. Download the [latest release](https://github.com/lophas/arc-sidebar-chrome/releases/latest).
+
 For the latest changes on `main`, use **Code → Download ZIP** on the repository and load the extracted folder containing `manifest.json` in the same way.
 
 ### Getting started

@@ -1,23 +1,25 @@
-## Arc Side of the Chrome 3.1.2
+## Arc Side of the Chrome 3.1.3
 
 *Spaces, tabs & a little harmony.*
 
-### Search every open tab
+### Automatic link titles
 
-- Search open tabs across Chrome windows alongside Favorites, pinned links, folders and Spaces.
-- Press **⌘K / Ctrl+K → Enter** to switch to the previously used tab. The current tab is omitted from the empty-query recent list.
-- Results show favicons and Space or Chrome group names, including **Ungrouped** and **Other window** labels.
-- Saved links with live tabs appear once and activate their existing tab, even after navigating away from the saved URL. Their original titles and URLs remain searchable.
-- Find internal Chrome pages such as `chrome://extensions/`, Settings and Downloads. Empty New Tab pages are omitted.
-- Enter an already-open URL to switch to its existing tab. Unopened URLs and Google search remain available.
-- Fast keyboard selection waits for fresh results; Escape cancels a pending selection.
+Leave the title empty when adding or editing a pinned link or Favorite to use the current page title from its URL. Existing open pages provide their current title; otherwise the extension reads the page’s HTML title. If no title is available, the URL is used. Canceling a lookup or changing the URL cannot save a stale title into another link.
 
-### Favorite links open at the end
+### Safer Chrome Sync and reset
 
-New tabs opened from a Favorite are **ungrouped** and appear at the **end of their own Chrome window’s tab bar**. Tabs opened from a Space’s pinned links continue to belong to that Space’s Chrome group.
+- A fresh installation and the default My Space never overwrite an existing cloud snapshot with empty data.
+- Enabling Sync after a fresh installation or reset restores the saved cloud organization, even when the empty local starting layout has a newer timestamp.
+- Reset clears local data and settings and turns Sync off while keeping the cloud snapshot. Re-enable Sync to restore it.
+- Uploading starts once there is a saved link, folder or customized Space.
+- Sync safely handles simultaneous requests and cloud data arriving in separate chunks.
+
+### Automatic GitHub releases
+
+Extension changes on main are now published automatically after all checks pass, with a new patch version, release notes and a ready-to-install ZIP.
 
 ### Install or update
 
-Download `arc-side-of-the-chrome-v3.1.2.zip`, extract it and open **chrome://extensions → Developer mode → Load unpacked**. Select the folder containing `manifest.json`.
+Download `arc-side-of-the-chrome-v3.1.3.zip`, extract it and open **chrome://extensions → Developer mode → Load unpacked**. Select the folder containing `manifest.json`.
 
 For an existing installation, replace the files in its current folder and click **Reload**. Your saved sidebar organization and preferences are retained.

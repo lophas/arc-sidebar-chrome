@@ -1,60 +1,71 @@
 name: Build and publish extension release
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - manifest.json
-    tags:
-      - 'v*'
+  workflow_run:
+    workflows: ['Check extension sources']
+    types: [completed]
+    branches: [main]
 
 permissions:
   contents: write
 
+concurrency:
+  group: main-extension-release
+  cancel-in-progress: false
+
 jobs:
   release:
+    if: github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event == 'push'
     runs-on: ubuntu-latest
 
     steps:
-      - name: Check out source
+      - name: Check out the tested main commit
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 0
 
-      - name: Verify tag matches manifest release version
-        shell: bash
-        run: |
-          set -euo pipefail
-          TAG_VERSION="${GITHUB_REF_NAME#v}"
-          MANIFEST_RELEASE_VERSION="$(python3 -c 'import json; m=json.load(open("manifest.json")); print(m.get("version_name", m["version"]))')"
-          if [[ "$GITHUB_REF_TYPE" == "tag" && "$TAG_VERSION" != "$MANIFEST_RELEASE_VERSION" ]]; then
-            echo "Tag version ($TAG_VERSION) does not match manifest release version ($MANIFEST_RELEASE_VERSION)." >&2
-            exit 1
-          fi
-          echo "RELEASE_TAG=v${MANIFEST_RELEASE_VERSION}" >> "$GITHUB_ENV"
+      - name: Prepare automatic version and release notes
+        id: prepare
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARC_SOURCE_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: python3 scripts/prepare-release.py
 
       - name: Build unpacked-extension ZIP
+        if: steps.prepare.outputs.publish == 'true'
+        env:
+          RELEASE_TAG: ${{ steps.prepare.outputs.tag }}
         shell: bash
         run: |
           set -euo pipefail
           VERSION="${RELEASE_TAG#v}"
           PACKAGE_DIR="dist/arc-side-of-the-chrome-v${VERSION}"
           ZIP_FILE="dist/arc-side-of-the-chrome-v${VERSION}.zip"
-
           mkdir -p "$PACKAGE_DIR"
           cp manifest.json "$PACKAGE_DIR/"
           cp -R src "$PACKAGE_DIR/"
-
           (
             cd "$PACKAGE_DIR"
             zip -qr "../arc-side-of-the-chrome-v${VERSION}.zip" manifest.json src
           )
-
-          echo "Built $ZIP_FILE"
-          unzip -l "$ZIP_FILE"
+          python3 - "$ZIP_FILE" "$VERSION" <<'PYZIP'
+          import json, sys, zipfile
+          with zipfile.ZipFile(sys.argv[1]) as archive:
+              assert archive.testzip() is None
+              manifest = json.loads(archive.read('manifest.json'))
+              assert manifest.get('version_name', manifest['version']) == sys.argv[2]
+              for icon in manifest['icons'].values():
+                  assert icon in archive.namelist()
+          PYZIP
+          echo "Built and verified $ZIP_FILE"
 
       - name: Publish GitHub Release
+        if: steps.prepare.outputs.publish == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ steps.prepare.outputs.tag }}
+          RELEASE_SHA: ${{ steps.prepare.outputs.sha }}
         shell: bash
         run: |
           set -euo pipefail
@@ -64,15 +75,13 @@ jobs:
           if [[ "$VERSION" == *-* ]]; then
             EXTRA_ARGS+=(--prerelease)
           fi
-
           if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
             echo "Release $RELEASE_TAG already exists; leaving it unchanged."
             exit 0
           fi
-
           gh release create "$RELEASE_TAG" \
             "$ZIP_FILE" \
-            --target "$GITHUB_SHA" \
+            --target "$RELEASE_SHA" \
             --title "Arc Side of the Chrome ${VERSION}" \
             --notes-file RELEASE_NOTES.md \
             "${EXTRA_ARGS[@]}"

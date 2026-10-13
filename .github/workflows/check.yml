@@ -14,6 +14,7 @@ jobs:
           node-version: '22'
       - run: npm test
       - run: npm run check
+      - run: python3 -m unittest discover -s tests -p 'release_automation_test.py'
       - run: npm install --no-save --package-lock=false --ignore-scripts playwright-core@1.56.1
       - run: python3 tests/browser-overlay.py --require-browser --regression-ref=0a7248abf3b70cc393ccfd091daecfd275e012cc
       - run: xvfb-run -a node tests/browser-edge-hover.mjs --regression-ref=4c4372371cec936e65c804a043cb00a8878a7eca
