@@ -1,5 +1,3 @@
-const TITLE_FETCH_TIMEOUT_MS = 6000;
-
 function comparableUrl(value) {
   try {
     const url = new URL(value);
@@ -24,27 +22,19 @@ async function titleFromOpenTab(url) {
 async function titleFromPage(url) {
   const parsed = new URL(url);
   if (!['http:', 'https:'].includes(parsed.protocol)) return '';
-
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TITLE_FETCH_TIMEOUT_MS);
-
   try {
-    const response = await fetch(url, {
-      method: 'GET',
-      redirect: 'follow',
-      credentials: 'omit',
-      cache: 'no-store',
-      signal: controller.signal
-    });
-    if (!response.ok) return '';
-
-    const html = await response.text();
-    const doc = new DOMParser().parseFromString(html, 'text/html');
+    const result = await chrome.runtime.sendMessage({ type: 'arc-sidebar-page-title', url: parsed.href });
+    if (!result?.ok) {
+      console.warn('Arc Side of the Chrome: page title lookup failed:', result?.error || 'No worker response');
+      return '';
+    }
+    // Parse the worker's raw title text to decode HTML entities without loading
+    // or executing the fetched page. Existing tabs still use their Chrome title.
+    const doc = new DOMParser().parseFromString(`<title>${result.title}</title>`, 'text/html');
     return cleanTitle(doc.querySelector('title')?.textContent);
-  } catch {
+  } catch (error) {
+    console.warn('Arc Side of the Chrome: page title lookup failed:', error.message);
     return '';
-  } finally {
-    clearTimeout(timer);
   }
 }
 

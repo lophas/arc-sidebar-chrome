@@ -15,6 +15,7 @@ const write=async(area,values)=>{const diff={};for(const [key,value]of Object.en
 window.chrome={storage:{local:{get:async keys=>read('local',keys),set:values=>write('local',values)},session:{get:async keys=>read('session',keys),set:values=>write('session',values)},onChanged:changes},
  windows:{getCurrent:async()=>({id:1})},runtime:{id:'test',onMessage:event(),getURL:path=>location.origin+'/'+path,sendMessage:async message=>{
   calls.push(message);
+  if(message.type==='arc-sidebar-page-title'){const {fetchPageTitle}=await import('/src/background/page-title.js');return fetchPageTitle(message.url);}
   if(message.type==='arc-sidebar-tab-action'){
    if(message.action==='pin-workflow-tab'){const {pinWorkflowTab}=await import('/src/background/tab-actions.js');return {ok:true,values:await pinWorkflowTab(message)};}
    if(message.action==='close-live-tab'){const {closeLiveTab}=await import('/src/background/tab-actions.js');return {ok:true,values:await closeLiveTab(message.tabId)};}

@@ -5,11 +5,9 @@ import vm from 'node:vm';
 import { resolvePageTitle } from '../src/sidepanel/link-title.js';
 
 test('page title uses the current URL, normalizes whitespace and ignores stale tab destinations',async()=>{
- globalThis.chrome={tabs:{query:async()=>[{url:'https://old.test',title:'Old title'},{url:'https://new.test/#section',title:' Fresh\n page   title '}]}};
+ globalThis.chrome={runtime:{sendMessage:async()=>({ok:false,error:'Network unavailable'})},tabs:{query:async()=>[{url:'https://old.test',title:'Old title'},{url:'https://new.test/#section',title:' Fresh\n page   title '}]}};
  assert.equal(await resolvePageTitle('https://new.test/'),'Fresh page title');
- const originalFetch=globalThis.fetch;
- globalThis.fetch=async()=>{throw Error('unavailable');};
- try{assert.equal(await resolvePageTitle('https://unknown.test'),'');assert.equal(await resolvePageTitle('chrome://extensions/'),'');}finally{globalThis.fetch=originalFetch;}
+ assert.equal(await resolvePageTitle('https://unknown.test'),'');assert.equal(await resolvePageTitle('chrome://extensions/'),'');
 });
 function editor(title='',url='https://new.test') {
  const button={disabled:false,textContent:'Save',setAttribute(){},removeAttribute(){}};

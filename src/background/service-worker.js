@@ -13,6 +13,7 @@ import { createStorageClient } from '../shared/storage-client.js';
 import { commitStorage } from './state-controller.js';
 const sidebarStorage = createStorageClient({ transact: commitStorage });
 import './command-bar.js';
+import './page-title.js';
 import './context-menu.js';
 import { hasSyncContent } from '../shared/sync-content.js';
 
