@@ -90,15 +90,15 @@ Drag links to place them before or after other links, inside a folder, between f
 
 Drag Favorites to change their order. Move pinned links into Favorites, or drag Favorites back between a Space’s pinned links and folders or into a folder. Their custom icons and live tabs follow the move. Drop onto **+ Favorite** when the Favorites collection is empty.
 
-New tabs opened from a Favorite are ungrouped. New tabs opened from a Space’s pinned links stay in that Space’s Chrome group.
+New tabs opened from a Favorite are ungrouped and appear at the end of their Chrome window’s tab bar. New tabs opened from a Space’s pinned links stay in that Space’s Chrome group.
 
 ### Search
 
 Press **Command+K** on macOS or **Ctrl+K** on Windows/Linux to open the search popup, including when the sidebar is closed. The sidebar’s **Search or enter URL** control opens the same search inside the sidebar.
 
-With an empty query, search shows recently accessed open tabs. Type to find open tabs across Chrome windows, Favorites, pinned links, folders and Spaces. Results show favicons, match all entered words and ignore differences in accents. Open-tab results include webpages and file URLs.
+With an empty query, search shows recently used open tabs, excluding the current tab. Press **⌘K / Ctrl+K → Enter** to switch to the previously used tab. Type to find open tabs across Chrome windows, Favorites, pinned links, folders and Spaces. Results show favicons and Space or Chrome group names, match all entered words and ignore differences in accents. A saved link with an open tab appears once; selecting it activates that tab, even if it has navigated to another page. Open-tab results include webpages, file URLs and Chrome pages such as `chrome://extensions/`; empty New Tab pages are omitted.
 
-Enter a URL to open it, or choose a Google search. Use **↑ / ↓** to select a result, **Enter** to open it and **Escape** to dismiss search. Change the shortcut at `chrome://extensions/shortcuts`.
+Enter a URL to open it, or choose a Google search. If that URL is already open, the first result switches to its existing tab. Use **↑ / ↓** to select a result, **Enter** to open it and **Escape** to dismiss search. Change the shortcut at `chrome://extensions/shortcuts`.
 
 Choosing a pinned link or its bound open tab selects its Space and expands its parent folders. Folder and Space results take you to the selected location; choosing one from the standalone popup opens the fixed sidebar.
 

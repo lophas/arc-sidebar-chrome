@@ -18,6 +18,7 @@ jobs:
       - run: python3 tests/browser-overlay.py --require-browser --regression-ref=0a7248abf3b70cc393ccfd091daecfd275e012cc
       - run: xvfb-run -a node tests/browser-edge-hover.mjs --regression-ref=4c4372371cec936e65c804a043cb00a8878a7eca
       - run: node tests/browser-space-tabs.mjs
+      - run: node tests/browser-command-search.mjs
       - run: xvfb-run -a node tests/browser-auto-pip-guide.mjs
       - run: xvfb-run -a node tests/browser-auto-pip.mjs --regression-ref=3e33f9de7e2784175a7198c2a14d70dbff66306f
       - run: xvfb-run -a node tests/browser-auto-pip.mjs

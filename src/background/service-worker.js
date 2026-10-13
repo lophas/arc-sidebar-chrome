@@ -3,7 +3,7 @@ import './auto-pip.js';
 import './auto-pip-settings.js';
 import './sidebar-mode.js';
 import { refreshActiveSidebar } from './overlay-delivery.js';
-import { favoriteChildCandidate, appendFavoriteChildrenToUngroup } from './favorite-child-tabs.js';
+import { favoriteChildCandidate, appendFavoriteChildrenToUngroup, moveFavoriteChildrenToEnd } from './favorite-child-tabs.js';
 import { watchNativeGroupVisibility, holdNativeGroupVisibility } from './native-group-visibility.js';
 import { orderNativeGroups } from './native-group-order.js';
 import { pruneGroupMap } from './native-group-map.js';
@@ -400,6 +400,7 @@ async function syncNativeGroupsNow() {
     const mapChanged = await pruneGroupMap(groupMap, liveKeys, model, FAVORITES_GROUP);
     if (mapChanged || desired.size) await saveSessionGroupMap(groupMap);
     await orderNativeGroups(model, groupMap, FAVORITES_GROUP);
+    await moveFavoriteChildrenToEnd(favoriteChildren, sidebarStorage);
   } finally {
     groupSyncRunning = false;
     if (groupSyncPending) {

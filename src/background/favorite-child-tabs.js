@@ -23,3 +23,18 @@ export function appendFavoriteChildrenToUngroup(ungrouped, candidates, bindings,
     if (!ungrouped.some(existing => existing.id === tab.id)) ungrouped.push(tab);
   }
 }
+
+// Run after group ordering, once for each newly created child. Recheck ownership
+// so saving, pinning or moving a tab during sync wins over automatic placement.
+export async function moveFavoriteChildrenToEnd(candidates, storage, browser = chrome) {
+  if (!candidates.length) return;
+  const session = await storage.session.get('arcSidebarBindings');
+  const savedTabIds = new Set(Object.values(session.arcSidebarBindings || {}).map(Number));
+  for (const candidate of candidates) {
+    try {
+      const tab = await browser.tabs.get(candidate.tabId);
+      if (tab.pinned || tab.windowId !== candidate.windowId || savedTabIds.has(tab.id) || tab.groupId !== -1) continue;
+      await browser.tabs.move(tab.id, { index: -1 });
+    } catch { /* The child may have closed while groups were being synchronized. */ }
+  }
+}

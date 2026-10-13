@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
-import { favoriteChildCandidate, appendFavoriteChildrenToUngroup } from '../src/background/favorite-child-tabs.js';
+import { favoriteChildCandidate, appendFavoriteChildrenToUngroup, moveFavoriteChildrenToEnd } from '../src/background/favorite-child-tabs.js';
 import { orderNativeGroups } from '../src/background/native-group-order.js';
 import { pruneGroupMap } from '../src/background/native-group-map.js';
 const model={favorites:[{id:'fav',type:'tab',url:'https://gmail.test'}],spaces:[{id:'work',title:'Work',children:[{id:'pin',type:'tab',url:'https://work.test'}]},{id:'other',title:'Other'}]};
@@ -32,12 +32,12 @@ test('serialized worker sync ungroups only Favorite children, preserving Favorit
  const bindings={fav:10,pin:20,promoted:32};
  const current=structuredClone(model);current.spaces[0].children.push({id:'promoted',type:'tab'});
  const data={arcSidebarModel:current,arcSidebarBindings:bindings,arcSidebarNativeGroups:{'1:__favorites__':2,'1:work':3}};
- const ungrouped=[],grouped=[];
+ const ungrouped=[],grouped=[],moved=[];
  const read=async keys=>Object.fromEntries((Array.isArray(keys)?keys:[keys]).filter(key=>key in data).map(key=>[key,structuredClone(data[key])]));
- const chrome={tabs:{query:async({windowId}={})=>tabs.filter(tab=>windowId==null||tab.windowId===windowId),ungroup:async ids=>{ungrouped.push(...ids);for(const tab of tabs)if(ids.includes(tab.id))tab.groupId=-1;},group:async({tabIds,groupId})=>{assert.ok(groupId!=null,'existing groups must be reused');grouped.push(...tabIds);for(const tab of tabs)if(tabIds.includes(tab.id))tab.groupId=groupId;return groupId;}},tabGroups:{move:async(id,{index})=>{const members=tabs.filter(tab=>tab.groupId===id),rest=tabs.filter(tab=>tab.groupId!==id);rest.splice(index,0,...members);tabs.splice(0,tabs.length,...rest);tabs.forEach((tab,index)=>tab.index=index);},get:async id=>groups.find(group=>group.id===id),query:async()=>groups,update:async(id,values)=>Object.assign(groups.find(group=>group.id===id),values)}};
+ const chrome={tabs:{get:async id=>{const tab=tabs.find(tab=>tab.id===id);if(!tab)throw Error('closed');return {...tab};},move:async(id,{index})=>{assert.equal(index,-1);moved.push(id);const tab=tabs.find(tab=>tab.id===id);tabs.splice(tabs.indexOf(tab),1);tabs.push(tab);tabs.forEach((tab,index)=>tab.index=index);},query:async({windowId}={})=>tabs.filter(tab=>windowId==null||tab.windowId===windowId),ungroup:async ids=>{ungrouped.push(...ids);for(const tab of tabs)if(ids.includes(tab.id))tab.groupId=-1;},group:async({tabIds,groupId})=>{assert.ok(groupId!=null,'existing groups must be reused');grouped.push(...tabIds);for(const tab of tabs)if(tabIds.includes(tab.id))tab.groupId=groupId;return groupId;}},tabGroups:{move:async(id,{index})=>{const members=tabs.filter(tab=>tab.groupId===id),rest=tabs.filter(tab=>tab.groupId!==id);rest.splice(index,0,...members);tabs.splice(0,tabs.length,...rest);tabs.forEach((tab,index)=>tab.index=index);},get:async id=>groups.find(group=>group.id===id),query:async()=>groups,update:async(id,values)=>Object.assign(groups.find(group=>group.id===id),values)}};
  globalThis.chrome=chrome;
  const candidates=new Map([11,31,32,33,99].map(tabId=>[tabId,{tabId,windowId:1}]));
- const context=vm.createContext({chrome,sidebarStorage:{local:{get:read},session:{get:read,set:async values=>Object.assign(data,values)}},STORAGE_KEY:'arcSidebarModel',BINDINGS_KEY:'arcSidebarBindings',GROUP_MAP_KEY:'arcSidebarNativeGroups',TAB_ID_NONE:-1,FAVORITES_GROUP:favoritesGroup,GROUP_COLORS:['blue'],pendingFavoriteChildren:candidates,groupSyncRunning:false,groupSyncPending:false,groupSyncTimer:null,releaseGroupVisibility:null,appendFavoriteChildrenToUngroup,orderNativeGroups,pruneGroupMap,console});
+ const context=vm.createContext({chrome,sidebarStorage:{local:{get:read},session:{get:read,set:async values=>Object.assign(data,values)}},STORAGE_KEY:'arcSidebarModel',BINDINGS_KEY:'arcSidebarBindings',GROUP_MAP_KEY:'arcSidebarNativeGroups',TAB_ID_NONE:-1,FAVORITES_GROUP:favoritesGroup,GROUP_COLORS:['blue'],pendingFavoriteChildren:candidates,groupSyncRunning:false,groupSyncPending:false,groupSyncTimer:null,releaseGroupVisibility:null,appendFavoriteChildrenToUngroup,moveFavoriteChildrenToEnd,orderNativeGroups,pruneGroupMap,console});
  const source=fs.readFileSync('src/background/service-worker.js','utf8');
  vm.runInContext(source.slice(source.indexOf('function buildSpaceIndex('),source.indexOf('function queueNativeGroupSync(')),context);
  await context.syncNativeGroupsNow();
@@ -47,6 +47,15 @@ test('serialized worker sync ungroups only Favorite children, preserving Favorit
  assert.equal(tabs.find(tab=>tab.id===21).groupId,3,'Space child stays in its opener’s group');
  assert.equal(tabs.find(tab=>tab.id===32).groupId,3,'a child saved into a Space meanwhile keeps that destination');
  assert.equal(tabs.find(tab=>tab.id===30).groupId,7,'unrelated groups are untouched');
+ assert.deepEqual(moved,[11,33]);assert.deepEqual(tabs.slice(-2).map(tab=>tab.id),[11,33],'Favorite children follow all groups at the tab-strip end');assert.equal(tabs[0].id,31);
  assert.equal(candidates.size,0);
- await context.syncNativeGroupsNow();assert.deepEqual(ungrouped,[11],'later syncs do not group the child again');
+ await context.syncNativeGroupsNow();assert.deepEqual(ungrouped,[11],'later syncs do not group the child again');assert.deepEqual(moved,[11,33],'placement happens only once');
+});
+
+test('end placement respects saved, native pinned, regrouped, moved and closed children',async()=>{
+ const tabs=[{id:1,windowId:1,groupId:-1},{id:2,windowId:2,groupId:-1},{id:3,windowId:1,groupId:-1,pinned:true},{id:4,windowId:1,groupId:9},{id:5,windowId:1,groupId:-1},{id:6,windowId:2,groupId:-1}];
+ const moved=[];
+ const browser={tabs:{get:async id=>{const tab=tabs.find(t=>t.id===id);if(!tab)throw Error('closed');return tab;},move:async(id,options)=>moved.push({id,options})}};
+ await moveFavoriteChildrenToEnd([1,2,3,4,5,99].map(tabId=>({tabId,windowId:1})).concat({tabId:6,windowId:2}),storage('work',{saved:5}),browser);
+ assert.deepEqual(moved,[{id:1,options:{index:-1}},{id:6,options:{index:-1}}]);
 });

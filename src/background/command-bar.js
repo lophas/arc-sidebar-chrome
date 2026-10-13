@@ -6,8 +6,9 @@ chrome.commands.onCommand.addListener(async (command, tab) => {
   if (command !== 'arc-command-bar-v3') return;
   try {
     const source = tab?.windowId != null ? await chrome.windows.get(tab.windowId) : await chrome.windows.getLastFocused({ windowTypes: ['normal'] });
+    const sourceTabId = tab?.id ?? (await chrome.tabs.query({ active: true, windowId: source.id }))[0]?.id;
     const width = Math.min(640, source.width || 640), height = Math.min(520, source.height || 520);
-    await chrome.windows.create({ type: 'popup', url: chrome.runtime.getURL(`src/sidepanel/command.html?windowId=${source.id}`), width, height,
+    await chrome.windows.create({ type: 'popup', url: chrome.runtime.getURL(`src/sidepanel/command.html?windowId=${source.id}&sourceTabId=${sourceTabId ?? ''}`), width, height,
       left: Math.max(0, Math.round((source.left || 0) + ((source.width || width) - width) / 2)),
       top: Math.max(0, Math.round((source.top || 0) + ((source.height || height) - height) / 3)) });
   } catch (error) { console.error('Arc Side of the Chrome search:', error); }
