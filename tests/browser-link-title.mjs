@@ -44,7 +44,7 @@ try{
  const port=server.address().port,host=`http://localhost:${port}/host`,target=`http://127.0.0.1:${port}/page`;
  await page.goto(host);
  const sidebar=page.frameLocator('#titleSidebar');
- try {await sidebar.locator('[data-space-id="__my_space__"]').waitFor({timeout:15000});}
+ try {await sidebar.locator('.space-button[data-space-id="__my_space__"]').waitFor({timeout:15000});}
  catch(error){console.error('Sidebar initialization:',await Promise.all(page.frames().map(frame=>frame.evaluate(()=>({url:location.href,runtime:!!globalThis.chrome?.runtime,storage:!!globalThis.chrome?.storage,text:document.body?.innerText?.slice(0,1000)})).catch(error=>({error:error.message})))));throw error;}
  frame=page.frames().find(frame=>frame.url().startsWith(`chrome-extension://${extensionId}/src/sidepanel/index.html`));assert.ok(frame);
  const legacy=await frame.evaluate(async url=>{try{const response=await fetch(url,{credentials:'omit'});return {status:response.status};}catch(error){return {error:error.message};}},target);
