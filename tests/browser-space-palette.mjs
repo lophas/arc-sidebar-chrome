@@ -13,7 +13,7 @@ let context;
 try{
  context=await chromium.launchPersistentContext('',{channel:'chromium',headless:false,acceptDownloads:true,viewport:{width:420,height:900},ignoreDefaultArgs:['--disable-extensions'],args:['--no-sandbox',`--disable-extensions-except=${directory}`,`--load-extension=${directory}`]});
  let[worker]=context.serviceWorkers();if(!worker)worker=await context.waitForEvent('serviceworker');const origin=`chrome-extension://${worker.url().split('/')[2]}`;
- const page=await context.newPage(),errors=[];page.on('pageerror',error=>errors.push(error.message));await page.emulateMedia({colorScheme:'light'});
+ const page=await context.newPage(),errors=[];page.on('pageerror',error=>{errors.push(error.message);console.error('Palette page error:',error.message);});await page.emulateMedia({colorScheme:'light'});
  await page.goto(origin+'/src/sidepanel/index.html');await page.locator('.space-button[data-space-id="__my_space__"]').waitFor();
  const poll=async(predicate,message)=>{for(let i=0;i<160;i++){if(await predicate())return;await new Promise(done=>setTimeout(done,50));}assert.fail(message);};
  const readModel=()=>page.evaluate(async()=>(await chrome.storage.local.get('arcSidebarModel')).arcSidebarModel);
@@ -35,6 +35,7 @@ try{
  const custom={kind:'gradient',colors:['#073c99','#ff8800']};
  const editGradient=async()=>{
   await page.locator('.space-button[data-space-id="work"]').click({button:'right'});
+  await page.getByRole('button',{name:'Edit Space…',exact:true}).click();
   await editor.locator('#spacePaletteKind').selectOption('gradient');
   await editor.locator('#spacePaletteHex1').fill(custom.colors[0]);await editor.locator('#spacePaletteHex2').fill(custom.colors[1]);
   assert.equal(await editor.locator('.space-palette-preview').evaluate(el=>el.style.getPropertyValue('--space-background')),paletteStyle(custom,false)['--space-background']);

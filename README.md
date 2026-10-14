@@ -87,7 +87,7 @@ The last Space cannot be deleted manually. Reset recreates the starting layout; 
 
 ### Space palettes
 
-Each Space receives its own palette automatically. Right-click its icon and use **Palette** in the Space editor to choose a ready-made palette, a custom color or a two-color gradient. The preview updates while you edit; choose **Save** to apply it or **Cancel** to keep the previous colors.
+Each Space receives its own palette automatically. Right-click its icon, choose **Edit Space…**, and use **Palette** to choose a ready-made palette, a custom color or a two-color gradient. The preview updates while you edit; choose **Save** to apply it or **Cancel** to keep the previous colors.
 
 The palette colors the whole sidebar, including Favorites, search and the bottom Space switcher. Its light and dark appearances follow the sidebar’s theme. The Space switcher shows each Space’s color even when it is inactive. **Open tabs** uses a neutral appearance.
 
