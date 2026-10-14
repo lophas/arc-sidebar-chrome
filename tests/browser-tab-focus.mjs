@@ -6,7 +6,7 @@ import {createServer} from 'node:http';
 import {chromium} from 'playwright-core';
 const directory=await mkdtemp(join(tmpdir(),'arc-focus-extension-'));
 await cp('src',join(directory,'src'),{recursive:true});await cp('manifest.json',join(directory,'manifest.json'));
-const server=createServer((req,res)=>{res.setHeader('Content-Type','text/html');res.end('<!doctype html><title>'+req.url+'</title><p>Focus test</p>');});
+const server=createServer((req,res)=>{res.setHeader('Content-Type','text/html');res.end('<!doctype html><title>'+req.url+'</title><a id="child" href="/child">Open child</a>');});
 await new Promise(done=>server.listen(0,'127.0.0.1',done));
 let context;
 try{
@@ -27,8 +27,14 @@ try{
  },url);
  await poll(()=>page.evaluate(async()=>Object.keys((await chrome.storage.session.get('arcSidebarNativeGroups')).arcSidebarNativeGroups||{}).some(key=>key.endsWith(':b'))),'Space group did not initialize');
  const active=()=>page.evaluate(async windowId=>(await chrome.tabs.query({windowId,active:true}))[0]?.id,setup.windowId);
+ await poll(async()=>context.pages().some(page=>page.url()===url+'/favorite'),'Favorite webpage did not load');
+ const ownerPage=context.pages().find(page=>page.url()===url+'/favorite');
  const child=async name=>{
-  const id=await page.evaluate(async({opener,url})=>(await chrome.tabs.create({url,openerTabId:opener,active:true})).id,{opener:setup.owner,url:url+'/'+name});
+  await ownerPage.bringToFront();await ownerPage.locator('#child').evaluate((link,url)=>link.href=url,url+'/'+name);
+  const opened=context.waitForEvent('page');await ownerPage.locator('#child').click({modifiers:['Control']});const childPage=await opened;
+  await childPage.waitForLoadState('domcontentloaded');await childPage.bringToFront();
+  const id=await page.evaluate(async url=>(await chrome.tabs.query({})).find(tab=>tab.url===url)?.id,url+'/'+name);
+  assert.ok(id,'The clicked link must create a real browser tab');
   await poll(()=>page.evaluate(async id=>{const tab=await chrome.tabs.get(id),tabs=await chrome.tabs.query({windowId:tab.windowId}),stored=await chrome.storage.session.get('arcSidebarFavoriteChildFocus');return tab.groupId===-1 && tab.index===tabs.length-1 && stored.arcSidebarFavoriteChildFocus?.[id]?.active;},id),'Favorite child was not tracked and moved to the end');
   return id;
  };
