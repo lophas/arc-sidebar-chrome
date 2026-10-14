@@ -68,7 +68,7 @@ try{
  if(process.env.ARC_PALETTE_SCREENSHOTS)console.log('PALETTE_VIVID_PNG='+ (await page.screenshot()).toString('base64'));
  await page.emulateMedia({colorScheme:'light'});await poll(async()=>await background()===paletteStyle({kind:'preset',id:'blue'},false)['--space-background'],'Vivid preset did not return to light theme');
  await page.locator('.space-button[data-space-id="home"]').click();await poll(async()=>await background()===paletteStyle({kind:'preset',id:'green'},false)['--space-background'],'Space switch did not change palette');
- await page.locator('.space-button[data-space-id="__open_tabs__"]').click();assert.equal(await background(),'');
+ await page.locator('.space-button[data-space-id="__open_tabs__"]').click();await poll(async()=>await background()==='','Open tabs did not apply its neutral appearance');
  await page.locator('.space-button[data-space-id="work"]').click();
  const custom={kind:'gradient',colors:['#073c99','#ff8800']};
  const editGradient=async()=>{
