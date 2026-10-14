@@ -1,4 +1,5 @@
 export const SPACE_PALETTES = [
+  { id: 'black', name: 'Classic (black)', colors: ['#18181a'] },
   { id: 'blue', name: 'Ocean', colors: ['#1855c9', '#10b5c2'] },
   { id: 'green', name: 'Forest', colors: ['#15803d', '#80b426'] },
   { id: 'purple', name: 'Aurora', colors: ['#6920ca', '#db337b'] },
@@ -10,7 +11,7 @@ export const SPACE_PALETTES = [
   { id: 'grey', name: 'Slate', colors: ['#52637a', '#797085'] }
 ];
 const presets = new Map(SPACE_PALETTES.map(palette => [palette.id, palette]));
-export const DEFAULT_SPACE_PALETTE = { id: 'blue', kind: 'preset' };
+export const DEFAULT_SPACE_PALETTE = { id: 'black', kind: 'preset' };
 
 export function normalizeHex(value) {
   if (typeof value !== 'string') return null;
@@ -33,13 +34,13 @@ export function paletteColors(value) {
   return palette.kind === 'preset' ? [...presets.get(palette.id).colors] : [...palette.colors];
 }
 
-// Assign once and keep the result attached to the Space's stable identity.
+// Default to Classic and keep saved palettes attached to each Space's identity.
 // Existing colors, icons, folders and other model fields are retained.
 export function withSpacePalettes(model) {
   if (!Array.isArray(model?.spaces)) return model;
   let changed = false;
-  const spaces = model.spaces.map((space, index) => {
-    const palette = normalizeSpacePalette(space.palette) || { id: SPACE_PALETTES[index % SPACE_PALETTES.length].id, kind: 'preset' };
+  const spaces = model.spaces.map(space => {
+    const palette = normalizeSpacePalette(space.palette) || { ...DEFAULT_SPACE_PALETTE };
     const same = space.palette?.kind === palette.kind && Object.keys(space.palette).length === 2 &&
       (palette.kind === 'preset' ? space.palette.id === palette.id : JSON.stringify(space.palette.colors) === JSON.stringify(palette.colors));
     if (same) return space;
@@ -57,14 +58,16 @@ export function isAutomaticPaletteMigration(before, after) {
   return JSON.stringify(ordered(upgraded)) === JSON.stringify(ordered(after));
 }
 
-export function nextSpacePalette(spaces = []) {
-  const used = new Set(spaces.map(space => paletteGroupColor(space.palette)));
-  return { kind: 'preset', id: (SPACE_PALETTES.find(palette => !used.has(palette.id)) || SPACE_PALETTES[spaces.length % SPACE_PALETTES.length]).id };
+export function nextSpacePalette() {
+  return { ...DEFAULT_SPACE_PALETTE };
 }
 
 export function hasCustomSpacePalette(space) {
   const palette = normalizeSpacePalette(space?.palette);
-  return Boolean(palette && (palette.kind !== 'preset' || palette.id !== DEFAULT_SPACE_PALETTE.id));
+  // Ocean was the generated My Space default in earlier releases. It must not
+  // turn an otherwise empty starting profile into a new cloud snapshot.
+  return Boolean(palette && (palette.kind !== 'preset' ||
+    (palette.id !== DEFAULT_SPACE_PALETTE.id && !(space.id === '__my_space__' && palette.id === 'blue'))));
 }
 
 const rgb = color => [1, 3, 5].map(offset => parseInt(color.slice(offset, offset + 2), 16));
@@ -73,7 +76,7 @@ const blend = (color, base, amount) => '#' + rgb(color).map((channel, index) =>
 
 export function paletteGroupColor(value) {
   const palette = normalizeSpacePalette(value) || DEFAULT_SPACE_PALETTE;
-  if (palette.kind === 'preset') return palette.id;
+  if (palette.kind === 'preset') return palette.id === 'black' ? 'grey' : palette.id;
   const [r, g, b] = rgb(palette.colors[0]).map(channel => channel / 255);
   const max = Math.max(r, g, b), min = Math.min(r, g, b), delta = max - min;
   if (delta < 0.08) return 'grey';
@@ -104,6 +107,21 @@ function readableBackground(color, dark, text) {
 
 export const PALETTE_VARIABLES = ['--space-background', '--bg', '--panel', '--text', '--muted', '--border', '--hover', '--active', '--space-accent', '--favorite-background', '--favorite-border', '--favorite-hover'];
 export function paletteStyle(value, dark = false) {
+  const palette = normalizeSpacePalette(value) || DEFAULT_SPACE_PALETTE;
+  if (palette.kind === 'preset' && palette.id === 'black') return {
+    '--space-background': dark ? '#18181a' : '#f6f6f7',
+    '--bg': dark ? '#18181a' : '#f6f6f7',
+    '--panel': dark ? '#202023' : '#ffffff',
+    '--text': dark ? '#f4f4f5' : '#171717',
+    '--muted': dark ? '#a0a0a6' : '#6e6e73',
+    '--border': dark ? 'rgba(255,255,255,.10)' : 'rgba(0,0,0,.09)',
+    '--hover': dark ? 'rgba(255,255,255,.065)' : 'rgba(0,0,0,.055)',
+    '--active': dark ? 'rgba(255,255,255,.12)' : 'rgba(0,0,0,.10)',
+    '--space-accent': dark ? '#a0a0a6' : '#6e6e73',
+    '--favorite-background': dark ? 'rgba(255,255,255,.16)' : 'rgba(255,255,255,.65)',
+    '--favorite-border': dark ? 'rgba(255,255,255,.28)' : 'rgba(0,0,0,.18)',
+    '--favorite-hover': dark ? 'rgba(255,255,255,.23)' : 'rgba(255,255,255,.82)'
+  };
   const colors = paletteColors(value);
   const muted = dark ? '#edf2fa' : '#374151';
   const backgrounds = colors.map(color => readableBackground(color, dark, muted));

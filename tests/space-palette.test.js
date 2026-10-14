@@ -3,29 +3,29 @@ import assert from 'node:assert/strict';
 import {SPACE_PALETTES,withSpacePalettes,nextSpacePalette,normalizeSpacePalette,paletteColors,paletteGroupColor,paletteStyle} from '../src/shared/space-palette.js';
 import {hasSyncContent} from '../src/shared/sync-content.js';
 import {mergeChange} from '../src/shared/state-merge.js';
-test('legacy Spaces receive distinct stable palettes without losing imported or saved metadata',()=>{
- const old={favorites:[{id:'fav',icon:'image'}],spaces:[{id:'a',title:'Work',icon:'image',color:'old-arc-color',children:[{id:'folder',type:'folder',children:[{id:'pin',url:'https://a.test'}]}]},{id:'b',title:'Home',children:[]}]};
+test('legacy Spaces default to Classic and keep saved palettes without losing imported or saved metadata',()=>{
+ const old={favorites:[{id:'fav',icon:'image'}],spaces:[{id:'a',title:'Work',icon:'image',color:'old-arc-color',children:[{id:'folder',type:'folder',children:[{id:'pin',url:'https://a.test'}]}]},{id:'b',title:'Home',children:[],palette:{kind:'preset',id:'green'}}]};
  const copy=structuredClone(old),upgraded=withSpacePalettes(old);
- assert.deepEqual(old,copy);assert.deepEqual(upgraded.spaces.map(space=>space.palette),[{kind:'preset',id:'blue'},{kind:'preset',id:'green'}]);
+ assert.deepEqual(old,copy);assert.deepEqual(upgraded.spaces.map(space=>space.palette),[{kind:'preset',id:'black'},{kind:'preset',id:'green'}]);
  assert.deepEqual(upgraded.spaces[0].children,old.spaces[0].children);assert.equal(upgraded.spaces[0].icon,'image');assert.equal(upgraded.spaces[0].color,'old-arc-color');
  assert.equal(withSpacePalettes(upgraded),upgraded);
  const reordered={...upgraded,spaces:[...upgraded.spaces].reverse()};assert.equal(withSpacePalettes(reordered),reordered);assert.equal(reordered.spaces[0].palette.id,'green');
- assert.deepEqual(nextSpacePalette(upgraded.spaces),{kind:'preset',id:'purple'});
- assert.equal(nextSpacePalette([{palette:{kind:'solid',colors:['#073c99']}},{palette:{kind:'solid',colors:['#00aa66']}}]).id,'purple');
+ assert.deepEqual(nextSpacePalette(upgraded.spaces),{kind:'preset',id:'black'});
+ assert.equal(nextSpacePalette([{palette:{kind:'solid',colors:['#073c99']}},{palette:{kind:'solid',colors:['#00aa66']}}]).id,'black');
 });
 test('solid/gradient colors normalize safely and reject arbitrary CSS or incomplete colors',()=>{
  assert.deepEqual(normalizeSpacePalette({kind:'gradient',colors:['#ABC','#001122']}),{kind:'gradient',colors:['#aabbcc','#001122']});
  for(const value of [{kind:'preset',id:'bad'},{kind:'solid',colors:['url(https://evil.test)']},{kind:'gradient',colors:['#ffffff']},{kind:'solid',colors:['red']},{kind:'solid',colors:['#ffffff','#000000']}])assert.equal(normalizeSpacePalette(value),null);
- assert.equal(withSpacePalettes({spaces:[{id:'broken',palette:{kind:'solid',colors:['invalid']}}]}).spaces[0].palette.id,'blue');
+ assert.equal(withSpacePalettes({spaces:[{id:'broken',palette:{kind:'solid',colors:['invalid']}}]}).spaces[0].palette.id,'black');
 });
 test('storage field ordering does not cause palette rewrites or turn the automatic default into Sync content',()=>{
- for(const palette of [{kind:'preset',id:'blue'},{id:'blue',kind:'preset'},{kind:'gradient',colors:['#073c99','#ff8800']},{colors:['#073c99','#ff8800'],kind:'gradient'}]){
+ for(const palette of [{kind:'preset',id:'black'},{id:'black',kind:'preset'},{kind:'preset',id:'blue'},{id:'blue',kind:'preset'},{kind:'gradient',colors:['#073c99','#ff8800']},{colors:['#073c99','#ff8800'],kind:'gradient'}]){
   const model={spaces:[{id:'a',palette}]};assert.equal(withSpacePalettes(model),model);
  }
- const model={favorites:[],spaces:[{id:'__my_space__',title:'My Space',emoji:'🚀',children:[],palette:{id:'blue',kind:'preset'}}]};assert.equal(hasSyncContent(model),false);
+ for(const id of ['black','blue']){const model={favorites:[],spaces:[{id:'__my_space__',title:'My Space',emoji:'🚀',children:[],palette:{id,kind:'preset'}}]};assert.equal(hasSyncContent(model),false);}
 });
 test('each preset matches its Chrome group; custom colors use primary hue and neutral shades use grey',()=>{
- for(const palette of SPACE_PALETTES)assert.equal(paletteGroupColor({kind:'preset',id:palette.id}),palette.id);
+ for(const palette of SPACE_PALETTES)assert.equal(paletteGroupColor({kind:'preset',id:palette.id}),palette.id==='black'?'grey':palette.id);
  for(const [color,expected]of [['#073c99','blue'],['#ff0000','red'],['#00aa66','green'],['#ffff00','yellow'],['#00ffff','cyan'],['#aa00ff','purple'],['#ff8800','orange'],['#ff0080','pink'],['#222222','grey'],['#ffffff','grey']])assert.equal(paletteGroupColor({kind:'solid',colors:[color]}),expected,color);
  assert.equal(paletteGroupColor({kind:'gradient',colors:['#073c99','#ff8800']}),'blue');
 });

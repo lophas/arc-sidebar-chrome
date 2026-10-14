@@ -41,7 +41,7 @@ export function createSpacePaletteEditor(dialog) {
     const button = document.createElement('button');
     button.type = 'button'; button.className = 'space-palette-choice'; button.dataset.paletteId = preset.id;
     button.title = preset.name; button.setAttribute('aria-label', preset.name);
-    button.style.background = `linear-gradient(135deg, ${preset.colors.join(', ')})`;
+    button.style.background = preset.colors.length === 1 ? preset.colors[0] : `linear-gradient(135deg, ${preset.colors.join(', ')})`;
     button.addEventListener('click', () => { value = { kind: 'preset', id: preset.id }; setColors(preset.colors); paint(); });
     grid.append(button);
   }
