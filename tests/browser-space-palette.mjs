@@ -125,7 +125,7 @@ try{
  await page.evaluate(()=>chrome.storage.local.set({arcSidebarMode:'overlay',arcSidebarAutohideTimeout:900}));
  const inactive=await context.newPage();await inactive.goto(url+'/inactive');
  await inactive.waitForFunction(()=>document.getElementById('arc-sidebar-overlay-host')?.style.display==='block');
- const active=await context.newPage();await active.goto(url+'/active');
+ const active=await context.newPage();active.on('console',message=>{if(message.text().includes('Native panel test:'))console.error(message.text());});await active.goto(url+'/active');
  await active.evaluate(origin=>{window.modeMarker='kept';const iframe=document.createElement('iframe');iframe.id='nativeControls';iframe.src=origin+'/src/sidepanel/index.html?overlay=1';iframe.style.cssText='width:410px;height:800px';document.body.append(iframe);},origin);
  const controls=active.frameLocator('#nativeControls');await controls.locator('#toggleSidebarMode').waitFor();
  await controls.locator('body').evaluate(async body=>{
@@ -133,6 +133,8 @@ try{
   for(const [name,action]of [['Test native open','open'],['Test native close','close']]){const button=document.createElement('button');button.textContent=name;button.addEventListener('click',()=>chrome.sidePanel[action]({windowId}).catch(error=>console.error('Native panel test:',error.message)));body.prepend(button);}
  });
  await controls.getByRole('button',{name:'Test native open',exact:true}).click();
+ await new Promise(done=>setTimeout(done,300));
+ console.log('Native panel diagnostic:',JSON.stringify(await page.evaluate(async()=>({contexts:await chrome.runtime.getContexts({contextTypes:['SIDE_PANEL']}),mode:(await chrome.storage.local.get('arcSidebarMode')).arcSidebarMode,openedEvent:!!chrome.sidePanel.onOpened,agent:navigator.userAgent}))));
  await poll(()=>page.evaluate(async()=>(await chrome.storage.local.get('arcSidebarMode')).arcSidebarMode==='native'),'Native opening did not select Fixed');
  await active.waitForFunction(()=>document.getElementById('arc-sidebar-overlay-host')?.style.display==='none');
  await poll(()=>controls.locator('#toggleSidebarMode').getAttribute('aria-pressed').then(value=>value==='true'),'Mode switch did not reflect native opening');

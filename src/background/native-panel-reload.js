@@ -8,18 +8,20 @@ async function followNativePanelOpen(windowId) {
   if (!Number.isInteger(windowId)) return;
   // Opening the native panel is an explicit request to keep the sidebar fixed.
   // Keep the chosen timeout and let other pages apply the mode on next focus.
-  await sidebarStorage.local.set({ arcSidebarMode: 'native' });
+  const stored = await sidebarStorage.local.get('arcSidebarMode');
+  if (stored.arcSidebarMode !== 'native') await sidebarStorage.local.set({ arcSidebarMode: 'native' });
   await refreshActiveSidebar(windowId);
 }
 const reportError = error => console.warn('Arc Side of the Chrome: could not apply Fixed sidebar mode', error?.message || error);
 
 if (chrome.sidePanel?.onOpened) {
   chrome.sidePanel.onOpened.addListener(info => {
-    if (info.path && info.path !== PANEL_PATH) return;
+    if (info.path && info.path !== PANEL_PATH && info.path !== chrome.runtime.getURL(PANEL_PATH)) return;
     return followNativePanelOpen(info.windowId).catch(reportError);
   });
-} else {
-  // Earlier Chrome versions announce actual native panels through their port.
+}
+{
+  // Native presence also covers browsers that expose but do not fire onOpened.
   // Verify the context so a normal tab or embedded sidebar cannot change mode.
   chrome.runtime.onConnect.addListener(port => {
     if (port.name !== 'arc-native-sidepanel') return;

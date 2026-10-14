@@ -6,7 +6,7 @@ function setup({modern=true,native=true}={}) {
  const state={arcSidebarMode:'overlay',arcSidebarAutohideTimeout:1000},calls=[];
  let opened,connect;
  const chrome={runtime:{getURL:path=>'chrome-extension://test/'+path,onConnect:{addListener:fn=>connect=fn},getContexts:async filter=>{calls.push(['contexts',filter.windowIds[0]]);return native?[{documentUrl:'chrome-extension://test/src/sidepanel/index.html'}]:[];}},sidePanel:modern?{onOpened:{addListener:fn=>opened=fn}}:{}};
- const context={chrome,console,Number,commitStorage(){},createStorageClient:()=>({local:{set:async values=>{Object.assign(state,values);calls.push(['set',values.arcSidebarMode]);}}}),refreshActiveSidebar:async id=>calls.push(['refresh',id])};
+ const context={chrome,console,Number,commitStorage(){},createStorageClient:()=>({local:{get:async()=>({...state}),set:async values=>{Object.assign(state,values);calls.push(['set',values.arcSidebarMode]);}}}),refreshActiveSidebar:async id=>calls.push(['refresh',id])};
  vm.runInNewContext(fs.readFileSync('src/background/native-panel-reload.js','utf8').replace(/^import .*;\n/gm,''),context);
  const port=()=>{let message,disconnect;connect({name:'arc-native-sidepanel',onMessage:{addListener:fn=>message=fn},onDisconnect:{addListener:fn=>disconnect=fn}});return{message:value=>message(value),disconnect};};
  return{state,calls,open:info=>opened(info),port};
