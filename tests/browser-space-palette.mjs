@@ -42,6 +42,9 @@ try{
  await poll(async()=>await background()===paletteStyle({kind:'preset',id:'blue'},false)['--space-background'],'Active Space background did not update');
  assert.equal(await page.locator('.search-wrap').evaluate(el=>getComputedStyle(el).backgroundColor),'rgba(0, 0, 0, 0)');
  assert.equal(await page.locator('.favorites-section').evaluate(el=>getComputedStyle(el).backgroundColor),'rgba(0, 0, 0, 0)');
+ const folder=page.locator('.folder[data-folder-node-id="folder"]');
+ await folder.locator('.folder-header .folder-icon').click();await page.locator('.folder.collapsed[data-folder-node-id="folder"]').waitFor();
+ await folder.locator('.folder-header .folder-icon').click();await page.locator('.folder:not(.collapsed)[data-folder-node-id="folder"]').waitFor();
  assert.equal(await page.locator('.space-palette-mark').count(),0);
  assert.deepEqual(await page.locator('.favorite-tile').evaluate(el=>{const css=getComputedStyle(el);return[css.borderTopWidth,css.borderTopStyle,css.backgroundColor];}),['1px','solid','rgba(255, 255, 255, 0.65)']);
  await page.emulateMedia({colorScheme:'dark'});await poll(async()=>await background()===paletteStyle({kind:'preset',id:'blue'},true)['--space-background'],'Vivid preset did not follow dark theme');

@@ -354,10 +354,19 @@ function renderNode(node, q) {
   const caret = document.createElement('span');
   caret.className = 'folder-caret';
   caret.textContent = folder.classList.contains('collapsed') ? '▶' : '▼';
+  const icon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  icon.classList.add('folder-icon');
+  icon.setAttribute('viewBox', '0 0 24 24');
+  icon.setAttribute('aria-hidden', 'true');
+  const shape = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  shape.setAttribute('d', folder.classList.contains('collapsed')
+    ? 'M3 7V5a2 2 0 0 1 2-2h4l2 3h8a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z'
+    : 'M3 12V5a2 2 0 0 1 2-2h4l2 3h8a2 2 0 0 1 2 2v3M3 12h18l-3 9H5l-2-9Z');
+  icon.append(shape);
   const title = document.createElement('span');
   title.className = 'row-title';
   title.textContent = node.title;
-  header.append(caret, title);
+  header.append(caret, icon, title);
 
   const children = document.createElement('div');
   children.className = 'folder-children';
