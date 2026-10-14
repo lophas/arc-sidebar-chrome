@@ -29,6 +29,10 @@ test('each Favorite child returns to the parent rather than another open child',
  const f=fixture();f.add({id:12,openerTabId:10});f.add({id:10});f.add({id:11,openerTabId:10,active:true});await f.track(12);await f.track(11);
  f.close(11);await f.watcher.settled();assert.equal(f.updates[0].id,10);assert.ok(f.tabs.has(12));
 });
+test('a user selection immediately after closing wins before return processing starts',async()=>{
+ const f=fixture();f.add({id:3});f.add({id:4});f.add({id:10});f.add({id:11,openerTabId:10,active:true});await f.track(11);
+ f.close(11);f.activate(4);await f.watcher.settled();assert.deepEqual(f.updates,[]);
+});
 test('background closes, window closes and an already closed opener do not change focus',async()=>{
  for(const mode of ['background','window','opener']){
   const f=fixture();f.add({id:3,active:mode==='background'});f.add({id:10});f.add({id:11,openerTabId:10,active:mode!=='background'});await f.track(11);

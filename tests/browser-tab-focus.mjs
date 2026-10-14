@@ -12,17 +12,18 @@ let context;
 try{
  context=await chromium.launchPersistentContext('',{channel:'chromium',headless:false,ignoreDefaultArgs:['--disable-extensions'],args:['--no-sandbox',`--disable-extensions-except=${directory}`,`--load-extension=${directory}`]});
  let[worker]=context.serviceWorkers();if(!worker)worker=await context.waitForEvent('serviceworker');
- const page=await context.newPage();await page.goto(`chrome-extension://${worker.url().split('/')[2]}/src/sidepanel/index.html`);
+ const page=await context.newPage();page.on('pageerror',error=>console.error('Extension page error:',error.message));await page.goto(`chrome-extension://${worker.url().split('/')[2]}/src/sidepanel/index.html`);
  await page.locator('.space-button[data-space-id="__my_space__"]').waitFor();
  const url=`http://127.0.0.1:${server.address().port}`;
- const poll=async(predicate,message)=>{for(let i=0;i<100;i++){if(await predicate())return;await new Promise(done=>setTimeout(done,50));}assert.fail(message);};
+ const poll=async(predicate,message)=>{for(let i=0;i<100;i++){if(await predicate())return;await new Promise(done=>setTimeout(done,50));}console.error('Focus test state:',JSON.stringify(await page.evaluate(async()=>({local:await chrome.storage.local.get(null),session:await chrome.storage.session.get(null),tabs:await chrome.tabs.query({}),groups:await chrome.tabGroups.query({})}))));assert.fail(message);};
  const setup=await page.evaluate(async url=>{
-  const owner=await chrome.tabs.create({url:url+'/favorite',active:false});
-  const unrelated=await chrome.tabs.create({url:url+'/unrelated',active:false});
-  const pinned=await chrome.tabs.create({url:url+'/space',active:false});
-  await chrome.storage.local.set({arcSidebarModel:{version:2,favorites:[{id:'fav',type:'tab',title:'Favorite',url:owner.url||url+'/favorite'}],spaces:[{id:'a',title:'A',emoji:'🚀',children:[]},{id:'b',title:'B',emoji:'📘',children:[{id:'pin',type:'tab',title:'Pinned',url:url+'/space'}]}]},arcSidebarState:{currentSpaceId:'a',collapsedFolders:{folder:true}}});
-  await chrome.storage.session.set({arcSidebarBindings:{fav:owner.id,pin:pinned.id}});
-  return {owner:owner.id,unrelated:unrelated.id,pinned:pinned.id,windowId:owner.windowId};
+  await chrome.storage.local.set({arcSidebarModel:{version:2,favorites:[{id:'fav',type:'tab',title:'Favorite',url:url+'/favorite'}],spaces:[{id:'a',title:'A',emoji:'🚀',children:[]},{id:'b',title:'B',emoji:'📘',children:[{id:'pin',type:'tab',title:'Pinned',url:url+'/space'}]}]},arcSidebarState:{currentSpaceId:'a',collapsedFolders:{folder:true}}});
+  const windowId=(await chrome.windows.getCurrent()).id;
+  const open=async itemId=>{const result=await chrome.runtime.sendMessage({type:'arc-sidebar-tab-action',action:'open',itemId,windowId});if(!result.ok)throw Error(result.error);return result.values;};
+  const owner=await open('fav'),pinned=await open('pin');
+  const unrelated=await chrome.tabs.create({url:url+'/unrelated',active:true});
+  await chrome.storage.local.set({arcSidebarState:{currentSpaceId:'a',collapsedFolders:{folder:true}}});
+  return {owner,unrelated:unrelated.id,pinned,windowId};
  },url);
  await poll(()=>page.evaluate(async()=>Object.keys((await chrome.storage.session.get('arcSidebarNativeGroups')).arcSidebarNativeGroups||{}).some(key=>key.endsWith(':b'))),'Space group did not initialize');
  const active=()=>page.evaluate(async windowId=>(await chrome.tabs.query({windowId,active:true}))[0]?.id,setup.windowId);

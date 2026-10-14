@@ -54,6 +54,7 @@ export function watchTabFocus(selectSpace, browser = chrome) {
     });
   });
   browser.tabs.onRemoved.addListener((tabId, info) => {
+    const closeVersion = versions.get(info.windowId) || 0;
     enqueue(async () => {
       const child = children[tabId];
       let changed = false;
@@ -64,6 +65,9 @@ export function watchTabFocus(selectSpace, browser = chrome) {
       }
       if (changed) await save();
       if (!child?.active || info.isWindowClosing || child.windowId !== info.windowId) return;
+      // Chrome selects a replacement once. Further selections belong to the
+      // user and win even while earlier storage operations are still queued.
+      if ((versions.get(info.windowId) || 0) > closeVersion + 1) return;
       try {
         const [active] = await browser.tabs.query({ active: true, windowId: info.windowId });
         const version = versions.get(info.windowId);
