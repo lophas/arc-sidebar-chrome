@@ -46,9 +46,9 @@ export function createSpacePaletteEditor(dialog) {
     grid.append(button);
   }
   kind.addEventListener('change', () => {
-    if (kind.value === 'preset') value = { kind: 'preset', id: paletteGroupColor(value) };
+    if (kind.value === 'preset') { value = { kind: 'preset', id: paletteGroupColor(value) }; setColors(paletteColors(value)); }
     else value = { kind: kind.value, colors: colorFields.slice(0, kind.value === 'gradient' ? 2 : 1).map(input => input.value) };
-    setColors(paletteColors(value)); paint();
+    paint();
   });
   colorFields.forEach((input, index) => input.addEventListener('input', () => { hexFields[index].value = input.value; hexFields[index].setCustomValidity(''); readCustom(); }));
   hexFields.forEach((input, index) => input.addEventListener('input', () => {

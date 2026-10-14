@@ -44,13 +44,21 @@ export function withSpacePalettes(model) {
       (palette.kind === 'preset' ? space.palette.id === palette.id : JSON.stringify(space.palette.colors) === JSON.stringify(palette.colors));
     if (same) return space;
     changed = true;
-    return { ...space, palette };
+    return Object.fromEntries(Object.entries({ ...space, palette }).sort(([a], [b]) => a.localeCompare(b)));
   });
   return changed ? { ...model, spaces } : model;
 }
 
+export function isAutomaticPaletteMigration(before, after) {
+  const upgraded = withSpacePalettes(before);
+  if (!before || upgraded === before) return false;
+  const ordered = value => Array.isArray(value) ? value.map(ordered) : value && typeof value === 'object'
+    ? Object.fromEntries(Object.entries(value).sort(([a], [b]) => a.localeCompare(b)).map(([key, value]) => [key, ordered(value)])) : value;
+  return JSON.stringify(ordered(upgraded)) === JSON.stringify(ordered(after));
+}
+
 export function nextSpacePalette(spaces = []) {
-  const used = new Set(spaces.map(space => normalizeSpacePalette(space.palette)?.id));
+  const used = new Set(spaces.map(space => paletteGroupColor(space.palette)));
   return { kind: 'preset', id: (SPACE_PALETTES.find(palette => !used.has(palette.id)) || SPACE_PALETTES[spaces.length % SPACE_PALETTES.length]).id };
 }
 

@@ -12,7 +12,7 @@ import './persistent-bindings.js';
 import { createStorageClient } from '../shared/storage-client.js';
 import { commitStorage } from './state-controller.js';
 import { selectSidebarSpace, watchTabFocus } from './tab-focus.js';
-import { withSpacePalettes, paletteGroupColor } from '../shared/space-palette.js';
+import { withSpacePalettes, paletteGroupColor, isAutomaticPaletteMigration } from '../shared/space-palette.js';
 const sidebarStorage = createStorageClient({ transact: commitStorage });
 const tabFocus = watchTabFocus((info, canContinue) => selectSidebarSpace(info, canContinue, sidebarStorage));
 import './command-bar.js';
@@ -467,7 +467,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
       const nextJson = modelJson(changes[STORAGE_KEY].newValue);
       if (suppressLocalModelJson && nextJson === suppressLocalModelJson) {
         suppressLocalModelJson = null;
-      } else if (changes[STORAGE_KEY].newValue) {
+      } else if (changes[STORAGE_KEY].newValue && !isAutomaticPaletteMigration(changes[STORAGE_KEY].oldValue, changes[STORAGE_KEY].newValue)) {
         sidebarStorage.local.set({ [LOCAL_MODEL_UPDATED_KEY]: Date.now() }).catch(() => {});
         queueModelSyncPush();
       }

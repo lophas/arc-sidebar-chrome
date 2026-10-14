@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import { hasSyncContent } from '../src/shared/sync-content.js';
-import { withSpacePalettes } from '../src/shared/space-palette.js';
+import { withSpacePalettes, isAutomaticPaletteMigration } from '../src/shared/space-palette.js';
 
 const initial = () => withSpacePalettes({version:2,favorites:[],spaces:[{id:'__my_space__',title:'My Space',emoji:'🚀',children:[]}],stats:{spaces:1,folders:0,tabs:0,favorites:0}});
 const content = () => ({...initial(),favorites:[{id:'fav',type:'tab',title:'Mail',url:'https://mail.test'}]});
@@ -14,7 +14,7 @@ function fixture(localModel=initial(), remote=content(), localUpdatedAt=10000, r
  const writes=[],listeners=[],timers=new Map();let timerId=0;
  const area=name=>({async get(keys){const names=keys==null?Object.keys(data[name]):typeof keys==='string'?[keys]:keys;return structuredClone(Object.fromEntries(names.filter(k=>k in data[name]).map(k=>[k,data[name][k]])));},async set(values){const changes={};for(const [key,value]of Object.entries(values)){if(JSON.stringify(data[name][key])===JSON.stringify(value))continue;changes[key]={oldValue:structuredClone(data[name][key]),newValue:structuredClone(value)};data[name][key]=structuredClone(value);}writes.push({area:name,values:structuredClone(values)});if(Object.keys(changes).length)for(const listener of listeners)listener(changes,name);},async remove(keys){for(const k of Array.isArray(keys)?keys:[keys])delete data[name][k];},async clear(){data[name]={};}});
  const chrome={storage:{local:area('local'),session:area('session'),sync:area('sync'),onChanged:{addListener:fn=>listeners.push(fn)}}};
- const context=vm.createContext({chrome,sidebarStorage:chrome.storage,hasSyncContent,withSpacePalettes,TextEncoder,TextDecoder,btoa,atob,console,Date:{now:()=>20000},setTimeout:fn=>{const id=++timerId;timers.set(id,fn);return id;},clearTimeout:id=>timers.delete(id),queueNativeGroupSync(){},refreshActiveSidebar:async()=>{}});
+ const context=vm.createContext({chrome,sidebarStorage:chrome.storage,hasSyncContent,withSpacePalettes,isAutomaticPaletteMigration,TextEncoder,TextDecoder,btoa,atob,console,Date:{now:()=>20000},setTimeout:fn=>{const id=++timerId;timers.set(id,fn);return id;},clearTimeout:id=>timers.delete(id),queueNativeGroupSync(){},refreshActiveSidebar:async()=>{}});
  vm.runInContext(source.slice(source.indexOf('const STORAGE_KEY'),source.indexOf('async function broadcastNativePanelState')),context);
  vm.runInContext(source.slice(source.indexOf('chrome.storage.onChanged.addListener('),source.indexOf('chrome.tabs.onCreated.addListener(')),context);
  const drain=async()=>{const callbacks=[...timers.values()];timers.clear();for(const fn of callbacks)await fn();};
@@ -37,6 +37,13 @@ test('custom palette settings travel through the actual chunked Sync encoder and
 test('legacy cloud snapshots acquire default palettes on pull without replacing saved data',async()=>{
  const old=content();delete old.spaces[0].palette;
  const f=fixture(initial(),old);assert.equal((await f.context.reconcileSidebarSync()).direction,'pull');assert.deepEqual(f.data.local.arcSidebarModel,withSpacePalettes(old));assert.equal(f.snapshotWrites().length,0);
+});
+test('automatic palette assignment cannot make stale local organization overwrite newer cloud data',async()=>{
+ const old=content();delete old.spaces[0].palette;
+ const remote=content();remote.spaces[0].title='Newest cloud organization';
+ const f=fixture(old,remote,1,500);await f.chrome.storage.local.set({arcSidebarModel:withSpacePalettes(old)});
+ assert.equal(f.data.local.arcSidebarModelUpdatedAt,1);await f.drain();assert.equal(f.snapshotWrites().length,0);
+ assert.equal((await f.context.reconcileSidebarSync()).direction,'pull');assert.deepEqual(f.data.local.arcSidebarModel,remote);
 });
 test('fresh install and reset defaults pull the cloud snapshot despite a newer local timestamp',async()=>{
  for(const model of [undefined,initial()]){

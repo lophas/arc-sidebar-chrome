@@ -39,6 +39,8 @@ try{
   await page.getByRole('button',{name:'Edit Space…',exact:true}).click();
   await editor.locator('#spacePaletteKind').selectOption('gradient');
   await editor.locator('#spacePaletteHex1').fill(custom.colors[0]);await editor.locator('#spacePaletteHex2').fill(custom.colors[1]);
+  await editor.locator('#spacePaletteKind').selectOption('solid');assert.equal(await editor.locator('#spacePaletteHex2').isVisible(),false);
+  await editor.locator('#spacePaletteKind').selectOption('gradient');assert.equal(await editor.locator('#spacePaletteHex2').inputValue(),custom.colors[1]);
   assert.equal(await editor.locator('.space-palette-preview').evaluate(el=>el.style.getPropertyValue('--space-background')),paletteStyle(custom,false)['--space-background']);
  };
  const before=await readModel();await editGradient();await editor.locator('#spaceCancel').click();assert.deepEqual(await readModel(),before);
@@ -66,7 +68,7 @@ try{
  await poll(async()=>samePalette((await readModel()).spaces.find(space=>space.id==='work').palette,custom),'Backup did not restore the custom gradient');
  await poll(()=>page.evaluate(async id=>{const tab=await chrome.tabs.get(id);return (await chrome.tabGroups.get(tab.groupId)).color==='blue';},live),'Chrome group did not follow the restored palette');
  assert.equal(await page.evaluate(async()=>(await chrome.storage.local.get('arcSidebarState')).arcSidebarState.collapsedFolders.folder),false);
- await options.locator('#syncEnabled').check();
+ await options.locator('label.switch:has(#syncEnabled)').click();
  await poll(()=>page.evaluate(async()=>Boolean((await chrome.storage.sync.get('arcSidebarSyncMeta')).arcSidebarSyncMeta)),'Sync snapshot did not publish');
  const cloud=await page.evaluate(()=>chrome.storage.sync.get(null));
  const encoded=Array.from({length:cloud.arcSidebarSyncMeta.chunks},(_,i)=>cloud['arcSidebarSyncChunk:'+i]).join('');const snapshot=JSON.parse(Buffer.from(encoded,'base64').toString('utf8'));
@@ -74,7 +76,7 @@ try{
  options.on('dialog',dialog=>dialog.accept());await options.locator('#resetAll').click();
  await options.locator('#status').filter({hasText:'Reset complete.'}).waitFor();
  await poll(async()=> (await readModel())?.spaces[0]?.id==='__my_space__','Reset did not recreate My Space');
- await options.locator('#syncEnabled').check();
+ await options.locator('label.switch:has(#syncEnabled)').click();
  await poll(async()=>samePalette((await readModel()).spaces.find(space=>space.id==='work')?.palette,custom),'Sync did not restore the existing palette after reset');
  assert.deepEqual(await page.evaluate(()=>chrome.storage.sync.get(null)),cloud,'Reset and re-enabling Sync must not push the empty automatic palette');
  assert.deepEqual(errors,[]);

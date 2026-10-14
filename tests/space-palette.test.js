@@ -11,6 +11,7 @@ test('legacy Spaces receive distinct stable palettes without losing imported or 
  assert.equal(withSpacePalettes(upgraded),upgraded);
  const reordered={...upgraded,spaces:[...upgraded.spaces].reverse()};assert.equal(withSpacePalettes(reordered),reordered);assert.equal(reordered.spaces[0].palette.id,'green');
  assert.deepEqual(nextSpacePalette(upgraded.spaces),{kind:'preset',id:'purple'});
+ assert.equal(nextSpacePalette([{palette:{kind:'solid',colors:['#073c99']}},{palette:{kind:'solid',colors:['#00aa66']}}]).id,'purple');
 });
 test('solid/gradient colors normalize safely and reject arbitrary CSS or incomplete colors',()=>{
  assert.deepEqual(normalizeSpacePalette({kind:'gradient',colors:['#ABC','#001122']}),{kind:'gradient',colors:['#aabbcc','#001122']});
