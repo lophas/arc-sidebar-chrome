@@ -10,6 +10,8 @@ chrome.tabs.onAttached={addListener(){}};
 chrome.tabs.onDetached={addListener(){}};
 chrome.tabGroups.onUpdated={addListener(){}};
 chrome.runtime.onConnect={addListener(){}};
+chrome.tabs.onActivated={addListener(){}};
+chrome.windows.onFocusChanged={addListener(){}};
 chrome.contextMenus={async removeAll(){menus.length=0;},create(item,callback){menus.push(item);callback();},onClicked:{addListener(fn){clicked=fn;}}};
 mock.data.local.arcSidebarModel={favorites:[],spaces:[{id:'work',title:'Work',children:[]}]};
 await import('../src/background/context-menu.js');

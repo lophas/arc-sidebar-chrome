@@ -89,7 +89,7 @@
       "description": "Open Arc Side of the Chrome search"
     }
   },
-  "short_name": "ASotC",
+  "short_name": "Arc Side of the Chrome",
   "icons": {
     "16": "src/icons/icon16.png",
     "32": "src/icons/icon32.png",

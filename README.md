@@ -55,7 +55,7 @@ For the latest changes on `main`, use **Code → Download ZIP** on the repositor
 
 ### Getting started
 
-Start with **🚀 My Space** and an empty Favorites collection. Open the sidebar with the extension’s toolbar button or move the pointer to the page edge in Autohide mode.
+Start with **🚀 My Space** and an empty Favorites collection. Open the sidebar with the extension’s toolbar button or move the pointer to the page edge in Autohide mode. Opening it from the toolbar selects **Fixed**; clicking the toolbar button again closes the panel while keeping that mode selected. Use the switch beside search to return to **Autohide**.
 
 - Add a pinned link with **+** beside the Space’s heading, or use the folder button to add a folder.
 - Add a Favorite with **+** beside search. All link destination selectors list **Favorites** first, followed by your Spaces.

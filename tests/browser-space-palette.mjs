@@ -121,4 +121,29 @@ try{
  assert.deepEqual(await page.evaluate(()=>chrome.storage.sync.get(null)),cloud,'Reset and re-enabling Sync must not push the empty automatic palette');
  assert.deepEqual(errors,[]);
  console.log('PASS real extension: downloaded backup/restored gradient, complete Chrome Sync payload, reset then cloud-first restore without uploading the empty starting palette');
+ assert.equal(await page.evaluate(()=>chrome.runtime.getManifest().short_name),'Arc Side of the Chrome');
+ await page.evaluate(()=>chrome.storage.local.set({arcSidebarMode:'overlay',arcSidebarAutohideTimeout:900}));
+ const inactive=await context.newPage();await inactive.goto(url+'/inactive');
+ await inactive.waitForFunction(()=>document.getElementById('arc-sidebar-overlay-host')?.style.display==='block');
+ const active=await context.newPage();await active.goto(url+'/active');
+ await active.evaluate(origin=>{window.modeMarker='kept';const iframe=document.createElement('iframe');iframe.id='nativeControls';iframe.src=origin+'/src/sidepanel/index.html?overlay=1';iframe.style.cssText='width:410px;height:800px';document.body.append(iframe);},origin);
+ const controls=active.frameLocator('#nativeControls');await controls.locator('#toggleSidebarMode').waitFor();
+ await controls.locator('body').evaluate(async body=>{
+  const {id:windowId}=await chrome.windows.getCurrent();
+  for(const [name,action]of [['Test native open','open'],['Test native close','close']]){const button=document.createElement('button');button.textContent=name;button.addEventListener('click',()=>chrome.sidePanel[action]({windowId}).catch(error=>console.error('Native panel test:',error.message)));body.prepend(button);}
+ });
+ await controls.getByRole('button',{name:'Test native open',exact:true}).click();
+ await poll(()=>page.evaluate(async()=>(await chrome.storage.local.get('arcSidebarMode')).arcSidebarMode==='native'),'Native opening did not select Fixed');
+ await active.waitForFunction(()=>document.getElementById('arc-sidebar-overlay-host')?.style.display==='none');
+ await poll(()=>controls.locator('#toggleSidebarMode').getAttribute('aria-pressed').then(value=>value==='true'),'Mode switch did not reflect native opening');
+ assert.equal(await active.evaluate(()=>window.modeMarker),'kept','Native opening must not reload the webpage');
+ assert.equal(await inactive.evaluate(()=>document.getElementById('arc-sidebar-overlay-host')?.style.display),'block');
+ await inactive.bringToFront();await inactive.waitForFunction(()=>document.getElementById('arc-sidebar-overlay-host')?.style.display==='none');
+ await active.bringToFront();await controls.getByRole('button',{name:'Test native close',exact:true}).click();
+ assert.equal(await page.evaluate(async()=>(await chrome.storage.local.get('arcSidebarMode')).arcSidebarMode),'native');
+ await controls.locator('#toggleSidebarMode').click();
+ await poll(()=>page.evaluate(async()=>(await chrome.storage.local.get('arcSidebarMode')).arcSidebarMode==='overlay'),'Explicit Autohide switch did not restore the mode');
+ await active.waitForFunction(()=>document.getElementById('arc-sidebar-overlay-host')?.style.display==='block');
+ assert.equal(await page.evaluate(async()=>(await chrome.storage.local.get('arcSidebarAutohideTimeout')).arcSidebarAutohideTimeout),900);
+ console.log('PASS real native panel: open selects Fixed, switch updates, active overlay deactivates without reload, other tab follows on focus, close keeps Fixed and explicit Autohide restores timeout');
 }finally{await context?.close();await new Promise(done=>server.close(done));await rm(directory,{recursive:true,force:true});}

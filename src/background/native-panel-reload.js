@@ -1,50 +1,40 @@
 import { createStorageClient } from '../shared/storage-client.js';
 import { commitStorage } from './state-controller.js';
+import { refreshActiveSidebar } from './overlay-delivery.js';
 const sidebarStorage = createStorageClient({ transact: commitStorage });
-const SIDEBAR_MODE_KEY = 'arcSidebarMode';
-const OVERLAY_MODE = 'overlay';
+const PANEL_PATH = 'src/sidepanel/index.html';
 
-const nativePanelWindows = new Map();
-
-function isWebTab(tab) {
-  const url = tab?.pendingUrl || tab?.url || '';
-  return /^https?:\/\//i.test(url);
+async function followNativePanelOpen(windowId) {
+  if (!Number.isInteger(windowId)) return;
+  // Opening the native panel is an explicit request to keep the sidebar fixed.
+  // Keep the chosen timeout and let other pages apply the mode on next focus.
+  await sidebarStorage.local.set({ arcSidebarMode: 'native' });
+  await refreshActiveSidebar(windowId);
 }
+const reportError = error => console.warn('Arc Side of the Chrome: could not apply Fixed sidebar mode', error?.message || error);
 
-async function reloadActiveWebTabIfOverlay(windowId) {
-  if (windowId == null) return;
-  try {
-    const stored = await sidebarStorage.local.get(SIDEBAR_MODE_KEY);
-    const mode = stored[SIDEBAR_MODE_KEY] || OVERLAY_MODE;
-    if (mode !== OVERLAY_MODE) return;
-
-    const [tab] = await chrome.tabs.query({ windowId, active: true });
-    if (tab?.id != null && isWebTab(tab)) await chrome.tabs.reload(tab.id);
-  } catch (error) {
-    console.debug('Arc Side of the Chrome: native-panel page reload skipped', error?.message || error);
-  }
+if (chrome.sidePanel?.onOpened) {
+  chrome.sidePanel.onOpened.addListener(info => {
+    if (info.path && info.path !== PANEL_PATH) return;
+    return followNativePanelOpen(info.windowId).catch(reportError);
+  });
+} else {
+  // Earlier Chrome versions announce actual native panels through their port.
+  // Verify the context so a normal tab or embedded sidebar cannot change mode.
+  chrome.runtime.onConnect.addListener(port => {
+    if (port.name !== 'arc-native-sidepanel') return;
+    let handled = false, connected = true;
+    port.onDisconnect.addListener(() => { connected = false; });
+    port.onMessage.addListener(async message => {
+      if (handled || !Number.isInteger(message?.windowId)) return;
+      handled = true;
+      try {
+        const contexts = await chrome.runtime.getContexts({ contextTypes: ['SIDE_PANEL'], windowIds: [message.windowId] });
+        if (connected && contexts.some(context => context.documentUrl === chrome.runtime.getURL(PANEL_PATH))) {
+          await followNativePanelOpen(message.windowId);
+        }
+      } catch (error) { reportError(error); }
+    });
+  });
 }
-
-chrome.runtime.onConnect.addListener(port => {
-  if (port.name !== 'arc-native-sidepanel') return;
-
-  let windowId = null;
-  port.onMessage.addListener(async message => {
-    if (message?.windowId == null || windowId != null) return;
-    windowId = message.windowId;
-    const count = (nativePanelWindows.get(windowId) || 0) + 1;
-    nativePanelWindows.set(windowId, count);
-    if (count === 1) await reloadActiveWebTabIfOverlay(windowId);
-  });
-
-  port.onDisconnect.addListener(async () => {
-    if (windowId == null) return;
-    const next = Math.max(0, (nativePanelWindows.get(windowId) || 1) - 1);
-    if (next === 0) {
-      nativePanelWindows.delete(windowId);
-      await reloadActiveWebTabIfOverlay(windowId);
-    } else {
-      nativePanelWindows.set(windowId, next);
-    }
-  });
-});
+// Closing the panel leaves Fixed selected. Only the mode switch chooses Autohide.
