@@ -132,10 +132,11 @@ try{
   const {id:windowId}=await chrome.windows.getCurrent();
   for(const [name,action]of [['Test native open','open'],['Test native close','close']]){const button=document.createElement('button');button.textContent=name;button.addEventListener('click',()=>chrome.sidePanel[action]({windowId}).catch(error=>console.error('Native panel test:',error.message)));body.prepend(button);}
  });
+ await worker.evaluate(()=>{globalThis.nativeProbe=[];chrome.runtime.onConnect.addListener(port=>{if(port.name!=='arc-native-sidepanel')return;const record={sender:port.sender,messages:[]};nativeProbe.push(record);port.onMessage.addListener(message=>record.messages.push(message));});chrome.sidePanel.onOpened?.addListener(info=>nativeProbe.push({opened:info}));});
  await controls.getByRole('button',{name:'Test native open',exact:true}).click();
  await new Promise(done=>setTimeout(done,300));
  console.log('Native panel diagnostic:',JSON.stringify(await page.evaluate(async()=>({contexts:await chrome.runtime.getContexts({contextTypes:['SIDE_PANEL']}),mode:(await chrome.storage.local.get('arcSidebarMode')).arcSidebarMode,openedEvent:!!chrome.sidePanel.onOpened,agent:navigator.userAgent}))));
- await poll(()=>page.evaluate(async()=>(await chrome.storage.local.get('arcSidebarMode')).arcSidebarMode==='native'),'Native opening did not select Fixed');
+ try{await poll(()=>page.evaluate(async()=>(await chrome.storage.local.get('arcSidebarMode')).arcSidebarMode==='native'),'Native opening did not select Fixed');}catch(error){console.error('Native event probe:',JSON.stringify(await worker.evaluate(()=>nativeProbe)));throw error;}
  await active.waitForFunction(()=>document.getElementById('arc-sidebar-overlay-host')?.style.display==='none');
  await poll(()=>controls.locator('#toggleSidebarMode').getAttribute('aria-pressed').then(value=>value==='true'),'Mode switch did not reflect native opening');
  assert.equal(await active.evaluate(()=>window.modeMarker),'kept','Native opening must not reload the webpage');
