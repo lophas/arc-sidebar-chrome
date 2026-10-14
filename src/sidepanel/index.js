@@ -432,10 +432,6 @@ function renderSpaces() {
     button.dataset.label = label;
     button.dataset.spaceId = space.id;
     button.style.setProperty('--space-color', paletteColors(space.palette)[0]);
-    const paletteMark = document.createElement('span');
-    paletteMark.className = 'space-palette-mark';
-    paletteMark.setAttribute('aria-hidden', 'true');
-    button.append(paletteMark);
     button.setAttribute('aria-label', label);
     button.addEventListener('click', async () => {
       if (state.currentSpaceId === space.id) return;

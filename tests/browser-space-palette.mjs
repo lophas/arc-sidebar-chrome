@@ -29,6 +29,12 @@ try{
  await poll(async()=>await background()===paletteStyle({kind:'preset',id:'blue'},false)['--space-background'],'Active Space background did not update');
  assert.equal(await page.locator('.search-wrap').evaluate(el=>getComputedStyle(el).backgroundColor),'rgba(0, 0, 0, 0)');
  assert.equal(await page.locator('.favorites-section').evaluate(el=>getComputedStyle(el).backgroundColor),'rgba(0, 0, 0, 0)');
+ assert.equal(await page.locator('.space-palette-mark').count(),0);
+ assert.deepEqual(await page.locator('.favorite-tile').evaluate(el=>{const css=getComputedStyle(el);return[css.borderTopWidth,css.borderTopStyle,css.backgroundColor];}),['1px','solid','rgba(255, 255, 255, 0.65)']);
+ await page.emulateMedia({colorScheme:'dark'});await poll(async()=>await background()===paletteStyle({kind:'preset',id:'blue'},true)['--space-background'],'Vivid preset did not follow dark theme');
+ assert.deepEqual(await page.locator('.favorite-tile').evaluate(el=>{const css=getComputedStyle(el);return[css.borderTopWidth,css.borderTopColor,css.backgroundColor];}),['1px','rgba(255, 255, 255, 0.28)','rgba(255, 255, 255, 0.16)']);
+ if(process.env.ARC_PALETTE_SCREENSHOTS)console.log('PALETTE_VIVID_PNG='+ (await page.screenshot()).toString('base64'));
+ await page.emulateMedia({colorScheme:'light'});await poll(async()=>await background()===paletteStyle({kind:'preset',id:'blue'},false)['--space-background'],'Vivid preset did not return to light theme');
  await page.locator('.space-button[data-space-id="home"]').click();await poll(async()=>await background()===paletteStyle({kind:'preset',id:'green'},false)['--space-background'],'Space switch did not change palette');
  await page.locator('.space-button[data-space-id="__open_tabs__"]').click();assert.equal(await background(),'');
  await page.locator('.space-button[data-space-id="work"]').click();

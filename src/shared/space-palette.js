@@ -1,13 +1,13 @@
 export const SPACE_PALETTES = [
-  { id: 'blue', name: 'Ocean', colors: ['#4b83d1', '#49a4ad'] },
-  { id: 'green', name: 'Forest', colors: ['#3c9b75', '#7da45d'] },
-  { id: 'purple', name: 'Lavender', colors: ['#9472c5', '#b477a2'] },
-  { id: 'orange', name: 'Amber', colors: ['#c98445', '#c6a856'] },
-  { id: 'cyan', name: 'Lagoon', colors: ['#41a4b5', '#60a18a'] },
-  { id: 'pink', name: 'Blossom', colors: ['#cc77a5', '#c88679'] },
-  { id: 'red', name: 'Rose', colors: ['#d85e65', '#be7b8e'] },
-  { id: 'yellow', name: 'Sunshine', colors: ['#d3a72b', '#b6ad64'] },
-  { id: 'grey', name: 'Slate', colors: ['#718096', '#8a819c'] }
+  { id: 'blue', name: 'Ocean', colors: ['#1855c9', '#10b5c2'] },
+  { id: 'green', name: 'Forest', colors: ['#15803d', '#80b426'] },
+  { id: 'purple', name: 'Aurora', colors: ['#6920ca', '#db337b'] },
+  { id: 'orange', name: 'Amber', colors: ['#e76b17', '#d69d19'] },
+  { id: 'cyan', name: 'Lagoon', colors: ['#087b91', '#16b6a2'] },
+  { id: 'pink', name: 'Blossom', colors: ['#d72f92', '#a233ce'] },
+  { id: 'red', name: 'Sunset', colors: ['#c92e43', '#ed7438'] },
+  { id: 'yellow', name: 'Citrus', colors: ['#b28c05', '#86a81a'] },
+  { id: 'grey', name: 'Slate', colors: ['#52637a', '#797085'] }
 ];
 const presets = new Map(SPACE_PALETTES.map(palette => [palette.id, palette]));
 export const DEFAULT_SPACE_PALETTE = { id: 'blue', kind: 'preset' };
@@ -84,21 +84,43 @@ export function paletteGroupColor(value) {
   return Object.keys(hues).reduce((closest, color) => distance(hues[color]) < distance(hues[closest]) ? color : closest, 'blue');
 }
 
-export const PALETTE_VARIABLES = ['--space-background', '--bg', '--panel', '--text', '--muted', '--border', '--hover', '--active', '--space-accent'];
+const luminance = color => rgb(color).map(channel => channel / 255)
+  .map(value => value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4)
+  .reduce((total, value, index) => total + value * [0.2126, 0.7152, 0.0722][index], 0);
+const contrast = (a, b) => (Math.max(luminance(a), luminance(b)) + 0.05) / (Math.min(luminance(a), luminance(b)) + 0.05);
+function readableBackground(color, dark, text) {
+  const base = dark ? '#11141b' : '#ffffff', amount = dark ? 0.60 : 0.40;
+  const background = blend(color, base, amount);
+  if (contrast(text, background) >= 4.5) return background;
+  // Keep vivid presets while limiting exceptionally bright/dark custom colors.
+  let low = 0, high = amount;
+  for (let step = 0; step < 12; step++) {
+    const middle = (low + high) / 2;
+    if (contrast(text, blend(color, base, middle)) >= 4.5) low = middle;
+    else high = middle;
+  }
+  return blend(color, base, low);
+}
+
+export const PALETTE_VARIABLES = ['--space-background', '--bg', '--panel', '--text', '--muted', '--border', '--hover', '--active', '--space-accent', '--favorite-background', '--favorite-border', '--favorite-hover'];
 export function paletteStyle(value, dark = false) {
   const colors = paletteColors(value);
-  const backgrounds = colors.map(color => blend(color, dark ? '#11141b' : '#ffffff', dark ? 0.24 : 0.18));
+  const muted = dark ? '#edf2fa' : '#374151';
+  const backgrounds = colors.map(color => readableBackground(color, dark, muted));
   const primary = colors[0];
   return {
     '--space-background': backgrounds.length === 1 ? backgrounds[0] : `linear-gradient(155deg, ${backgrounds[0]}, ${backgrounds[1]})`,
     '--bg': backgrounds[0],
-    '--panel': blend(primary, dark ? '#191d25' : '#ffffff', dark ? 0.16 : 0.07),
+    '--panel': blend(primary, dark ? '#191d25' : '#ffffff', dark ? 0.28 : 0.12),
     '--text': dark ? '#f4f6fb' : '#18202a',
-    '--muted': dark ? '#c1c8d1' : '#485261',
-    '--border': dark ? 'rgba(255,255,255,.15)' : 'rgba(0,0,0,.13)',
-    '--hover': dark ? 'rgba(255,255,255,.09)' : 'rgba(0,0,0,.065)',
-    '--active': dark ? 'rgba(255,255,255,.16)' : 'rgba(0,0,0,.11)',
-    '--space-accent': blend(primary, dark ? '#ffffff' : '#18202a', 0.65)
+    '--muted': muted,
+    '--border': dark ? 'rgba(255,255,255,.20)' : 'rgba(0,0,0,.16)',
+    '--hover': dark ? 'rgba(255,255,255,.12)' : 'rgba(0,0,0,.065)',
+    '--active': dark ? 'rgba(255,255,255,.18)' : 'rgba(0,0,0,.11)',
+    '--space-accent': blend(primary, dark ? '#ffffff' : '#18202a', 0.55),
+    '--favorite-background': dark ? 'rgba(255,255,255,.16)' : 'rgba(255,255,255,.65)',
+    '--favorite-border': dark ? 'rgba(255,255,255,.28)' : 'rgba(0,0,0,.18)',
+    '--favorite-hover': dark ? 'rgba(255,255,255,.23)' : 'rgba(255,255,255,.82)'
   };
 }
 
