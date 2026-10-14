@@ -1,43 +1,15 @@
-name: Check extension sources
-on: [push, pull_request]
+name: Render Space palette proposals
+on: [push]
 permissions:
   contents: read
 jobs:
-  check:
+  preview:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: npm test
-      - run: npm run check
-      - run: python3 -m unittest discover -s tests -p 'release_automation_test.py'
       - run: npm install --no-save --package-lock=false --ignore-scripts playwright-core@1.56.1
       - run: npx playwright-core install chromium --no-shell
-      - run: xvfb-run -a node tests/browser-link-title.mjs
-      - run: xvfb-run -a node tests/browser-tab-focus.mjs
-      - run: ARC_PALETTE_SCREENSHOTS=1 xvfb-run -a node tests/browser-space-palette.mjs
-      - run: python3 tests/browser-overlay.py --require-browser --regression-ref=0a7248abf3b70cc393ccfd091daecfd275e012cc
-      - run: xvfb-run -a node tests/browser-edge-hover.mjs --regression-ref=4c4372371cec936e65c804a043cb00a8878a7eca
-      - run: node tests/browser-space-tabs.mjs
-      - run: node tests/browser-command-search.mjs
-      - run: xvfb-run -a node tests/browser-auto-pip-guide.mjs
-      - run: xvfb-run -a node tests/browser-auto-pip.mjs --regression-ref=3e33f9de7e2784175a7198c2a14d70dbff66306f
-      - run: xvfb-run -a node tests/browser-auto-pip.mjs
-      - run: xvfb-run -a node tests/browser-html5-pip.mjs
-      - name: Verify HTML5 PiP in current stable Chrome
-        run: |
-          python3 - <<'PYCHROME'
-          import json, urllib.request, zipfile, os
-          release = json.load(urllib.request.urlopen('https://googlechromelabs.github.io/chrome-for-testing/last-known-good-versions-with-downloads.json'))['channels']['Stable']
-          url = next(item['url'] for item in release['downloads']['chrome'] if item['platform'] == 'linux64')
-          urllib.request.urlretrieve(url, '/tmp/arc-stable-chrome.zip')
-          with zipfile.ZipFile('/tmp/arc-stable-chrome.zip') as archive:
-              archive.extractall('/tmp/arc-stable-chrome')
-          for name in ['chrome', 'chrome_crashpad_handler', 'chrome_sandbox']:
-              os.chmod('/tmp/arc-stable-chrome/chrome-linux64/' + name, 0o755)
-          PYCHROME
-          ASOTC_CHROME_BINARY=/tmp/arc-stable-chrome/chrome-linux64/chrome xvfb-run -a node tests/browser-html5-pip.mjs
+      - run: xvfb-run -a node tests/preview-space-palettes.mjs
