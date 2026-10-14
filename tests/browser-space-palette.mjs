@@ -62,9 +62,9 @@ try{
  await clickFolderIcon();await page.locator('.folder.collapsed[data-folder-node-id="folder"]').waitFor();
  await clickFolderIcon();await page.locator('.folder:not(.collapsed)[data-folder-node-id="folder"]').waitFor();
  assert.equal(await page.locator('.space-palette-mark').count(),0);
- assert.deepEqual(await page.locator('.favorite-tile').evaluate(el=>{const css=getComputedStyle(el);return[css.borderTopWidth,css.borderTopStyle,css.backgroundColor];}),['1px','solid','rgba(255, 255, 255, 0.65)']);
+ await poll(async()=>await page.locator('.favorite-tile').evaluate(el=>{const css=getComputedStyle(el);return el.isConnected && css.borderTopWidth==='1px' && css.borderTopStyle==='solid' && css.backgroundColor==='rgba(255, 255, 255, 0.65)';}),'Light Favorite style was not applied');
  await page.emulateMedia({colorScheme:'dark'});await poll(async()=>await background()===paletteStyle({kind:'preset',id:'blue'},true)['--space-background'],'Vivid preset did not follow dark theme');
- assert.deepEqual(await page.locator('.favorite-tile').evaluate(el=>{const css=getComputedStyle(el);return[css.borderTopWidth,css.borderTopColor,css.backgroundColor];}),['1px','rgba(255, 255, 255, 0.28)','rgba(255, 255, 255, 0.16)']);
+ await poll(async()=>await page.locator('.favorite-tile').evaluate(el=>{const css=getComputedStyle(el);return el.isConnected && css.borderTopWidth==='1px' && css.borderTopColor==='rgba(255, 255, 255, 0.28)' && css.backgroundColor==='rgba(255, 255, 255, 0.16)';}),'Dark Favorite style was not applied');
  if(process.env.ARC_PALETTE_SCREENSHOTS)console.log('PALETTE_VIVID_PNG='+ (await page.screenshot()).toString('base64'));
  await page.emulateMedia({colorScheme:'light'});await poll(async()=>await background()===paletteStyle({kind:'preset',id:'blue'},false)['--space-background'],'Vivid preset did not return to light theme');
  await page.locator('.space-button[data-space-id="home"]').click();await poll(async()=>await background()===paletteStyle({kind:'preset',id:'green'},false)['--space-background'],'Space switch did not change palette');
