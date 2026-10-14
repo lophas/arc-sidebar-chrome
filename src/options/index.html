@@ -75,32 +75,6 @@
     </section>
 
     <section class="card">
-      <h2>Arc import</h2>
-      <p>Select Arc Browser’s <code>StorableSidebar.json</code>.</p>
-      <div class="arc-file-help">
-        <strong>Where to find the file</strong>
-        <div><b>macOS</b><code>~/Library/Application Support/Arc/StorableSidebar.json</code>
-          <button class="button button-element" type="button" data-copy-arc-path="~/Library/Application Support/Arc/">Copy folder path</button>
-          <p>In Finder or the file picker, press <kbd>⌘ Shift G</kbd>, paste the folder path, then select <code>StorableSidebar.json</code>.</p>
-        </div>
-        <div><b>Windows</b><code>%LOCALAPPDATA%\Packages\TheBrowserCompany.Arc_*\LocalCache\Local\Arc\StorableSidebar.json</code>
-          <button class="button button-element" type="button" data-copy-arc-path="%LOCALAPPDATA%\Packages">Copy starting folder</button>
-          <p>Paste the starting folder into File Explorer’s address bar. Open the folder beginning with <code>TheBrowserCompany.Arc_</code>, then <code>LocalCache → Local → Arc</code> and select <code>StorableSidebar.json</code>.</p>
-        </div>
-        <span class="muted" id="arcPathCopyStatus" role="status"></span>
-      </div>
-      <div class="import-warning" role="note"><strong>⚠ Import replaces ALL sidebar contents</strong><span>All existing Spaces, Favorites, folders, pinned links and icons are replaced, including My Space. Nothing from your current sidebar is kept. Download a backup first if you want to preserve it.</span></div>
-      <div class="import-actions">
-        <label class="button">
-          Import StorableSidebar.json
-          <input id="arcFile" type="file" accept="application/json,.json" hidden>
-        </label>
-        <button id="resetAll" class="button button-element danger-button" type="button">Reset all extension data</button>
-      </div>
-      <div id="status" class="status"></div>
-    </section>
-
-    <section class="card">
       <h2>Backup & restore</h2>
       <p>Download a portable JSON backup of your Spaces and their palettes, Favorites, folders, pinned links, autohide timeout, Favorite button size and sidebar width, or restore one on this or another computer.</p>
       <div class="backup-actions">
@@ -138,6 +112,31 @@
       <h2>Current data</h2>
       <div id="stats" class="stats">No data imported.</div>
       <div id="importedAt" class="muted"></div>
+    </section>
+    <section class="card">
+      <h2>Arc import</h2>
+      <p>Select Arc Browser’s <code>StorableSidebar.json</code>.</p>
+      <div class="arc-file-help">
+        <strong>Where to find the file</strong>
+        <div><b>macOS</b><code>~/Library/Application Support/Arc/StorableSidebar.json</code>
+          <button class="button button-element" type="button" data-copy-arc-path="~/Library/Application Support/Arc/">Copy folder path</button>
+          <p>In Finder or the file picker, press <kbd>⌘ Shift G</kbd>, paste the folder path, then select <code>StorableSidebar.json</code>.</p>
+        </div>
+        <div><b>Windows</b><code>%LOCALAPPDATA%\Packages\TheBrowserCompany.Arc_*\LocalCache\Local\Arc\StorableSidebar.json</code>
+          <button class="button button-element" type="button" data-copy-arc-path="%LOCALAPPDATA%\Packages">Copy starting folder</button>
+          <p>Paste the starting folder into File Explorer’s address bar. Open the folder beginning with <code>TheBrowserCompany.Arc_</code>, then <code>LocalCache → Local → Arc</code> and select <code>StorableSidebar.json</code>.</p>
+        </div>
+        <span class="muted" id="arcPathCopyStatus" role="status"></span>
+      </div>
+      <div class="import-warning" role="note"><strong>⚠ Import replaces ALL sidebar contents</strong><span>All existing Spaces, Favorites, folders, pinned links and icons are replaced, including My Space. Nothing from your current sidebar is kept. Download a backup first if you want to preserve it.</span></div>
+      <div class="import-actions">
+        <label class="button">
+          Import StorableSidebar.json
+          <input id="arcFile" type="file" accept="application/json,.json" hidden>
+        </label>
+        <button id="resetAll" class="button button-element danger-button" type="button">Reset all extension data</button>
+      </div>
+      <div id="status" class="status"></div>
     </section>
   </main>
 
