@@ -53,10 +53,12 @@ try{
  console.log('PASS real extension: background close keeps the active tab; returning to a child still remembers the Favorite');
  await page.evaluate(id=>chrome.tabs.update(id,{active:true}),setup.pinned);
  await poll(()=>page.evaluate(async()=>(await chrome.storage.local.get('arcSidebarState')).arcSidebarState.currentSpaceId==='b'),'Pinned focus did not select Space B');
+ await page.bringToFront();
  await page.locator('.space-button[data-space-id="b"].active').waitFor();
  const workflow=await page.evaluate(async({pin,url})=>{const parent=await chrome.tabs.get(pin);const tab=await chrome.tabs.create({url,active:false});await chrome.tabs.group({tabIds:[tab.id],groupId:parent.groupId});return tab.id;},{pin:setup.pinned,url:url+'/workflow'});
  await page.evaluate(async({owner,workflow})=>{await chrome.tabs.update(owner,{active:true});await chrome.storage.local.set({arcSidebarState:{currentSpaceId:'a',collapsedFolders:{folder:true}}});await chrome.tabs.update(workflow,{active:true});},{owner:setup.owner,workflow});
  await poll(()=>page.evaluate(async()=>(await chrome.storage.local.get('arcSidebarState')).arcSidebarState.currentSpaceId==='b'),'Workflow focus did not select Space B');
+ await page.bringToFront();
  await page.locator('.space-button[data-space-id="b"].active').waitFor();
  await page.evaluate(id=>chrome.tabs.update(id,{active:true}),setup.owner);await page.evaluate(id=>chrome.tabs.update(id,{active:true}),setup.unrelated);
  assert.equal(await page.evaluate(async()=>(await chrome.storage.local.get('arcSidebarState')).arcSidebarState.currentSpaceId),'b');
