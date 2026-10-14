@@ -24,14 +24,14 @@ if (chrome.sidePanel?.onOpened) {
   // Native presence also covers browsers that expose but do not fire onOpened.
   // Verify the context so a normal tab or embedded sidebar cannot change mode.
   chrome.runtime.onConnect.addListener(port => {
-    if (port.name !== 'arc-native-sidepanel') return;
+    if (port.name !== 'arc-native-sidepanel' || !port.sender?.documentId) return;
     let handled = false, connected = true;
     port.onDisconnect.addListener(() => { connected = false; });
     port.onMessage.addListener(async message => {
       if (handled || !Number.isInteger(message?.windowId)) return;
       handled = true;
       try {
-        const contexts = await chrome.runtime.getContexts({ contextTypes: ['SIDE_PANEL'], windowIds: [message.windowId] });
+        const contexts = await chrome.runtime.getContexts({ contextTypes: ['SIDE_PANEL'], documentIds: [port.sender.documentId] });
         if (connected && contexts.some(context => context.documentUrl === chrome.runtime.getURL(PANEL_PATH))) {
           await followNativePanelOpen(message.windowId);
         }
