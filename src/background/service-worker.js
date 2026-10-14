@@ -11,7 +11,9 @@ import './tab-actions.js';
 import './persistent-bindings.js';
 import { createStorageClient } from '../shared/storage-client.js';
 import { commitStorage } from './state-controller.js';
+import { selectSidebarSpace, watchTabFocus } from './tab-focus.js';
 const sidebarStorage = createStorageClient({ transact: commitStorage });
+const tabFocus = watchTabFocus((info, canContinue) => selectSidebarSpace(info, canContinue, sidebarStorage));
 import './command-bar.js';
 import './page-title.js';
 import './context-menu.js';
@@ -490,6 +492,7 @@ chrome.tabs.onCreated.addListener(tab => {
   queueNativeGroupSync(250);
   favoriteChildCandidate(tab, sidebarStorage).then(candidate => {
     if (!candidate) return;
+    tabFocus.track(candidate).catch(() => {});
     pendingFavoriteChildren.set(candidate.tabId, candidate);
     queueNativeGroupSync(80);
   }).catch(error => console.warn('Arc Side of the Chrome: Favorite child routing failed', error));

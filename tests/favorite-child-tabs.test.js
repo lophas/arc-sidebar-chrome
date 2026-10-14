@@ -11,10 +11,10 @@ test('Favorite children are ungroup candidates regardless of selected Space, foc
  for(const spaceId of ['work','other','__open_tabs__','deleted',null,undefined]){
   for(const [active,windowId] of [[true,1],[false,1],[true,2]]){
    const tab={id:11,openerTabId:10,windowId,active};
-   assert.deepEqual(await favoriteChildCandidate(tab,storage(spaceId)),{tabId:11,windowId});
+   assert.deepEqual(await favoriteChildCandidate(tab,storage(spaceId)),{tabId:11,windowId,openerTabId:10});
   }
  }
- assert.deepEqual(await favoriteChildCandidate({id:11,openerTabId:10,windowId:1},storage('work',{fav:10},{favorites:model.favorites,spaces:[]})),{tabId:11,windowId:1});
+ assert.deepEqual(await favoriteChildCandidate({id:11,openerTabId:10,windowId:1},storage('work',{fav:10},{favorites:model.favorites,spaces:[]})),{tabId:11,windowId:1,openerTabId:10});
 });
 test('Space pinned links and unbound openers retain normal Chrome grouping',async()=>{
  for(const [tab,s] of [[{id:11,windowId:1},storage()],[{id:11,windowId:1,openerTabId:22},storage('work',{pin:22})],[{id:11,windowId:1,openerTabId:10},storage('work',{})],[{id:11,windowId:1,openerTabId:10},storage('work',{fav:10},null)]]) assert.equal(await favoriteChildCandidate(tab,s),null);

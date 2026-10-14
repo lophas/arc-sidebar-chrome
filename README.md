@@ -20,7 +20,7 @@ Saved links stay in the sidebar when their browser tabs close. Click a saved ite
 - **Persistent pinned links** — save pages without keeping their tabs open; return to the same live tab when you need it, including after Chrome restarts.
 - **Search popup** — press **⌘K / Ctrl+K** to find recent tabs, Favorites, pinned links, folders and Spaces, open a URL or search Google.
 - **Drag-and-drop organization** — reorder links, Favorites, folders and Spaces. Drag an open tab into the pinned list to save it; hold a dragged item near the list’s edge to scroll.
-- **Coherent Chrome groups** — groups follow the sidebar’s order. Focus changes expand the active group and collapse the others; you can adjust groups manually between focus changes.
+- **Coherent Chrome groups** — switching Chrome tabs selects their Space in the sidebar. Groups follow the sidebar’s order; focus changes expand the active group and collapse the others. You can adjust groups manually between focus changes.
 - **Open tabs and bulk close** — browse tabs by Chrome group, see additional tabs within each Space, and close a link, folder, group, Space or an entire window’s tabs.
 - **Flexible sidebar** — switch between an autohide overlay and Chrome’s fixed side panel directly from the sidebar. Adjust the delay, width and Favorite size; each view remembers its scroll position.
 - **Custom icons** — use website favicons or uploaded images for saved links, and choose images or searchable emojis for Spaces.
@@ -76,6 +76,8 @@ If the mini player doesn’t open, a setup popup appears when you return to the 
 
 Each Space contains pinned links, folders and additional open tabs belonging to its Chrome groups. Select a Space from the bottom switcher, drag Spaces to reorder them, or right-click one to edit its name and icon.
 
+Switching to a Space’s pinned or additional tab in Chrome’s tab bar also selects that Space in the sidebar. Favorites and ungrouped tabs keep the current Space selected.
+
 Click a folder heading to expand or collapse it. Right-click it to rename it or move the complete folder to another Space. Drag folders to reorder them within their Space. Removing a folder keeps its links.
 
 Right-click a Space and choose **Close open tabs** to close every tab in all Chrome groups associated with it, including additional non-pinned tabs and tabs in other windows. The menu shows how many tabs will close. Saved links and folders remain available.
@@ -94,7 +96,7 @@ Drag links to place them before or after other links, inside a folder, between f
 
 Drag Favorites to change their order. Move pinned links into Favorites, or drag Favorites back between a Space’s pinned links and folders or into a folder. Their custom icons and live tabs follow the move. Drop onto **+ Favorite** when the Favorites collection is empty.
 
-New tabs opened from a Favorite are ungrouped and appear at the end of their Chrome window’s tab bar. New tabs opened from a Space’s pinned links stay in that Space’s Chrome group.
+New tabs opened from a Favorite are ungrouped and appear at the end of their Chrome window’s tab bar. Closing an active child tab returns to the Favorite that opened it, if it is still open; closing a background child keeps your current tab active. New tabs opened from a Space’s pinned links stay in that Space’s Chrome group.
 
 ### Search
 

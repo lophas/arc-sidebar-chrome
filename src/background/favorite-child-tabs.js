@@ -10,7 +10,7 @@ export async function favoriteChildCandidate(tab, storage) {
   const bindings = session.arcSidebarBindings || {};
   const favoriteOpener = model?.favorites?.some(item => item.type === 'tab' && Number(bindings[item.id]) === tab.openerTabId);
   if (!favoriteOpener) return null;
-  return { tabId: tab.id, windowId: tab.windowId };
+  return { tabId: tab.id, windowId: tab.windowId, openerTabId: tab.openerTabId };
 }
 
 // Ungroup in the same serialized sync pass as saved-tab grouping. A child
