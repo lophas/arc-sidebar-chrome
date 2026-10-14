@@ -12,6 +12,7 @@ import './persistent-bindings.js';
 import { createStorageClient } from '../shared/storage-client.js';
 import { commitStorage } from './state-controller.js';
 import { selectSidebarSpace, watchTabFocus } from './tab-focus.js';
+import { withSpacePalettes, paletteGroupColor } from '../shared/space-palette.js';
 const sidebarStorage = createStorageClient({ transact: commitStorage });
 const tabFocus = watchTabFocus((info, canContinue) => selectSidebarSpace(info, canContinue, sidebarStorage));
 import './command-bar.js';
@@ -90,7 +91,7 @@ async function readSyncedModel() {
   }
 
   try {
-    const model = JSON.parse(decodeBase64Utf8(encoded));
+    const model = withSpacePalettes(JSON.parse(decodeBase64Utf8(encoded)));
     return { model, meta };
   } catch (error) {
     console.warn('Arc Side of the Chrome: synced model could not be decoded', error);
@@ -267,7 +268,7 @@ function buildSpaceIndex(model) {
     walk(space.children || [], {
       id: space.id,
       title: space.title || 'Untitled Space',
-      color: GROUP_COLORS[index % GROUP_COLORS.length]
+      color: space.palette ? paletteGroupColor(space.palette) : GROUP_COLORS[index % GROUP_COLORS.length]
     });
   });
   return itemToSpace;

@@ -14,6 +14,7 @@
     const normalized = theme === 'dark' ? 'dark' : 'light';
     root.dataset.theme = normalized;
     root.style.colorScheme = normalized;
+    window.dispatchEvent(new CustomEvent('arc-sidebar-theme-changed', { detail: { theme: normalized } }));
   }
 
   applyTheme();

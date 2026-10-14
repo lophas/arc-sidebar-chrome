@@ -16,6 +16,7 @@ Saved links stay in the sidebar when their browser tabs close. Click a saved ite
 
 - **Automatic Picture-in-Picture (PiP)** — a playing HTML5 video follows you into a floating mini player when you switch tabs and returns to its page when you switch back. Enabled by default.
 - **Spaces and folders** — organize projects and activities with their own pinned links, folders and additional open tabs.
+- **Space palettes** — recognize each Space by its sidebar colors. Choose a ready-made palette, a custom color or a two-color gradient, with light and dark appearances and matching Chrome groups.
 - **Global Favorites** — keep everyday sites accessible from every Space. Drag links between Favorites, Spaces and folders, preserving their icons and open tabs.
 - **Persistent pinned links** — save pages without keeping their tabs open; return to the same live tab when you need it, including after Chrome restarts.
 - **Search popup** — press **⌘K / Ctrl+K** to find recent tabs, Favorites, pinned links, folders and Spaces, open a URL or search Google.
@@ -83,6 +84,14 @@ Click a folder heading to expand or collapse it. Right-click it to rename it or 
 Right-click a Space and choose **Close open tabs** to close every tab in all Chrome groups associated with it, including additional non-pinned tabs and tabs in other windows. The menu shows how many tabs will close. Saved links and folders remain available.
 
 The last Space cannot be deleted manually. Reset recreates the starting layout; import and restore replace the sidebar with the loaded contents.
+
+### Space palettes
+
+Each Space receives its own palette automatically. Right-click its icon and use **Palette** in the Space editor to choose a ready-made palette, a custom color or a two-color gradient. The preview updates while you edit; choose **Save** to apply it or **Cancel** to keep the previous colors.
+
+The palette colors the whole sidebar, including Favorites, search and the bottom Space switcher. Its light and dark appearances follow the sidebar’s theme. The Space switcher shows each Space’s color even when it is inactive. **Open tabs** uses a neutral appearance.
+
+A Space’s Chrome groups follow its palette’s primary color. The Favorites group stays grey. Reordering Spaces keeps their palettes, and Chrome Sync and backup/restore include all palette settings.
 
 ### Favorites and pinned links
 

@@ -1,4 +1,5 @@
 import { createFavicon } from '../shared/favicon.js';
+import { applyPaletteStyle, paletteColors } from '../shared/space-palette.js';
 import { groupOpenTabs } from '../shared/open-tab-groups.js';
 import { spaceWorkflowTabs } from '../shared/space-tabs.js';
 import { isSidebarActive } from './lifecycle.js';
@@ -430,6 +431,11 @@ function renderSpaces() {
     button.textContent = space.emoji || label.slice(0, 1).toUpperCase();
     button.dataset.label = label;
     button.dataset.spaceId = space.id;
+    button.style.setProperty('--space-color', paletteColors(space.palette)[0]);
+    const paletteMark = document.createElement('span');
+    paletteMark.className = 'space-palette-mark';
+    paletteMark.setAttribute('aria-hidden', 'true');
+    button.append(paletteMark);
     button.setAttribute('aria-label', label);
     button.addEventListener('click', async () => {
       if (state.currentSpaceId === space.id) return;
@@ -631,6 +637,7 @@ function renderStats() {
 
 function render() {
   if (!isSidebarActive()) return;
+  renderSpacePalette();
   renderStats();
   renderFavorites();
   renderSpaces();
@@ -638,6 +645,16 @@ function render() {
   renderOpenTabs();
   window.dispatchEvent(new CustomEvent('arc-sidebar-rendered'));
 }
+
+function renderSpacePalette() {
+  const root = document.documentElement;
+  const space = currentSpace();
+  const dark = root.dataset.theme === 'dark' || (!root.dataset.theme && matchMedia('(prefers-color-scheme: dark)').matches);
+  applyPaletteStyle(root, space ? space.palette || { kind: 'preset', id: 'blue' } : null, dark);
+  if (space) root.dataset.spacePalette = space.id;
+  else delete root.dataset.spacePalette;
+}
+window.addEventListener('arc-sidebar-theme-changed', renderSpacePalette);
 
 function scheduleRender() {
   if (!isSidebarActive()) return;

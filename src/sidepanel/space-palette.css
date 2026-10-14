@@ -1,0 +1,26 @@
+body { background: var(--space-background, var(--bg)); }
+:root[data-space-palette] .search-wrap,
+:root[data-space-palette] .favorites-section { background: transparent; }
+:root[data-space-palette] .spaces { background: color-mix(in srgb, var(--bg) 72%, transparent); }
+.space-palette-mark {
+  position: absolute; bottom: 1px; left: calc(50% - 7px);
+  width: 14px; height: 3px; border-radius: 3px;
+  background: var(--space-color, var(--muted)); pointer-events: none;
+}
+.space-button.active { outline: 1px solid var(--space-color, var(--muted)); outline-offset: -1px; }
+.space-palette-editor { display: grid; gap: 9px; }
+.space-palette-presets { display: grid; grid-template-columns: repeat(9, minmax(0, 1fr)); gap: 5px; }
+.space-palette-choice { height: 30px; min-width: 0; border-radius: 7px; border: 2px solid transparent; cursor: pointer; }
+.space-palette-choice[aria-pressed="true"] { border-color: var(--text); box-shadow: 0 0 0 1px var(--panel); }
+.space-palette-choice:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+.space-palette-colors { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.space-color-input { display: flex; align-items: center; gap: 5px; }
+.space-color-input input[type="color"] { padding: 2px; width: 32px; height: 32px; flex: 0 0 32px; cursor: pointer; }
+.space-color-input input[type="text"] { min-width: 0; width: 100%; text-transform: none; font-family: ui-monospace, monospace; padding: 7px 5px; }
+.space-palette-preview { display: grid; gap: 5px; padding: 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--space-background); color: var(--text); }
+.space-palette-preview > span { color: var(--muted); font-size: 11px; }
+.space-palette-preview-link { padding: 6px 8px; background: var(--panel); border-radius: 6px; font-size: 12px; }
+.space-palette-group-color { color: var(--muted); font-size: 11px; }
+.space-palette-editor [hidden] { display: none !important; }
+.space-dialog { max-height: calc(100vh - 24px); overflow-y: auto; }
+@media (max-width: 260px) { .space-palette-presets { grid-template-columns: repeat(5, minmax(0, 1fr)); } .space-palette-colors { grid-template-columns: 1fr; } }

@@ -1,4 +1,5 @@
 import { backupFolderState } from './backup-state.js';
+import { withSpacePalettes } from '../shared/space-palette.js';
 import { BACKUP_SETTING_KEYS, exportBackupSettings, restoreBackupSettings } from './backup-settings.js';
 import { createStorageClient } from '../shared/storage-client.js';
 const sidebarStorage = createStorageClient();
@@ -222,7 +223,7 @@ arcFile.addEventListener('change', async event => {
   const file = event.target.files?.[0];
   if (!file) return;
   try {
-    const model = parseArcSidebar(JSON.parse(await file.text()));
+    const model = withSpacePalettes(parseArcSidebar(JSON.parse(await file.text())));
     const now = Date.now();
     await sidebarStorage.local.set({
       [STORAGE_KEY]: model,
@@ -246,7 +247,7 @@ arcFile.addEventListener('change', async event => {
 downloadBackup.addEventListener('click', async () => {
   backupStatus.textContent = '';
   const stored = await sidebarStorage.local.get([STORAGE_KEY, STATE_KEY, ...BACKUP_SETTING_KEYS]);
-  const model = stored[STORAGE_KEY];
+  const model = withSpacePalettes(stored[STORAGE_KEY]);
   if (!isValidSidebarModel(model)) {
     backupStatus.textContent = 'No sidebar data to back up.';
     return;
@@ -278,8 +279,9 @@ restoreBackup.addEventListener('change', async event => {
 
   try {
     const payload = JSON.parse(await file.text());
-    const model = payload?.format === BACKUP_FORMAT ? payload.model : payload;
+    let model = payload?.format === BACKUP_FORMAT ? payload.model : payload;
     if (!isValidSidebarModel(model)) throw new Error('Not a valid Arc Side of the Chrome backup.');
+    model = withSpacePalettes(model);
 
     const settings = restoreBackupSettings(payload?.format === BACKUP_FORMAT ? payload.settings : undefined);
     await sidebarStorage.local.get(Object.keys(settings));

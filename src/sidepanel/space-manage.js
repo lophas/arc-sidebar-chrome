@@ -1,4 +1,6 @@
 import { fillSpaceSelect } from './space-select.js';
+import { createSpacePaletteEditor } from './space-palette-editor.js';
+import { nextSpacePalette, withSpacePalettes } from '../shared/space-palette.js';
 import { isSidebarActive } from './lifecycle.js';
 import { createStorageClient } from '../shared/storage-client.js';
 const sidebarStorage = createStorageClient({ isActive: isSidebarActive });
@@ -10,6 +12,7 @@ const spacesEl = document.querySelector('#spaces');
 const EMOJIS = ['🏠','💼','🛒','🎬','🎵','📚','🧰','🖥️','🌐','✉️','💬','📷','🧭','✈️','🚗','💡','⭐','❤️','🧪','🔧','📁','📰','📺','💰'];
 
 let spaceDialog = null;
+let paletteEditor = null;
 let deleteDialog = null;
 
 function uid() {
@@ -73,6 +76,7 @@ function ensureSpaceDialog() {
       </div>
     </form>`;
   document.body.append(spaceDialog);
+  paletteEditor = createSpacePaletteEditor(spaceDialog);
 
   const grid = spaceDialog.querySelector('#spaceEmojiGrid');
   const emojiInput = spaceDialog.querySelector('#spaceEmoji');
@@ -179,7 +183,7 @@ function ensureDeleteDialog() {
 
 async function openDeleteSpace(spaceId) {
   const stored = await getData();
-  const model = stored[STORAGE_KEY];
+  const model = withSpacePalettes(stored[STORAGE_KEY]);
   const state = stored[STATE_KEY] || { currentSpaceId: null, collapsedFolders: {} };
   if (!model?.spaces?.length || model.spaces.length <= 1) return;
 
@@ -236,7 +240,7 @@ async function openDeleteSpace(spaceId) {
 
 async function openSpaceEditor(spaceId = null) {
   const stored = await getData();
-  const model = stored[STORAGE_KEY];
+  const model = withSpacePalettes(stored[STORAGE_KEY]);
   const state = stored[STATE_KEY] || { currentSpaceId: null, collapsedFolders: {} };
   if (!model?.spaces) return;
 
@@ -244,6 +248,7 @@ async function openSpaceEditor(spaceId = null) {
   if (spaceId && !space) return;
 
   const dialog = ensureSpaceDialog();
+  paletteEditor.setValue(space?.palette || nextSpacePalette(model.spaces));
   const nameInput = dialog.querySelector('#spaceName');
   const emojiInput = dialog.querySelector('#spaceEmoji');
   const preview = dialog.querySelector('#spaceIconPreview');
@@ -272,12 +277,15 @@ async function openSpaceEditor(spaceId = null) {
     }
     nameInput.setCustomValidity('');
     const emoji = emojiInput.value.trim();
+    const palette = paletteEditor.getValue();
+    if (!palette) return;
 
     if (space) {
       space.title = title;
       space.emoji = emoji;
+      space.palette = palette;
     } else {
-      const newSpace = { id: uid(), title, emoji, children: [] };
+      const newSpace = { id: uid(), title, emoji, children: [], palette };
       model.spaces.push(newSpace);
       state.currentSpaceId = newSpace.id;
     }

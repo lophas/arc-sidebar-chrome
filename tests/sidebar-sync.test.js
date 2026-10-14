@@ -3,8 +3,9 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import { hasSyncContent } from '../src/shared/sync-content.js';
+import { withSpacePalettes } from '../src/shared/space-palette.js';
 
-const initial = () => ({version:2,favorites:[],spaces:[{id:'__my_space__',title:'My Space',emoji:'🚀',children:[]}],stats:{spaces:1,folders:0,tabs:0,favorites:0}});
+const initial = () => withSpacePalettes({version:2,favorites:[],spaces:[{id:'__my_space__',title:'My Space',emoji:'🚀',children:[]}],stats:{spaces:1,folders:0,tabs:0,favorites:0}});
 const content = () => ({...initial(),favorites:[{id:'fav',type:'tab',title:'Mail',url:'https://mail.test'}]});
 const source = fs.readFileSync('src/background/service-worker.js','utf8');
 function fixture(localModel=initial(), remote=content(), localUpdatedAt=10000, remoteUpdatedAt=1) {
@@ -13,7 +14,7 @@ function fixture(localModel=initial(), remote=content(), localUpdatedAt=10000, r
  const writes=[],listeners=[],timers=new Map();let timerId=0;
  const area=name=>({async get(keys){const names=keys==null?Object.keys(data[name]):typeof keys==='string'?[keys]:keys;return structuredClone(Object.fromEntries(names.filter(k=>k in data[name]).map(k=>[k,data[name][k]])));},async set(values){const changes={};for(const [key,value]of Object.entries(values)){if(JSON.stringify(data[name][key])===JSON.stringify(value))continue;changes[key]={oldValue:structuredClone(data[name][key]),newValue:structuredClone(value)};data[name][key]=structuredClone(value);}writes.push({area:name,values:structuredClone(values)});if(Object.keys(changes).length)for(const listener of listeners)listener(changes,name);},async remove(keys){for(const k of Array.isArray(keys)?keys:[keys])delete data[name][k];},async clear(){data[name]={};}});
  const chrome={storage:{local:area('local'),session:area('session'),sync:area('sync'),onChanged:{addListener:fn=>listeners.push(fn)}}};
- const context=vm.createContext({chrome,sidebarStorage:chrome.storage,hasSyncContent,TextEncoder,TextDecoder,btoa,atob,console,Date:{now:()=>20000},setTimeout:fn=>{const id=++timerId;timers.set(id,fn);return id;},clearTimeout:id=>timers.delete(id),queueNativeGroupSync(){},refreshActiveSidebar:async()=>{}});
+ const context=vm.createContext({chrome,sidebarStorage:chrome.storage,hasSyncContent,withSpacePalettes,TextEncoder,TextDecoder,btoa,atob,console,Date:{now:()=>20000},setTimeout:fn=>{const id=++timerId;timers.set(id,fn);return id;},clearTimeout:id=>timers.delete(id),queueNativeGroupSync(){},refreshActiveSidebar:async()=>{}});
  vm.runInContext(source.slice(source.indexOf('const STORAGE_KEY'),source.indexOf('async function broadcastNativePanelState')),context);
  vm.runInContext(source.slice(source.indexOf('chrome.storage.onChanged.addListener('),source.indexOf('chrome.tabs.onCreated.addListener(')),context);
  const drain=async()=>{const callbacks=[...timers.values()];timers.clear();for(const fn of callbacks)await fn();};
@@ -23,6 +24,19 @@ function fixture(localModel=initial(), remote=content(), localUpdatedAt=10000, r
 test('only intentional organization qualifies for uploading, not the generated default',()=>{
  for(const model of [null,undefined,{},initial(),{version:2,favorites:[],spaces:[],stats:{tabs:900}}])assert.equal(hasSyncContent(model),false);
  for(const change of [m=>m.favorites.push({type:'tab',url:'https://a.test'}),m=>m.spaces[0].children.push({type:'folder',title:'Empty folder',children:[]}),m=>m.spaces[0].title='Work',m=>m.spaces[0].emoji='💼',m=>m.spaces.push({id:'new',title:'New',children:[]})]){const model=initial();change(model);assert.equal(hasSyncContent(model),true);}
+});
+test('custom palette settings travel through the actual chunked Sync encoder and restore on a fresh computer',async()=>{
+ const remote=content();remote.spaces[0].palette={kind:'gradient',colors:['#073c99','#ff8800']};
+ const first=fixture(initial(),remote);assert.equal((await first.context.reconcileSidebarSync()).direction,'pull');assert.deepEqual(first.data.local.arcSidebarModel.spaces[0].palette,remote.spaces[0].palette);
+ const changed=structuredClone(first.data.local.arcSidebarModel);changed.spaces[0].palette={kind:'solid',colors:['#823bb1']};
+ await first.chrome.storage.local.set({arcSidebarModel:changed});await first.drain();
+ const chunks=Array.from({length:first.data.sync.arcSidebarSyncMeta.chunks},(_,i)=>first.data.sync['arcSidebarSyncChunk:'+i]).join('');
+ const cloud=JSON.parse(Buffer.from(chunks,'base64').toString('utf8'));assert.deepEqual(cloud.spaces[0].palette,changed.spaces[0].palette);
+ const second=fixture(initial(),cloud,999999,first.data.sync.arcSidebarSyncMeta.updatedAt);assert.equal((await second.context.reconcileSidebarSync()).direction,'pull');assert.deepEqual(second.data.local.arcSidebarModel,cloud);assert.equal(second.snapshotWrites().length,0);
+});
+test('legacy cloud snapshots acquire default palettes on pull without replacing saved data',async()=>{
+ const old=content();delete old.spaces[0].palette;
+ const f=fixture(initial(),old);assert.equal((await f.context.reconcileSidebarSync()).direction,'pull');assert.deepEqual(f.data.local.arcSidebarModel,withSpacePalettes(old));assert.equal(f.snapshotWrites().length,0);
 });
 test('fresh install and reset defaults pull the cloud snapshot despite a newer local timestamp',async()=>{
  for(const model of [undefined,initial()]){
