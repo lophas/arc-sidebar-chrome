@@ -12,6 +12,8 @@ function hide() {
 }
 function show(button) {
   hide();
+  // Space tooltips are positioned separately above the scrolling switcher.
+  if (button.classList.contains('space-button')) return;
   const text = button.getAttribute('title') || button.getAttribute('aria-label') || button.textContent.trim();
   if (!text) return;
   target = button;

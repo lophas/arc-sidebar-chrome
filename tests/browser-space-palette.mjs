@@ -31,6 +31,20 @@ try{
  assert.deepEqual((await readModel()).spaces.map(space=>space.palette),[{kind:'preset',id:'black'},{kind:'preset',id:'green'},{kind:'preset',id:'black'}]);
  await page.locator('.space-button[data-space-id="work"]').waitFor();
  const background=()=>page.evaluate(()=>document.documentElement.style.getPropertyValue('--space-background'));
+ // Only the switcher's dedicated tooltip may appear, including on special buttons.
+ for(const selector of ['[data-space-id="work"]','[data-space-id="__open_tabs__"]','.space-add-button']){
+  const button=page.locator('.space-button'+selector);
+  await button.hover();const label=await button.getAttribute('data-label');
+  await poll(async()=>await page.locator('.space-hover-tooltip:not([hidden])').count()===1 && await page.locator('.space-hover-tooltip').innerText()===label,'Space tooltip did not show the hovered label');
+  await page.waitForTimeout(400);
+  assert.equal(await page.locator('[role="tooltip"]:visible').count(),1);
+  assert.equal(await button.evaluate(el=>getComputedStyle(el,'::after').content),'none');
+  assert.equal(await button.getAttribute('title'),null);
+ }
+ await page.mouse.move(300,300);await page.locator('.space-hover-tooltip').waitFor({state:'hidden'});
+ await page.locator('.space-button[data-space-id="work"]').focus();
+ assert.equal(await page.locator('[role="tooltip"]:visible').count(),1);
+ await page.locator('.space-button[data-space-id="work"]').evaluate(el=>el.blur());
  await poll(async()=>await background()===paletteStyle({kind:'preset',id:'black'},false)['--space-background'],'Classic default was not applied');
  const editor=page.locator('.space-dialog[open]');
  await page.locator('.space-button[data-space-id="work"]').click({button:'right'});await page.getByRole('button',{name:'Edit Space…',exact:true}).click();

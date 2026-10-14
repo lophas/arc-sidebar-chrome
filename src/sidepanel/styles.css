@@ -200,29 +200,6 @@ body {
   background: var(--active);
   outline: 1px solid color-mix(in srgb, var(--text) 10%, transparent);
 }
-.space-button::after {
-  content: attr(data-label);
-  position: absolute;
-  left: 50%;
-  bottom: calc(100% + 8px);
-  transform: translateX(-50%) translateY(3px);
-  pointer-events: none;
-  opacity: 0;
-  white-space: nowrap;
-  padding: 5px 7px;
-  border-radius: 6px;
-  background: color-mix(in srgb, var(--panel) 94%, black 6%);
-  color: var(--text);
-  border: 1px solid var(--border);
-  box-shadow: 0 4px 14px rgba(0,0,0,.22);
-  font-size: 11px;
-  line-height: 1.2;
-  transition: opacity .12s ease, transform .12s ease;
-}
-.space-button:hover::after {
-  opacity: 1;
-  transform: translateX(-50%) translateY(0);
-}
 .space-count {
   position: absolute;
   right: -1px;
