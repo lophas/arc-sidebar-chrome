@@ -4,7 +4,8 @@ import {join} from 'node:path';
 import {tmpdir} from 'node:os';
 import {createServer} from 'node:http';
 import {chromium} from 'playwright-core';
-import {paletteStyle} from '../src/shared/space-palette.js';
+import {paletteStyle,normalizeSpacePalette} from '../src/shared/space-palette.js';
+const samePalette=(a,b)=>JSON.stringify(normalizeSpacePalette(a))===JSON.stringify(normalizeSpacePalette(b));
 const directory=await mkdtemp(join(tmpdir(),'arc-palette-extension-'));
 await cp('src',join(directory,'src'),{recursive:true});await cp('manifest.json',join(directory,'manifest.json'));
 const server=createServer((req,res)=>{res.setHeader('Content-Type','text/html');res.end('<!doctype html><title>Palette test</title>');});
@@ -15,7 +16,7 @@ try{
  let[worker]=context.serviceWorkers();if(!worker)worker=await context.waitForEvent('serviceworker');const origin=`chrome-extension://${worker.url().split('/')[2]}`;
  const page=await context.newPage(),errors=[];page.on('pageerror',error=>{errors.push(error.message);console.error('Palette page error:',error.message);});await page.emulateMedia({colorScheme:'light'});
  await page.goto(origin+'/src/sidepanel/index.html');await page.locator('.space-button[data-space-id="__my_space__"]').waitFor();
- const poll=async(predicate,message)=>{for(let i=0;i<160;i++){if(await predicate())return;await new Promise(done=>setTimeout(done,50));}assert.fail(message);};
+ const poll=async(predicate,message)=>{for(let i=0;i<160;i++){if(await predicate())return;await new Promise(done=>setTimeout(done,50));}console.error('Palette test state:',JSON.stringify(await page.evaluate(async()=>({model:(await chrome.storage.local.get('arcSidebarModel')).arcSidebarModel,dialog:document.querySelector('.space-dialog')?.open,name:document.querySelector('#spaceName')?.value,kind:document.querySelector('#spacePaletteKind')?.value,hex1:document.querySelector('#spacePaletteHex1')?.value,hex2:document.querySelector('#spacePaletteHex2')?.value,error:document.querySelector('#sidebarSaveError')?.textContent}))));assert.fail(message);};
  const readModel=()=>page.evaluate(async()=>(await chrome.storage.local.get('arcSidebarModel')).arcSidebarModel);
  const url=`http://127.0.0.1:${server.address().port}/tab`;
  await page.evaluate(async url=>{
@@ -41,7 +42,9 @@ try{
   assert.equal(await editor.locator('.space-palette-preview').evaluate(el=>el.style.getPropertyValue('--space-background')),paletteStyle(custom,false)['--space-background']);
  };
  const before=await readModel();await editGradient();await editor.locator('#spaceCancel').click();assert.deepEqual(await readModel(),before);
- await editGradient();await editor.locator('#spaceSave').click();await poll(async()=>JSON.stringify((await readModel()).spaces[0].palette)===JSON.stringify(custom),'Custom palette was not saved');
+ await editGradient();
+ if(process.env.ARC_PALETTE_SCREENSHOTS)console.log('PALETTE_EDITOR_PNG='+ (await page.screenshot()).toString('base64'));
+ await editor.locator('#spaceSave').click();await poll(async()=>samePalette((await readModel()).spaces[0].palette,custom),'Custom palette was not saved');
  await poll(async()=>await background()===paletteStyle(custom,false)['--space-background'],'Custom palette was not applied');
  if(process.env.ARC_PALETTE_SCREENSHOTS)console.log('PALETTE_LIGHT_PNG='+ (await page.screenshot()).toString('base64'));
  await page.emulateMedia({colorScheme:'dark'});await poll(async()=>await background()===paletteStyle(custom,true)['--space-background'],'Dark palette did not follow system theme');
@@ -58,8 +61,10 @@ try{
  const backup=JSON.parse(await readFile(await download.path(),'utf8'));
  assert.deepEqual(backup.model.spaces.find(space=>space.id==='work').palette,custom);assert.deepEqual(backup.model.spaces.find(space=>space.id==='home').palette,{kind:'preset',id:'green'});
  await page.evaluate(async()=>{const {arcSidebarModel:model}=await chrome.storage.local.get('arcSidebarModel');model.spaces.find(space=>space.id==='work').palette={kind:'solid',colors:['#ffffff']};await chrome.storage.local.set({arcSidebarModel:model});});
+ await poll(()=>page.evaluate(async id=>{const tab=await chrome.tabs.get(id);return (await chrome.tabGroups.get(tab.groupId)).color==='grey';},live),'Existing Chrome group did not follow a palette change');
  await options.locator('#restoreBackup').setInputFiles({name:'backup.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(backup))});
- await poll(async()=>JSON.stringify((await readModel()).spaces.find(space=>space.id==='work').palette)===JSON.stringify(custom),'Backup did not restore the custom gradient');
+ await poll(async()=>samePalette((await readModel()).spaces.find(space=>space.id==='work').palette,custom),'Backup did not restore the custom gradient');
+ await poll(()=>page.evaluate(async id=>{const tab=await chrome.tabs.get(id);return (await chrome.tabGroups.get(tab.groupId)).color==='blue';},live),'Chrome group did not follow the restored palette');
  assert.equal(await page.evaluate(async()=>(await chrome.storage.local.get('arcSidebarState')).arcSidebarState.collapsedFolders.folder),false);
  await options.locator('#syncEnabled').check();
  await poll(()=>page.evaluate(async()=>Boolean((await chrome.storage.sync.get('arcSidebarSyncMeta')).arcSidebarSyncMeta)),'Sync snapshot did not publish');
@@ -70,7 +75,7 @@ try{
  await options.locator('#status').filter({hasText:'Reset complete.'}).waitFor();
  await poll(async()=> (await readModel())?.spaces[0]?.id==='__my_space__','Reset did not recreate My Space');
  await options.locator('#syncEnabled').check();
- await poll(async()=>JSON.stringify((await readModel()).spaces.find(space=>space.id==='work')?.palette)===JSON.stringify(custom),'Sync did not restore the existing palette after reset');
+ await poll(async()=>samePalette((await readModel()).spaces.find(space=>space.id==='work')?.palette,custom),'Sync did not restore the existing palette after reset');
  assert.deepEqual(await page.evaluate(()=>chrome.storage.sync.get(null)),cloud,'Reset and re-enabling Sync must not push the empty automatic palette');
  assert.deepEqual(errors,[]);
  console.log('PASS real extension: downloaded backup/restored gradient, complete Chrome Sync payload, reset then cloud-first restore without uploading the empty starting palette');

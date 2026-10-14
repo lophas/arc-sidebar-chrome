@@ -10,7 +10,7 @@ export const SPACE_PALETTES = [
   { id: 'grey', name: 'Slate', colors: ['#718096', '#8a819c'] }
 ];
 const presets = new Map(SPACE_PALETTES.map(palette => [palette.id, palette]));
-export const DEFAULT_SPACE_PALETTE = { kind: 'preset', id: 'blue' };
+export const DEFAULT_SPACE_PALETTE = { id: 'blue', kind: 'preset' };
 
 export function normalizeHex(value) {
   if (typeof value !== 'string') return null;
@@ -21,11 +21,11 @@ export function normalizeHex(value) {
 }
 
 export function normalizeSpacePalette(value) {
-  if (value?.kind === 'preset' && presets.has(value.id)) return { kind: 'preset', id: value.id };
+  if (value?.kind === 'preset' && presets.has(value.id)) return { id: value.id, kind: 'preset' };
   if (!['solid', 'gradient'].includes(value?.kind)) return null;
   const colors = (Array.isArray(value.colors) ? value.colors : []).map(normalizeHex);
   const length = value.kind === 'solid' ? 1 : 2;
-  return colors.length === length && colors.every(Boolean) ? { kind: value.kind, colors } : null;
+  return colors.length === length && colors.every(Boolean) ? { colors, kind: value.kind } : null;
 }
 
 export function paletteColors(value) {
@@ -39,8 +39,10 @@ export function withSpacePalettes(model) {
   if (!Array.isArray(model?.spaces)) return model;
   let changed = false;
   const spaces = model.spaces.map((space, index) => {
-    const palette = normalizeSpacePalette(space.palette) || { kind: 'preset', id: SPACE_PALETTES[index % SPACE_PALETTES.length].id };
-    if (JSON.stringify(palette) === JSON.stringify(space.palette)) return space;
+    const palette = normalizeSpacePalette(space.palette) || { id: SPACE_PALETTES[index % SPACE_PALETTES.length].id, kind: 'preset' };
+    const same = space.palette?.kind === palette.kind && Object.keys(space.palette).length === 2 &&
+      (palette.kind === 'preset' ? space.palette.id === palette.id : JSON.stringify(space.palette.colors) === JSON.stringify(palette.colors));
+    if (same) return space;
     changed = true;
     return { ...space, palette };
   });
@@ -54,7 +56,7 @@ export function nextSpacePalette(spaces = []) {
 
 export function hasCustomSpacePalette(space) {
   const palette = normalizeSpacePalette(space?.palette);
-  return Boolean(palette && JSON.stringify(palette) !== JSON.stringify(DEFAULT_SPACE_PALETTE));
+  return Boolean(palette && (palette.kind !== 'preset' || palette.id !== DEFAULT_SPACE_PALETTE.id));
 }
 
 const rgb = color => [1, 3, 5].map(offset => parseInt(color.slice(offset, offset + 2), 16));

@@ -17,6 +17,12 @@ test('solid/gradient colors normalize safely and reject arbitrary CSS or incompl
  for(const value of [{kind:'preset',id:'bad'},{kind:'solid',colors:['url(https://evil.test)']},{kind:'gradient',colors:['#ffffff']},{kind:'solid',colors:['red']},{kind:'solid',colors:['#ffffff','#000000']}])assert.equal(normalizeSpacePalette(value),null);
  assert.equal(withSpacePalettes({spaces:[{id:'broken',palette:{kind:'solid',colors:['invalid']}}]}).spaces[0].palette.id,'blue');
 });
+test('storage field ordering does not cause palette rewrites or turn the automatic default into Sync content',()=>{
+ for(const palette of [{kind:'preset',id:'blue'},{id:'blue',kind:'preset'},{kind:'gradient',colors:['#073c99','#ff8800']},{colors:['#073c99','#ff8800'],kind:'gradient'}]){
+  const model={spaces:[{id:'a',palette}]};assert.equal(withSpacePalettes(model),model);
+ }
+ const model={favorites:[],spaces:[{id:'__my_space__',title:'My Space',emoji:'🚀',children:[],palette:{id:'blue',kind:'preset'}}]};assert.equal(hasSyncContent(model),false);
+});
 test('each preset matches its Chrome group; custom colors use primary hue and neutral shades use grey',()=>{
  for(const palette of SPACE_PALETTES)assert.equal(paletteGroupColor({kind:'preset',id:palette.id}),palette.id);
  for(const [color,expected]of [['#073c99','blue'],['#ff0000','red'],['#00aa66','green'],['#ffff00','yellow'],['#00ffff','cyan'],['#aa00ff','purple'],['#ff8800','orange'],['#ff0080','pink'],['#222222','grey'],['#ffffff','grey']])assert.equal(paletteGroupColor({kind:'solid',colors:[color]}),expected,color);
