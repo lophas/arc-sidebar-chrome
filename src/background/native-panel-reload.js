@@ -16,7 +16,8 @@ const reportError = error => console.warn('Arc Side of the Chrome: could not app
 
 if (chrome.sidePanel?.onOpened) {
   chrome.sidePanel.onOpened.addListener(info => {
-    if (info.path && info.path !== PANEL_PATH && info.path !== chrome.runtime.getURL(PANEL_PATH)) return;
+    const path = info.path?.replace(/^\//, '');
+    if (path && path !== PANEL_PATH && path !== chrome.runtime.getURL(PANEL_PATH)) return;
     return followNativePanelOpen(info.windowId).catch(reportError);
   });
 }
@@ -24,14 +25,14 @@ if (chrome.sidePanel?.onOpened) {
   // Native presence also covers browsers that expose but do not fire onOpened.
   // Verify the context so a normal tab or embedded sidebar cannot change mode.
   chrome.runtime.onConnect.addListener(port => {
-    if (port.name !== 'arc-native-sidepanel' || !port.sender?.documentId) return;
+    if (port.name !== 'arc-native-sidepanel' || port.sender?.url !== chrome.runtime.getURL(PANEL_PATH) || port.sender?.tab) return;
     let handled = false, connected = true;
     port.onDisconnect.addListener(() => { connected = false; });
     port.onMessage.addListener(async message => {
       if (handled || !Number.isInteger(message?.windowId)) return;
       handled = true;
       try {
-        const contexts = await chrome.runtime.getContexts({ contextTypes: ['SIDE_PANEL'], documentIds: [port.sender.documentId] });
+        const contexts = await chrome.runtime.getContexts({ contextTypes: ['SIDE_PANEL'], ...(port.sender.documentId ? {documentIds: [port.sender.documentId]} : {}) });
         if (connected && contexts.some(context => context.documentUrl === chrome.runtime.getURL(PANEL_PATH))) {
           await followNativePanelOpen(message.windowId);
         }
