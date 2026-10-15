@@ -24,7 +24,7 @@ try{
  const session=await context.newCDPSession(page);
  const initial=await session.send('Page.getNavigationHistory');
  for(let i=0;i<3;i++){
-  await page.evaluate(url=>{document.querySelector('#test-sidebar')?.remove();const frame=document.createElement('iframe');frame.id='test-sidebar';frame.src=url;frame.style.cssText='position:fixed;right:0;top:0;width:390px;height:100vh;border:0';document.body.append(frame);},sidebarUrl);
+  await page.evaluate(url=>{document.querySelector('#test-sidebar')?.remove();const frame=document.createElement('iframe');frame.id='test-sidebar';frame.addEventListener('load',()=>frame.contentWindow.postMessage({type:'arc-sidebar-overlay-visibility',open:true},'*'));frame.src=url;frame.style.cssText='position:fixed;right:0;top:0;width:390px;height:100vh;border:0';document.body.append(frame);},sidebarUrl);
   const width=await page.evaluate(()=>innerWidth);
   let frame;
   for(let j=0;j<60;j++){frame=page.frames().find(f=>f.url().includes('/src/sidepanel/index.html'));if(frame)break;await page.waitForTimeout(50);}
