@@ -72,6 +72,8 @@ New tabs opened from a Favorite are ungrouped and appear at the end of their Chr
 
 ## Search
 
+<img src="screenshots/sidebar-search.png" width="390" alt="Search popup inside the sidebar, filtering saved project links">
+
 Press **Command+K** on macOS or **Ctrl+K** on Windows/Linux to open the search popup, including when the sidebar is closed. The sidebar’s **Search or enter URL** control opens the same search inside the sidebar.
 
 With an empty query, search shows recently used open tabs, excluding the current tab. Press **⌘K / Ctrl+K → Enter** to switch to the previously used tab. Type to find open tabs across Chrome windows, Favorites, pinned links, folders and Spaces. Results show favicons and Space or Chrome group names, match all entered words and ignore differences in accents. A saved link with an open tab appears once; selecting it activates that tab, even if it has navigated to another page. Open-tab results include webpages, file URLs and Chrome pages such as `chrome://extensions/`; empty New Tab pages are omitted.
@@ -158,6 +160,8 @@ On a fresh installation or after a reset, enabling Sync restores the existing cl
 Open tabs, the selected Space, folder expansion, scroll positions, sidebar mode, timeout, sidebar width and Favorite size stay local to each computer. When different computers change the organization, the most recently updated sidebar becomes the synchronized version.
 
 ## Backup, restore and reset
+
+<img src="screenshots/backup-sync.png" width="760" alt="Backup, restore and Chrome Sync controls">
 
 Use **Extension options → Backup & restore** to download or restore a portable JSON backup.
 

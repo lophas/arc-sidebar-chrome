@@ -94,7 +94,14 @@ The trigger controls let you keep the active area away from an embedded scrollba
 
 <img src="docs/screenshots/appearance.png" width="760" alt="Autohide delay and edge trigger sliders with a live preview of the active area">
 
-[View the full Options page](docs/screenshots/options.png) · [Backup and Chrome Sync controls](docs/screenshots/backup-sync.png)
+<details>
+<summary>View the full Options page</summary>
+
+![Complete Options page with mini player, autohide, Favorites, backups, Sync and Arc Browser import](docs/screenshots/options.png)
+
+</details>
+
+[Backup and Chrome Sync controls](docs/screenshots/backup-sync.png)
 
 For step-by-step controls, permissions, import file paths and exact Sync/backup behavior, see the [**user guide**](docs/guide.md).
 
