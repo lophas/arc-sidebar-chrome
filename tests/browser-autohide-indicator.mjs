@@ -18,7 +18,24 @@ try {
   const controls = await context.newPage();
   await controls.goto(`chrome-extension://${worker.url().split('/')[2]}/src/options/index.html`);
   // Exercise the real service-worker-compatible canvas and action.setIcon API.
-  await controls.evaluate(async () => { const { enlargeToolbarIcon } = await import('../background/toolbar-icon.js'); await enlargeToolbarIcon(); });
+  const coverage = await controls.evaluate(async () => {
+    const { enlargeToolbarIcon } = await import('../background/toolbar-icon.js');
+    const icons = await enlargeToolbarIcon();
+    return Object.entries(icons).map(([size, image]) => {
+      const xs = [], ys = [];
+      for (let i = 0; i < image.data.length; i += 4) {
+        const rgb = Array.from(image.data.slice(i, i + 3));
+        if (image.data[i + 3] > 128 && Math.max(...rgb) > 90 && Math.max(...rgb) - Math.min(...rgb) > 32) {
+          xs.push((i / 4) % image.width); ys.push(Math.floor(i / 4 / image.width));
+        }
+      }
+      return { size: Number(size), width: Math.max(...xs) - Math.min(...xs) + 1, height: Math.max(...ys) - Math.min(...ys) + 1 };
+    });
+  });
+  for (const icon of coverage) {
+    assert.ok(icon.width >= icon.size - 2, 'Colored arch must fill the available toolbar width');
+    assert.ok(icon.height >= icon.size - 2, 'Colored arch must fill the available toolbar height');
+  }
   const ids = await worker.evaluate(async origin => {
     await chrome.storage.local.set({ arcSidebarMode: 'overlay', arcSidebarAutohideTimeout: 800 });
     const protectedTab = await chrome.tabs.create({ url: 'chrome://version/', active: false });

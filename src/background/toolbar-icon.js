@@ -1,6 +1,6 @@
 export async function enlargeToolbarIcon() {
-  // Keep the original artwork, but use less of its transparent outer margin in
-  // the toolbar's fixed-size slot. Render once, with crisp standard/Retina sizes.
+  // Fit the colored arch itself to the toolbar slot, rather than scaling its
+  // padded background tile. Preserve its aspect ratio and original colors.
   const response = await fetch(chrome.runtime.getURL('src/icons/icon512.png'));
   const bitmap = await createImageBitmap(await response.blob());
   try {
@@ -8,9 +8,16 @@ export async function enlargeToolbarIcon() {
     for (const size of [16, 32]) {
       const canvas = new OffscreenCanvas(size, size);
       const context = canvas.getContext('2d');
-      context.drawImage(bitmap, 16, 16, 480, 480, 0, 0, size, size);
+      context.beginPath();
+      context.roundRect(0, 0, size, size, size / 8);
+      context.clip();
+      context.fillStyle = '#171923';
+      context.fillRect(0, 0, size, size);
+      const height = size * 324 / 344;
+      context.drawImage(bitmap, 84, 90, 344, 324, 0, (size - height) / 2, size, height);
       imageData[size] = context.getImageData(0, 0, size, size);
     }
     await chrome.action.setIcon({ imageData });
+    return imageData;
   } finally { bitmap.close(); }
 }
