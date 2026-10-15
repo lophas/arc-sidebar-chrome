@@ -39,11 +39,13 @@ const model = { version:2, favorites:[
     {id:'later',type:'folder',title:'Read this weekend',children:[link('interfaces','What makes a great interface?','https://notes.example.test/interfaces'),link('workflows','Small habits, better workflows','https://notes.example.test/workflows')]}
   ]}
 ], stats:{spaces:3,favorites:4,folders:4,tabs:14} };
-const titles = new Map();
-function index(nodes) { for(const node of nodes){if(node.url)titles.set(node.url,node.title);if(node.children)index(node.children);} }
+const titles = new Map(), targets = new Map();
+function index(nodes) { for(const node of nodes){if(node.url){titles.set(node.url,node.title);targets.set(node.id,node.url);}if(node.children)index(node.children);} }
 index(model.favorites);for(const space of model.spaces)index(space.children);
 titles.set('https://github.com/lophas/arc-sidebar-chrome/pull/42','Review · navigation polish');
 titles.set('https://notes.example.test/tomorrow','Notes for tomorrow');
+titles.set('https://calendar.google.com/pinned','Shared calendar');
+targets.set('review','https://github.com/lophas/arc-sidebar-chrome/pull/42');targets.set('notes','https://notes.example.test/tomorrow');targets.set('nativePin','https://calendar.google.com/pinned');
 
 function website(url) {
   const title=titles.get(url)||'A little more focus',video=url.startsWith('https://video.example.test/');
@@ -82,7 +84,7 @@ try {
   });
   // Extension-created tabs can start navigating before Playwright attaches.
   // Populate the website fixtures after targets exist; the sidebar stays real.
-  for(const page of context.pages())if(page.url().startsWith('https://')){await page.route('**/*',route=>route.fulfill({status:200,contentType:'text/html',body:website(route.request().url())}));await page.reload({waitUntil:'domcontentloaded'});}
+  for(const [name,id]of Object.entries(live)){const url=targets.get(name);if(!url)continue;const current=await controls.evaluate(async id=>(await chrome.tabs.get(id)).url,id);const page=context.pages().find(page=>page.url()===current);assert.ok(page,'Loaded browser target for '+name);await page.route('**/*',route=>route.fulfill({status:200,contentType:'text/html',body:website(route.request().url())}));await page.goto(url,{waitUntil:'domcontentloaded'});await page.waitForFunction(title=>document.title===title,titles.get(url));}
   const briefUrl=await controls.evaluate(async id=>(await chrome.tabs.get(id)).url,live.brief);
   let brief;for(let i=0;i<100;i++){brief=context.pages().find(page=>page.url()===briefUrl);if(brief)break;await new Promise(done=>setTimeout(done,50));}assert.ok(brief,'Project brief tab must load');
   await controls.evaluate(windowId=>{const button=document.createElement('button');button.id='captureOpenSidebar';button.textContent='Open sidebar';button.onclick=()=>chrome.sidePanel.open({windowId});document.body.prepend(button);},live.windowId);
