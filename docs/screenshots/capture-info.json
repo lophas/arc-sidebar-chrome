@@ -1,0 +1,18 @@
+{
+  "extensionVersion": "4.0.0",
+  "browser": "141.0.7390.37",
+  "data": "Fictional example workspaces; real extension, Chrome groups and native video PiP",
+  "files": [
+    "workspace.png",
+    "sidebar.png",
+    "sidebar-search.png",
+    "space-palettes.png",
+    "open-tabs.png",
+    "search-popup.png",
+    "mini-player.png",
+    "appearance.png",
+    "arc-import.png",
+    "backup-sync.png",
+    "options.png"
+  ]
+}
