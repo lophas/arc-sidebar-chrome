@@ -121,7 +121,6 @@ body {
   cursor: pointer;
 }
 .favorite-tile:hover { background: var(--hover); }
-.favorite-tile.active { outline: 2px solid color-mix(in srgb, var(--text) 35%, transparent); }
 .favorite-tile img {
   width: 24px;
   height: 24px;

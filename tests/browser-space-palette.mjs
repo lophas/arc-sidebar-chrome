@@ -65,7 +65,13 @@ try{
  await poll(async()=>await page.locator('.favorite-tile').evaluate(el=>{const css=getComputedStyle(el);return el.isConnected && css.borderTopWidth==='1px' && css.borderTopStyle==='solid' && css.backgroundColor==='rgba(255, 255, 255, 0.65)';}),'Light Favorite style was not applied');
  await page.emulateMedia({colorScheme:'dark'});await poll(async()=>await background()===paletteStyle({kind:'preset',id:'blue'},true)['--space-background'],'Vivid preset did not follow dark theme');
  await poll(async()=>await page.locator('.favorite-tile').evaluate(el=>{const css=getComputedStyle(el);return el.isConnected && css.borderTopWidth==='1px' && css.borderTopColor==='rgba(255, 255, 255, 0.28)' && css.backgroundColor==='rgba(255, 255, 255, 0.16)';}),'Dark Favorite style was not applied');
- if(process.env.ARC_PALETTE_SCREENSHOTS)console.log('PALETTE_VIVID_PNG='+ (await page.screenshot()).toString('base64'));
+ if(process.env.ARC_PALETTE_SCREENSHOTS){
+  console.log('PALETTE_VIVID_PNG='+ (await page.screenshot()).toString('base64'));
+  await page.locator('.favorite-tile').evaluate(el=>el.classList.add('active'));
+  await page.mouse.move(300,300);
+  console.log('PALETTE_ACTIVE_FAVORITE_PNG='+ (await page.screenshot()).toString('base64'));
+  await page.locator('.favorite-tile').evaluate(el=>el.classList.remove('active'));
+ }
  await page.emulateMedia({colorScheme:'light'});await poll(async()=>await background()===paletteStyle({kind:'preset',id:'blue'},false)['--space-background'],'Vivid preset did not return to light theme');
  await page.locator('.space-button[data-space-id="home"]').click();await poll(async()=>await background()===paletteStyle({kind:'preset',id:'green'},false)['--space-background'],'Space switch did not change palette');
  await page.locator('.space-button[data-space-id="__open_tabs__"]').click();await poll(async()=>await background()==='','Open tabs did not apply its neutral appearance');
