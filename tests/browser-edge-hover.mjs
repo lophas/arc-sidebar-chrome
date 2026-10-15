@@ -83,9 +83,13 @@ async function historyTraversal(code, expectBug = false) {
       await page.waitForTimeout(100);
     }
   }
-  await page.evaluate(() => history.back());
+  // Use the browser's joint history, like its Back button. window.history.back
+  // in the host page can skip entries belonging only to a child frame.
+  const session = await page.context().newCDPSession(page);
+  const navigation = await session.send('Page.getNavigationHistory');
+  console.log('Sidebar history entries', {expectBug, index:navigation.currentIndex, urls:navigation.entries.map(entry=>entry.url)});
+  await session.send('Page.navigateToHistoryEntry', {entryId:navigation.entries[navigation.currentIndex - 1].id});
   if (expectBug) {
-    await page.waitForFunction(() => arcTestShadow.querySelector('iframe').contentWindow !== null);
     await page.waitForTimeout(400);
     assert.equal(page.url(), origin + '/current', 'previous loader consumes Back inside its child iframe');
     assert.ok(page.frames().some(frame => frame.url() === 'about:blank'), 'previous loader shows an empty sidebar');
