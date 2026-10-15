@@ -67,10 +67,14 @@ async function historyTraversal(code, expectBug = false) {
   await page.waitForFunction(() => !!window.arcTestShadow);
   // Let the initial empty iframe finish before the first lazy navigation.
   await page.waitForTimeout(250);
+  await page.evaluate(() => { window.arcZeroMovement = false; });
   for (let i = 0; i < 3; i++) {
     const edge = await page.evaluate(() => { const r = arcTestShadow.querySelector('.edge').getBoundingClientRect(); return (r.left + r.right) / 2; });
     await page.mouse.move(640, 300); await page.mouse.move(edge, 300);
-    await page.waitForFunction(() => arcTestShadow.querySelector('.panel').classList.contains('open'));
+    await page.waitForFunction(() => arcTestShadow.querySelector('.panel').classList.contains('open'), {}, {timeout:3000}).catch(async error => {
+      console.log('History open diagnostic', {i, expectBug, errors:f.errors, state:await page.evaluate(() => ({visibility:document.visibilityState, pointer:arcLastPointer, width:innerWidth, contentWidth:document.documentElement.clientWidth, edge:arcTestShadow.querySelector('.edge').getBoundingClientRect().toJSON(), host:arcTestShadow.host.style.cssText, controller:window.__arcSidebarOverlayController?.version, settings:arcSettings}))});
+      throw error;
+    });
     await page.waitForFunction(() => Array.from(frames).length === 1);
     const frame = page.frames().find(frame => frame.url().includes('/src/sidepanel/index.html'));
     if (frame) await frame.locator('#inside').waitFor();
