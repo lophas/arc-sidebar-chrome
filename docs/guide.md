@@ -1,0 +1,168 @@
+# User guide
+
+[Back to the overview](../README.md) · [Download the latest release](https://github.com/lophas/arc-sidebar-chrome/releases/latest)
+
+## Installation and updates
+
+1. Download the extension ZIP from [GitHub Releases](https://github.com/lophas/arc-sidebar-chrome/releases).
+2. Extract it to a permanent folder.
+3. Open `chrome://extensions` and enable **Developer mode**.
+4. Click **Load unpacked** and select the folder containing `manifest.json`.
+5. Pin the extension’s toolbar button for quick access.
+
+To update, replace the files in the existing installation folder and click **Reload** on the extension’s card. Reload already-open webpages to apply the updated extension. Your saved organization remains available.
+
+New extension versions are published automatically after all checks pass, with release notes and an installable ZIP. Download the [latest release](https://github.com/lophas/arc-sidebar-chrome/releases/latest).
+
+For the latest changes on `main`, use **Code → Download ZIP** on the repository and load the extracted folder containing `manifest.json` in the same way.
+
+## Getting started
+
+Start with **🚀 My Space** and an empty Favorites collection. Open the sidebar with the extension’s toolbar button or move the pointer to the page edge in Autohide mode. Opening it from the toolbar selects **Fixed**; clicking the toolbar button again closes the panel while keeping that mode selected. Use the switch beside search to return to **Autohide**.
+
+- Add a pinned link with **+** beside the Space’s heading, or use the folder button to add a folder.
+- Add a Favorite with **+** beside search. All link destination selectors list **Favorites** first, followed by your Spaces.
+- Right-click a webpage or link and choose **Pin to Arc Side of the Chrome** to save it directly. Pinning the current page connects its existing tab to the saved item.
+- Add or select Spaces using the switcher at the bottom.
+- Open **Extension options** from the sidebar footer to adjust preferences, import Arc Browser data or restore a backup.
+
+Search and Favorites stay at the top, the Space switcher stays at the bottom, and the current Space’s contents scroll in the middle.
+
+## Automatic Picture-in-Picture (PiP)
+
+The automatic mini player is **on by default**. When a video is playing with sound, switching to another tab opens it in a floating Picture-in-Picture window. Returning to the video tab puts the video back in its page without restarting playback. Works with compatible HTML5 players on HTTPS websites, including YouTube and supported embedded videos. Availability depends on the player and Chrome’s per-site Auto PiP permission. Paused or muted videos stay in the page. A Picture-in-Picture window you open manually stays open when you return.
+
+Use **Extension options → Automatic video mini player** to turn the feature on or off. Changes apply to already-open video tabs, and the preference is included in backups.
+
+If the mini player doesn’t open, a setup popup appears when you return to the playing video. Choose **Copy site & open PiP settings**, then use **Allowed → Add** in Chrome to paste and save the website address. Return to your video and switch tabs again. The popup can be dismissed for the current visit or hidden permanently for that website. You can also manage permissions from **Extension options → Automatic video mini player** or the site controls next to the address bar. If Chrome displays its own permission popup, choose **Allow on every visit** to enable the website. If Auto PiP is disabled in your Chrome build, enable **Auto picture in picture for video playback** at `chrome://flags/#auto-picture-in-picture-for-video-playback` and restart Chrome.
+
+## Spaces and folders
+
+Each Space contains pinned links, folders and additional open tabs belonging to its Chrome groups. Select a Space from the bottom switcher, drag Spaces to reorder them, or right-click one to edit its name and icon.
+
+Switching to a Space’s pinned or additional tab in Chrome’s tab bar also selects that Space in the sidebar. Favorites and ungrouped tabs keep the current Space selected.
+
+Click a folder heading to expand or collapse it. Right-click it to rename it or move the complete folder to another Space. Drag folders to reorder them within their Space. Removing a folder keeps its links.
+
+Right-click a Space and choose **Close open tabs** to close every tab in all Chrome groups associated with it, including additional non-pinned tabs and tabs in other windows. The menu shows how many tabs will close. Saved links and folders remain available.
+
+The last Space cannot be deleted manually. Reset recreates the starting layout; import and restore replace the sidebar with the loaded contents.
+
+## Space palettes
+
+New Spaces start with **Classic (black)**, the first ready-made palette. Right-click a Space’s icon, choose **Edit Space…**, and use **Palette** to choose another ready-made palette, a custom color or a two-color gradient. The preview updates while you edit; choose **Save** to apply it or **Cancel** to keep the previous colors.
+
+The palette colors the whole sidebar, including Favorites, search and the bottom Space switcher. Vivid gradients distinguish Spaces, while subtly outlined Favorite buttons stand out from the background. Light and dark appearances follow the sidebar’s theme, and the active Space is highlighted in the switcher. **Open tabs** uses a neutral appearance.
+
+A Space’s Chrome groups follow its palette’s primary color. The Favorites group stays grey. Reordering Spaces keeps their palettes, and Chrome Sync and backup/restore include all palette settings.
+
+## Favorites and pinned links
+
+Favorites are shared across all Spaces. Pinned links belong to a Space or one of its folders. Both remain saved when their browser tabs close.
+
+Click a saved link to open it or focus its existing tab. Right-click to edit its title, URL, icon or destination. Closing its live tab keeps the saved link; opening it again uses the saved URL.
+
+Leave the title empty when adding or editing a Favorite or pinned link to use the URL’s current page title. If the page title is unavailable, the URL is used.
+
+Drag links to place them before or after other links, inside a folder, between folders or at the Space’s root. Drop a link on another Space to move it there.
+
+Drag Favorites to change their order. Move pinned links into Favorites, or drag Favorites back between a Space’s pinned links and folders or into a folder. Their custom icons and live tabs follow the move. Drop onto **+ Favorite** when the Favorites collection is empty.
+
+New tabs opened from a Favorite are ungrouped and appear at the end of their Chrome window’s tab bar. Closing an active child tab returns to the Favorite that opened it, if it is still open; closing a background child keeps your current tab active. New tabs opened from a Space’s pinned links stay in that Space’s Chrome group.
+
+## Search
+
+Press **Command+K** on macOS or **Ctrl+K** on Windows/Linux to open the search popup, including when the sidebar is closed. The sidebar’s **Search or enter URL** control opens the same search inside the sidebar.
+
+With an empty query, search shows recently used open tabs, excluding the current tab. Press **⌘K / Ctrl+K → Enter** to switch to the previously used tab. Type to find open tabs across Chrome windows, Favorites, pinned links, folders and Spaces. Results show favicons and Space or Chrome group names, match all entered words and ignore differences in accents. A saved link with an open tab appears once; selecting it activates that tab, even if it has navigated to another page. Open-tab results include webpages, file URLs and Chrome pages such as `chrome://extensions/`; empty New Tab pages are omitted.
+
+Enter a URL to open it, or choose a Google search. If that URL is already open, the first result switches to its existing tab. Use **↑ / ↓** to select a result, **Enter** to open it and **Escape** to dismiss search. Change the shortcut at `chrome://extensions/shortcuts`.
+
+Choosing a pinned link or its bound open tab selects its Space and expands its parent folders. Folder and Space results take you to the selected location; choosing one from the standalone popup opens the fixed sidebar.
+
+## Open tabs and close controls
+
+**Inside a Space**, additional tabs from its Chrome groups appear below the pinned links. Click to activate one; tabs in another window are marked **Other window**. Drag a tab between pinned links, into a folder or into an empty Space to save it, keeping the same live browser tab. Its right-click menu also offers pinning.
+
+**The Open tabs view** shows all tabs in the current Chrome window, organized by Chrome group in tab-bar order, with ungrouped tabs listed together. Right-click the **Open tabs** Space to close all tabs in the window after confirmation.
+
+Chrome’s own pinned tabs appear first in a blue, read-only section with a **Pinned tab** tooltip. They have no sidebar actions or live indicators and are excluded from sidebar close operations.
+
+A **filled red dot** marks a loaded open tab; an **outlined red dot** marks a tab unloaded from memory by Chrome. Folder and group dots are outlined when all their open tabs are unloaded. Favorite dots sit discreetly in the button’s bottom-right corner. Hover over a dot to reveal **×** and **Close**; click it to close the associated tab or tabs while keeping saved links.
+
+When a close action would leave a window empty, the extension opens a default new tab to keep the window available. The next sidebar opening reuses that temporary tab, or removes it when activating an existing tab in the same window. If you navigate away from the temporary tab, it stays as a regular tab.
+
+## Chrome tab groups
+
+Favorites use a **Favorites** group. Each Space uses its own group in every window where its tabs are open. Groups follow the sidebar’s order: **Favorites first**, then Spaces. Reordering Spaces updates the groups, and pinned tabs follow the sidebar’s folder and link order within each group.
+
+When tab or window focus changes, the active tab’s managed group expands and the other managed groups in that window collapse. If the active tab is outside those groups, they all collapse. Between focus changes, you can freely expand or collapse groups yourself.
+
+Additional tabs opened during your work remain part of the Space and appear below its pinned links in the sidebar.
+
+## Sidebar modes and appearance
+
+Use the icon to the left of search to switch between **Autohide** and **Fixed**. The current tab applies the change immediately; other open tabs apply it when you next focus them.
+
+- **Autohide**, the default, floats over the page when the pointer reaches the sidebar edge. It stays open over the sidebar and the adjacent scrollbar, then closes after the selected delay when you leave that area. Returning to a tab keeps it closed until a fresh edge hover. Click outside the sidebar to hide it immediately, including while an editor is open; unsaved fields are kept until you return. Dragging outside does not reopen it. Drag its resize handle to adjust the width.
+- **Fixed** opens Chrome’s native side panel alongside the page through the extension’s toolbar button. On Chrome settings, Chrome Web Store or browser error pages, use that toolbar button to open the fixed sidebar.
+
+In Autohide mode, a yellow **!** on the toolbar icon marks pages where autohide is unavailable. Hover over the icon for guidance, or click it to open the fixed sidebar. The indicator clears in Fixed mode.
+
+Both modes follow **Chrome Settings → Appearance → Side panel position**. Each open tab picks up a position change when you next focus it. Each Space and the Open tabs view remember their own scroll position.
+
+Open **Extension options** to adjust:
+
+| Preference | Choices | Default |
+| --- | --- | --- |
+| Automatic video mini player | On or off | On |
+| Autohide timeout | Slider: 400–1200 ms in 100 ms steps | 800 ms |
+| Edge trigger area | Two handles: top and bottom at 0–100%, at least 20% apart | 0–100% |
+| Edge trigger width | Slider: 10–22 px | 16 px |
+| Favorite button size | 80%, 90%, 100%, 110%, 120% | 100% |
+
+The trigger sliders include a live preview. Its position and height stay within the viewport, while the open sidebar remains full height. Use **Restore defaults** to reset the trigger and timeout. Changes apply to the active page immediately and to other pages on their next focus.
+
+In a Favorite or pinned link editor, choose **Use favicon** for the website’s icon or upload an **SVG, PNG, WebP or JPEG** by clicking the upload area or dropping a file onto it. Save to apply the choice.
+
+Spaces support uploaded images, pasted emojis and a searchable emoji picker. Search by name, keyword, country name/code for flags, or aliases such as `:)`, `:D` and `<3`. Custom icons are included in backups and Chrome Sync.
+
+## Import from Arc Browser
+
+Seamlessly migrate all your Spaces, Favorites, pinned links and folders from Arc Browser, with Space emojis and website favicons. Open **Extension options → Arc import** and select `StorableSidebar.json`.
+
+**Import replaces all current sidebar contents, including My Space.** Download a backup first if you want to keep the existing organization.
+
+**macOS**
+
+```text
+~/Library/Application Support/Arc/StorableSidebar.json
+```
+
+In Finder or the file picker, press **⌘ Shift G**, enter `~/Library/Application Support/Arc/` and select the file.
+
+**Windows**
+
+```text
+%LOCALAPPDATA%\Packages\TheBrowserCompany.Arc_*\LocalCache\Local\Arc\StorableSidebar.json
+```
+
+Enter `%LOCALAPPDATA%\Packages` in File Explorer’s address bar. Open the folder beginning with `TheBrowserCompany.Arc_`, then **LocalCache → Local → Arc**, and select the file. The import panel provides buttons to copy these folder paths.
+
+## Chrome Sync
+
+Enable **Chrome Sync** in Extension options to synchronize Spaces, Favorites, folders, pinned links, their order, custom icons and edge trigger settings across computers signed into the same Chrome Sync account.
+
+On a fresh installation or after a reset, enabling Sync restores the existing cloud snapshot. The empty starting layout is never uploaded. Sync starts uploading once you add a saved link, folder or customize your Spaces.
+
+Open tabs, the selected Space, folder expansion, scroll positions, sidebar mode, timeout, sidebar width and Favorite size stay local to each computer. When different computers change the organization, the most recently updated sidebar becomes the synchronized version.
+
+## Backup, restore and reset
+
+Use **Extension options → Backup & restore** to download or restore a portable JSON backup.
+
+- **Download backup** saves Spaces, Favorites, folders, pinned links, custom icons, folder expanded/collapsed states, sidebar mode, autohide timeout, edge trigger settings, Favorite size, sidebar width and the automatic mini player preference.
+- **Restore backup** replaces the sidebar contents and restores the saved folder layout and preferences. Older backups preserve current preferences they do not contain.
+- **Reset all extension data** clears local organization and settings, turns Sync off and recreates Favorites and **🚀 My Space**. The cloud snapshot is kept; enable Sync again to restore it. Your Chrome tabs stay open.
+
+Download a backup before importing, restoring or resetting if you want to preserve the current setup.

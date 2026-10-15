@@ -62,16 +62,16 @@ await writeFile(join(profile,'Default','Preferences'),JSON.stringify({profile:{d
 let context;
 try {
   await mkdir(output,{recursive:true});
-  context=await chromium.launchPersistentContext(profile,{channel:'chromium',headless:false,viewport:null,colorScheme:'dark',ignoreDefaultArgs:['--disable-extensions','--mute-audio'],args:['--no-sandbox','--force-dark-mode','--force-device-scale-factor=1','--window-position=0,0','--window-size=1280,900','--enable-features=AutoPictureInPictureForVideoPlayback,MediaSessionEnterPictureInPicture',`--disable-extensions-except=${process.cwd()}`,`--load-extension=${process.cwd()}`]});
+  context=await chromium.launchPersistentContext(profile,{channel:'chromium',headless:false,viewport:null,colorScheme:'dark',ignoreDefaultArgs:['--disable-extensions','--mute-audio','--enable-automation'],args:['--no-sandbox','--force-dark-mode','--force-device-scale-factor=1','--window-position=0,0','--window-size=1280,900','--enable-features=AutoPictureInPictureForVideoPlayback,MediaSessionEnterPictureInPicture',`--disable-extensions-except=${process.cwd()}`,`--load-extension=${process.cwd()}`]});
   await context.route('https://**/*',route=>route.fulfill({status:200,contentType:'text/html',body:website(route.request().url())}));
   let [worker]=context.serviceWorkers();if(!worker)worker=await context.waitForEvent('serviceworker');
   const extension=`chrome-extension://${worker.url().split('/')[2]}`;
-  const controls=await context.newPage();await controls.goto(extension+'/src/options/index.html');
+  const controls=await context.newPage();await controls.goto(extension+'/src/options/index.html');for(const page of context.pages())if(page!==controls&&page.url()==='about:blank')await page.close();
   await controls.evaluate(async model=>{await chrome.storage.local.set({arcSidebarModel:model,arcSidebarState:{currentSpaceId:'work',collapsedFolders:{resources:true}},arcSidebarMode:'native',arcSidebarAutohideTimeout:800,arcSidebarOverlayWidth:390,arcSidebarAutoPipEnabled:true});},model);
   const live=await controls.evaluate(async()=>{
     const windowId=(await chrome.windows.getCurrent()).id,ids={};
     for(const itemId of ['mail','calendar','weekend','article','dashboard','brief']){const result=await chrome.runtime.sendMessage({type:'arc-sidebar-tab-action',action:'open',itemId,windowId});if(!result.ok)throw Error(result.error);ids[itemId]=result.values;}
-    const groupId=(await chrome.tabs.get(ids.brief)).groupId;
+    let groupId=-1;for(let i=0;i<100;i++){groupId=(await chrome.tabs.get(ids.brief)).groupId;if(groupId>=0)break;await new Promise(done=>setTimeout(done,50));}if(groupId<0)throw Error('Space group did not initialize');
     ids.review=(await chrome.tabs.create({url:'https://github.com/lophas/arc-sidebar-chrome/pull/42',active:false})).id;await chrome.tabs.group({tabIds:[ids.review],groupId});
     ids.notes=(await chrome.tabs.create({url:'https://notes.example.test/tomorrow',active:false})).id;
     ids.nativePin=(await chrome.tabs.create({url:'https://calendar.google.com/pinned',pinned:true,active:false})).id;
@@ -104,9 +104,9 @@ try {
   await controls.setViewportSize({width:980,height:900});await controls.bringToFront();await controls.locator('#captureOpenSidebar').evaluate(element=>element.remove());
   const card=title=>controls.locator('section.card').filter({has:controls.getByRole('heading',{name:title,exact:true})});
   for(const[id,value]of[['triggerBottom','85'],['triggerTop','25']])await controls.locator('#'+id).evaluate((element,value)=>{element.value=value;element.dispatchEvent(new Event('input',{bubbles:true}));element.dispatchEvent(new Event('change',{bubbles:true}));},value);
-  await settle(controls);await card('Autohide & edge trigger').screenshot({path:join(output,'appearance.png')});await card('Arc import').screenshot({path:join(output,'arc-import.png')});
+  await settle(controls);await controls.screenshot({path:join(output,'options.png'),fullPage:true});await card('Autohide & edge trigger').screenshot({path:join(output,'appearance.png')});await card('Arc import').screenshot({path:join(output,'arc-import.png')});
   const backup=join(temporary,'backup.png'),sync=join(temporary,'sync.png');await card('Backup & restore').screenshot({path:backup});await card('Chrome Sync').screenshot({path:sync});
   execFileSync('montage',[backup,sync,'-tile','1x2','-geometry','+0+12','-background','#10141c',join(output,'backup-sync.png')]);
-  await writeFile(join(output,'capture-info.json'),JSON.stringify({extensionVersion:version,browser:context.browser().version(),data:'Fictional example workspaces; real extension, Chrome groups and automatic native video PiP',files:['workspace.png','sidebar.png','sidebar-search.png','space-palettes.png','open-tabs.png','search-popup.png','mini-player.png','appearance.png','arc-import.png','backup-sync.png']},null,2)+'\n');
-  console.log(`Captured 10 current screenshots for extension ${version}`);
+  await writeFile(join(output,'capture-info.json'),JSON.stringify({extensionVersion:version,browser:context.browser().version(),data:'Fictional example workspaces; real extension, Chrome groups and automatic native video PiP',files:['workspace.png','sidebar.png','sidebar-search.png','space-palettes.png','open-tabs.png','search-popup.png','mini-player.png','appearance.png','arc-import.png','backup-sync.png','options.png']},null,2)+'\n');
+  console.log(`Captured 11 current screenshots for extension ${version}`);
 }finally{await context?.close();await rm(temporary,{recursive:true,force:true});}
