@@ -47,7 +47,7 @@ async function launch(mode){
  let control,extensionId,worker;
  if(extension){
   [worker]=context.serviceWorkers();if(!worker)worker=await context.waitForEvent('serviceworker');extensionId=worker.url().split('/')[2];
-  control=await context.newPage();await control.goto(`chrome-extension://${extensionId}/src/sidepanel/index.html`);await control.locator('.space-button[data-space-id="__my_space__"]').waitFor();
+  control=await context.newPage();await control.goto(`chrome-extension://${extensionId}/src/options/index.html`);await control.locator('#autohideTimeout').waitFor();
   await control.evaluate(async({mode,model})=>{await chrome.storage.sync.set({arcSidebarSyncEnabled:false});await chrome.storage.local.set({arcSidebarMode:mode==='fixed-off'?'native':'overlay',arcSidebarAutoPipEnabled:mode!=='fixed-off',arcSidebarModel:model,arcSidebarState:{currentSpaceId:'s0',collapsedFolders:{}}});},{mode,model:model(200)});
   await control.close();
  }
@@ -69,13 +69,17 @@ async function memoryRun(mode,rep){
    const page=pages.at(-1);const control=await f.context.newPage();await control.goto(`chrome-extension://${f.extensionId}/src/options/index.html`);const side=await control.evaluate(async()=>(await chrome.sidePanel.getLayout()).side);await control.close();await page.bringToFront();
    const edge=side==='left'?1:await page.evaluate(()=>document.documentElement.clientWidth-1);
    const open=async()=>{const start=performance.now();await page.mouse.move(640,300);await page.mouse.move(edge,300);let frame;for(let i=0;i<100;i++){frame=page.frames().find(f=>f.url().includes('/src/sidepanel/index.html'));if(frame)break;await sleep(10);}assert.ok(frame,'Sidebar must open');const element=await frame.frameElement();await page.waitForFunction(el=>el.parentElement.classList.contains('open'),element,{timeout:3000});await frame.locator('#pinned .row').first().waitFor();return{frame,ms:performance.now()-start};};
+   try {
+   await sleep(500);
    const cold=await open();run.coldOpenMs=cold.ms;run.openMemory=await memory(f.profile);
    const frameSession=await f.context.newCDPSession(cold.frame);await frameSession.send('HeapProfiler.collectGarbage');run.openSidebarHeap=await frameSession.send('Runtime.getHeapUsage');await frameSession.detach();
    await page.mouse.click(640,300);await sleep(250);run.hiddenSameTabMemory=await memory(f.profile);
    const times=[];run.cyclesCpu=await cpuWindow(f.profile,async()=>{for(let i=0;i<40;i++){const opened=await open();times.push(opened.ms);await page.mouse.click(640,300);}});run.warmOpenMs=times;
+   const after=await f.context.newCDPSession(cold.frame);await after.send('HeapProfiler.collectGarbage');run.sidebarHeapAfter40Cycles=await after.send('Runtime.getHeapUsage');run.sidebarDomAfter40Cycles=await after.send('Memory.getDOMCounters');await after.detach();
    const other=pages[0];await other.bringToFront();await sleep(500);await metric(page,true);run.afterTabSwitchMemory=await memory(f.profile);run.framesAfterSwitch=pages.flatMap(p=>p.frames()).filter(frame=>frame.url().includes('/src/sidepanel/index.html')).length;
    await page.bringToFront();const reopened=await open();await reopened.frame.locator('#openCommandBar').click();await sleep(200);run.searchOpenMemory=await memory(f.profile);await reopened.frame.locator('dialog[open]').first().press('Escape');await page.mouse.click(640,300);
    await other.bringToFront();await sleep(300);
+   } catch(error) {run.sidebarMeasurementError=error.message;console.log('AUDIT_SIDEBAR_ERROR '+error.message);}
   }
  }finally{await f.close();}
  results.runs.push(run);await fs.writeFile(output,JSON.stringify(results,null,2));
