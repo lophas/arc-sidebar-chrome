@@ -57,7 +57,7 @@ try{
  assert.equal(await page.locator('.search-wrap').evaluate(el=>getComputedStyle(el).backgroundColor),'rgba(0, 0, 0, 0)');
  assert.equal(await page.locator('.favorites-section').evaluate(el=>getComputedStyle(el).backgroundColor),'rgba(0, 0, 0, 0)');
  const folder=page.locator('.folder[data-folder-node-id="folder"]');
- const clickFolderIcon=async()=>{const box=await folder.locator('.folder-header .folder-icon').boundingBox();assert.ok(box);await page.mouse.click(box.x+box.width/2,box.y+box.height/2);};
+ const clickFolderIcon=()=>folder.locator('.folder-header').click({position:{x:34,y:15}});
  // The decorative icon passes the pointer through to the clickable header.
  await clickFolderIcon();await page.locator('.folder.collapsed[data-folder-node-id="folder"]').waitFor();
  await clickFolderIcon();await page.locator('.folder:not(.collapsed)[data-folder-node-id="folder"]').waitFor();
