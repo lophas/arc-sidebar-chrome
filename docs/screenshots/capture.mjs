@@ -82,7 +82,7 @@ try {
   });
   // Extension-created tabs can start navigating before Playwright attaches.
   // Populate the website fixtures after targets exist; the sidebar stays real.
-  for(const page of context.pages())if(page.url().startsWith('https://'))await page.setContent(website(page.url()),{waitUntil:'domcontentloaded'});
+  for(const page of context.pages())if(page.url().startsWith('https://')){await page.route('**/*',route=>route.fulfill({status:200,contentType:'text/html',body:website(route.request().url())}));await page.reload({waitUntil:'domcontentloaded'});}
   const briefUrl=await controls.evaluate(async id=>(await chrome.tabs.get(id)).url,live.brief);
   let brief;for(let i=0;i<100;i++){brief=context.pages().find(page=>page.url()===briefUrl);if(brief)break;await new Promise(done=>setTimeout(done,50));}assert.ok(brief,'Project brief tab must load');
   await controls.evaluate(windowId=>{const button=document.createElement('button');button.id='captureOpenSidebar';button.textContent='Open sidebar';button.onclick=()=>chrome.sidePanel.open({windowId});document.body.prepend(button);},live.windowId);
