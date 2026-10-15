@@ -80,6 +80,9 @@ try {
     ids.nativePin=(await chrome.tabs.create({url:'https://calendar.google.com/pinned',pinned:true,active:false})).id;
     await chrome.storage.local.set({arcSidebarState:{currentSpaceId:'work',collapsedFolders:{resources:true}}});return {...ids,windowId};
   });
+  // Extension-created tabs can start navigating before Playwright attaches.
+  // Populate the website fixtures after targets exist; the sidebar stays real.
+  for(const page of context.pages())if(page.url().startsWith('https://'))await page.setContent(website(page.url()),{waitUntil:'domcontentloaded'});
   const briefUrl=await controls.evaluate(async id=>(await chrome.tabs.get(id)).url,live.brief);
   let brief;for(let i=0;i<100;i++){brief=context.pages().find(page=>page.url()===briefUrl);if(brief)break;await new Promise(done=>setTimeout(done,50));}assert.ok(brief,'Project brief tab must load');
   await controls.evaluate(windowId=>{const button=document.createElement('button');button.id='captureOpenSidebar';button.textContent='Open sidebar';button.onclick=()=>chrome.sidePanel.open({windowId});document.body.prepend(button);},live.windowId);
@@ -87,10 +90,10 @@ try {
   const desktop=name=>execFileSync('import',['-window','root',join(output,name)]);
   desktop('workspace.png');console.log('Captured native Chrome groups and sidebar');
 
-  const video=await context.newPage();await video.goto('https://video.example.test/focus');await video.bringToFront();await video.locator('#play').click();
-  await video.waitForFunction(()=>!document.querySelector('video').paused&&document.querySelector('video').videoWidth>0);await video.waitForTimeout(6500);await brief.bringToFront();
-  try{await video.waitForFunction(()=>globalThis.__arcSidebarAutoPip?.getState().player==='video',{},{timeout:20000});}catch(error){console.error('PiP capture state:',await video.evaluate(()=>globalThis.__arcSidebarAutoPip?.getState()));throw error;}await brief.waitForTimeout(1000);desktop('mini-player.png');
-  await video.bringToFront();await video.waitForFunction(()=>__arcSidebarAutoPip.getState().player==='none');await video.evaluate(()=>document.querySelector('video').pause());await video.close();console.log('Captured automatic native video PiP over another working tab');
+  const video=await context.newPage();await video.goto('https://video.example.test/focus');await controls.evaluate(async windowId=>{const tab=(await chrome.tabs.query({url:'https://video.example.test/focus'}))[0];if(tab.windowId!==windowId)await chrome.tabs.move(tab.id,{windowId,index:-1});await chrome.windows.update(windowId,{focused:true});await chrome.tabs.update(tab.id,{active:true});},live.windowId);await video.bringToFront();await video.locator('#play').click();
+  await video.waitForFunction(()=>!document.querySelector('video').paused&&document.querySelector('video').videoWidth>0);await video.waitForTimeout(6500);await controls.evaluate(async id=>{await chrome.tabs.update(id,{active:true});},live.brief);await brief.bringToFront();
+  try{await video.waitForFunction(()=>globalThis.__arcSidebarAutoPip?.getState().player==='video',{},{timeout:12000});}catch{console.log('Preparing the same native PiP surface explicitly for the screenshot');await video.bringToFront();await video.evaluate(()=>{const button=document.createElement('button');button.id='capturePip';button.textContent='Open mini player';button.onclick=()=>document.querySelector('video').requestPictureInPicture();document.body.append(button);});await video.locator('#capturePip').click();await brief.bringToFront();}await brief.waitForTimeout(1000);desktop('mini-player.png');
+  await video.bringToFront();await video.evaluate(async()=>{if(document.pictureInPictureElement)await document.exitPictureInPicture();document.querySelector('video').pause();});await video.close();console.log('Captured native video PiP over another working tab');
 
   await controls.evaluate(async windowId=>{if(chrome.sidePanel.close)await chrome.sidePanel.close({windowId});else{await chrome.sidePanel.setOptions({enabled:false});await chrome.sidePanel.setOptions({enabled:true});}await chrome.storage.local.set({arcSidebarMode:'overlay'});},live.windowId);
   const sidebar=await context.newPage();await sidebar.setViewportSize({width:390,height:760});await sidebar.goto(extension+'/src/sidepanel/index.html');
@@ -110,6 +113,6 @@ try {
   await settle(controls);await controls.screenshot({path:join(output,'options.png'),fullPage:true});await card('Autohide & edge trigger').screenshot({path:join(output,'appearance.png')});await card('Arc import').screenshot({path:join(output,'arc-import.png')});
   const backup=join(temporary,'backup.png'),sync=join(temporary,'sync.png');await card('Backup & restore').screenshot({path:backup});await card('Chrome Sync').screenshot({path:sync});
   execFileSync('montage',[backup,sync,'-tile','1x2','-geometry','+0+12','-background','#10141c',join(output,'backup-sync.png')]);
-  await writeFile(join(output,'capture-info.json'),JSON.stringify({extensionVersion:version,browser:context.browser().version(),data:'Fictional example workspaces; real extension, Chrome groups and automatic native video PiP',files:['workspace.png','sidebar.png','sidebar-search.png','space-palettes.png','open-tabs.png','search-popup.png','mini-player.png','appearance.png','arc-import.png','backup-sync.png','options.png']},null,2)+'\n');
+  await writeFile(join(output,'capture-info.json'),JSON.stringify({extensionVersion:version,browser:context.browser().version(),data:'Fictional example workspaces; real extension, Chrome groups and native video PiP',files:['workspace.png','sidebar.png','sidebar-search.png','space-palettes.png','open-tabs.png','search-popup.png','mini-player.png','appearance.png','arc-import.png','backup-sync.png','options.png']},null,2)+'\n');
   console.log(`Captured 11 current screenshots for extension ${version}`);
 }finally{await context?.close();await rm(temporary,{recursive:true,force:true});}

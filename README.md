@@ -51,7 +51,7 @@ Switch away from a playing video and it continues in a floating **Picture-in-Pic
 
 If a website needs Auto PiP permission, the extension guides you through enabling it. A mini player you open manually stays under your control.
 
-![Automatic native Chrome mini player continuing a demo video while another project tab is active](docs/screenshots/mini-player.png)
+![Native Chrome mini player continuing a demo video while another project tab is active](docs/screenshots/mini-player.png)
 
 ### Recognize your workspace at a glance
 
