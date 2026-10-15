@@ -28,25 +28,39 @@
     </section>
 
     <section class="card">
-      <div class="setting-row">
-        <div>
-          <h2>Autohide timeout</h2>
-          <p>Choose how long the sidebar stays open after the pointer leaves. Switch between Fixed and Autohide using the icon to the left of the sidebar search bar. Autohide is the default.</p>
+      <h2>Autohide &amp; edge trigger</h2>
+      <p>Switch between Fixed and Autohide using the icon to the left of the sidebar search bar. Autohide is the default. Click outside the sidebar to hide it immediately; dragging does not reopen it.</p>
+      <div class="trigger-settings">
+        <div class="trigger-controls">
+          <label class="range-setting" for="autohideTimeout"><span>Autohide timeout <output id="timeoutValue" for="autohideTimeout">800 ms</output></span>
+            <input id="autohideTimeout" type="range" min="400" max="1200" step="100" value="800">
+            <small>Close delay after the pointer leaves · default 800 ms</small>
+          </label>
+          <div class="range-setting">
+            <span>Trigger area <output id="triggerHeightValue" for="triggerTop triggerBottom">100% height</output></span>
+            <div class="range-endpoints">
+              <label for="triggerTop">Top <output id="triggerTopValue" for="triggerTop">0%</output></label>
+              <label for="triggerBottom">Bottom <output id="triggerBottomValue" for="triggerBottom">100%</output></label>
+            </div>
+            <div class="interval-range">
+              <div class="interval-rail"><div id="triggerRangeFill"></div></div>
+              <input id="triggerTop" type="range" min="0" max="100" step="1" value="0" aria-label="Trigger top">
+              <input id="triggerBottom" type="range" min="0" max="100" step="1" value="100" aria-label="Trigger bottom">
+            </div>
+            <small>Move either endpoint from 0–100%. The active area is at least 20% of the viewport height.</small>
+          </div>
+          <label class="range-setting" for="triggerWidth"><span>Trigger width <output id="triggerWidthValue" for="triggerWidth">16 px</output></span>
+            <input id="triggerWidth" type="range" min="10" max="22" step="1" value="16">
+            <small>10–22 px · default 16 px</small>
+          </label>
+          <button id="resetAutohide" class="button button-element" type="button">Restore defaults</button>
         </div>
-        <label class="select-setting">
-          <span class="sr-only">Autohide timeout</span>
-          <select id="autohideTimeout">
-            <option value="500">500 ms</option>
-            <option value="600">600 ms</option>
-            <option value="700">700 ms</option>
-            <option value="800">800 ms · default</option>
-            <option value="900">900 ms</option>
-            <option value="1000">1000 ms</option>
-            <option value="1100">1100 ms</option>
-          </select>
-        </label>
+        <div class="trigger-preview-wrap" aria-hidden="true">
+          <div class="trigger-preview"><div class="preview-content"></div><div id="triggerPreview" class="preview-trigger"></div></div>
+          <span>Edge trigger preview</span>
+        </div>
       </div>
-      <p>The sidebar left/right position follows the <a id="sidePanelSettings" href="chrome://settings/appearance">Chrome Settings → Appearance → Side panel position</a> setting. Changes apply to each open tab when you next focus it.</p>
+      <p>The sidebar left/right position follows the <a id="sidePanelSettings" href="chrome://settings/appearance">Chrome Settings → Appearance → Side panel position</a> setting. Changes apply immediately to the active tab, and to other open tabs when you next focus them.</p>
       <div id="modeStatus" class="status"></div>
       <div id="autohideWarning" class="autohide-warning" hidden role="note">
         <strong><span aria-hidden="true">⚠</span> Browser pages need a manual click</strong>
@@ -76,7 +90,7 @@
 
     <section class="card">
       <h2>Backup & restore</h2>
-      <p>Download a portable JSON backup of your Spaces and their palettes, Favorites, folders, pinned links, autohide timeout, Favorite button size and sidebar width, or restore one on this or another computer.</p>
+      <p>Download a portable JSON backup of your Spaces and their palettes, Favorites, folders, pinned links, autohide timeout and edge trigger settings, Favorite button size and sidebar width, or restore one on this or another computer.</p>
       <div class="backup-actions">
         <button id="downloadBackup" class="button button-element" type="button">Download backup</button>
         <label class="button">
@@ -91,7 +105,7 @@
       <div class="setting-row">
         <div>
           <h2>Chrome Sync</h2>
-          <p>Sync Spaces, Favorites, folders and pinned links between Chrome installations signed into the same Chrome Sync account.</p>
+          <p>Sync Spaces, Favorites, folders, pinned links and edge trigger settings between Chrome installations signed into the same Chrome Sync account.</p>
         </div>
         <label class="switch" title="Sync sidebar data with Chrome Sync">
           <input id="syncEnabled" type="checkbox">

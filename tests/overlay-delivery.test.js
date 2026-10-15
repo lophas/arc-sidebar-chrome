@@ -2,12 +2,13 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
+import { EDGE_TRIGGER_KEY, edgeTrigger } from '../src/shared/edge-trigger.js';
 import { sidebarPreferences } from '../src/shared/sidebar-preferences.js';
 function setup({ mode='overlay', receiver=false, url='https://example.test', changeDuringInjection=false }={}) {
   const calls=[];const events={};let settings={arcSidebarMode:mode,arcSidebarAutohideTimeout:700};let ready=receiver;
   const event=name=>({addListener:fn=>events[name]=fn});
-  const chrome={storage:{local:{get:async()=>settings}},tabs:{get:async id=>({id,url}),query:async()=>[],onActivated:event('activate'),onUpdated:event('update'),sendMessage:async(id,message)=>{calls.push(['message',id,message.mode]);if(!ready)throw Error('No receiver');return {version:'edge-intent-v3'};}},windows:{onFocusChanged:event('focus')},scripting:{executeScript:async request=>{calls.push([request.files?'inject':'remove',request.target.tabId]);if(request.files)ready=true;if(changeDuringInjection)settings={arcSidebarMode:'native',arcSidebarAutohideTimeout:1000};}}};
-  const context={chrome,sidebarPreferences};vm.createContext(context);
+  const chrome={storage:{local:{get:async()=>settings}},tabs:{get:async id=>({id,url}),query:async()=>[],onActivated:event('activate'),onUpdated:event('update'),sendMessage:async(id,message)=>{calls.push(['message',id,message.mode]);if(!ready)throw Error('No receiver');return {version:'edge-intent-v4'};}},windows:{onFocusChanged:event('focus')},scripting:{executeScript:async request=>{calls.push([request.files?'inject':'remove',request.target.tabId]);if(request.files)ready=true;if(changeDuringInjection)settings={arcSidebarMode:'native',arcSidebarAutohideTimeout:1000};}}};
+  const context={chrome,sidebarPreferences,EDGE_TRIGGER_KEY,edgeTrigger};vm.createContext(context);
   const source=fs.readFileSync('src/background/overlay-delivery.js','utf8').replace(/^import .*;\n/gm,'').replace(/export /g,'');
   vm.runInContext(source,context);
   return {calls,events,run:context.syncFocusedSidebar};

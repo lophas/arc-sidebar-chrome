@@ -1,4 +1,4 @@
-export const AUTOHIDE_TIMEOUTS = [500, 600, 700, 800, 900, 1000, 1100];
+export const AUTOHIDE_TIMEOUTS = [400, 500, 600, 700, 800, 900, 1000, 1100, 1200];
 export function sidebarPreferences(stored = {}) {
   const raw = stored.arcSidebarAutohideTimeout;
   const timeout = AUTOHIDE_TIMEOUTS.includes(raw) ? raw : 800;

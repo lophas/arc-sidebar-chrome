@@ -1,15 +1,24 @@
 (() => {
   if (window.top !== window) return;
   const CONTROLLER_KEY = '__arcSidebarOverlayController';
-  const VERSION = 'edge-intent-v3';
+  const VERSION = 'edge-intent-v4';
   const previous = globalThis[CONTROLLER_KEY];
   if (previous?.version === VERSION && previous.active()) { previous.refresh(); return; }
   previous?.dispose();
 
   const SIDEBAR_MODE_KEY = 'arcSidebarMode';
   const TIMEOUT_KEY = 'arcSidebarAutohideTimeout';
-  const TIMEOUTS = new Set([0, 500, 600, 700, 800, 900, 1000, 1100]);
+  const TIMEOUTS = new Set([0, 400, 500, 600, 700, 800, 900, 1000, 1100, 1200]);
   let hideDelay = 800;
+  const TRIGGER_KEY = 'arcSidebarEdgeTrigger';
+  let trigger = { height: 100, offset: 0, width: 16 };
+  let applyTrigger = () => {};
+  // Content scripts are self-contained; match shared/edge-trigger.js bounds.
+  const normalizeTrigger = value => {
+    const integer = (name, fallback) => Number.isFinite(value?.[name]) ? Math.round(value[name]) : fallback;
+    const height = Math.max(20, Math.min(100, integer('height', 100)));
+    return { height, offset: Math.max(0, Math.min(100 - height, integer('offset', 0))), width: Math.max(10, Math.min(22, integer('width', 16))) };
+  };
   const OVERLAY_MODE = 'overlay';
   const NATIVE_MODE = 'native';
   let overlayInitialized = false;
@@ -54,6 +63,8 @@
     let point = null;
     let motionPoint = null;
     let overPanel = false;
+    let pointerHeld = false;
+    let needsExit = false;
     let showTimer = null;
     let hideTimer = null;
     const position = event => Number.isFinite(event?.clientX) && Number.isFinite(event?.clientY)
@@ -65,7 +76,8 @@
     const inBrowser = (p, s) => p && p.x >= 0 && p.x <= s.browserWidth && p.y >= 0 && p.y < s.viewportHeight;
     const inPanel = (p, s) => inBrowser(p, s) && distance(p, s) <= s.panelWidth + s.handleWidth;
     // Small inward jitter after reaching the edge must not cancel the intent.
-    const inOpeningZone = (p, s) => inBrowser(p, s) && distance(p, s) <= s.edgeWidth + 8;
+    const inTriggerHeight = (p, s) => p && p.y >= s.triggerTop && p.y < s.triggerBottom;
+    const inOpeningZone = (p, s) => inBrowser(p, s) && inTriggerHeight(p, s) && distance(p, s) <= s.edgeWidth + 8;
     const cancelOpen = () => { if (showTimer !== null) clearTimeout(showTimer); showTimer = null; };
     const cancelClose = () => { if (hideTimer !== null) clearTimeout(hideTimer); hideTimer = null; };
     const refreshClose = () => {
@@ -81,7 +93,14 @@
     };
     return {
       cancelClose,
-      reset() { cancelOpen(); cancelClose(); point = null; motionPoint = null; overPanel = false; },
+      reset() { cancelOpen(); cancelClose(); point = null; motionPoint = null; overPanel = false; pointerHeld = false; needsExit = false; },
+      press(event) {
+        cancelOpen(); cancelClose();
+        pointerHeld = true;
+        needsExit = inOpeningZone(position(event), state());
+        point = null; motionPoint = null; overPanel = false;
+      },
+      release() { pointerHeld = false; point = null; motionPoint = null; },
       cancelOpening() { cancelOpen(); point = null; motionPoint = null; },
       refreshLocks: refreshClose,
       enter(event) {
@@ -119,6 +138,17 @@
         if (!event.isTrusted || event.pointerType === 'touch') return;
         const next = position(event);
         if (!next) return;
+        // Native scrollbar drags may not send a DOM pointerdown. Buttons on a
+        // later move still block opening. Releasing never arms stationary hover.
+        if (event.buttons) { this.press(event); return; }
+        if (pointerHeld) {
+          if (event.buttons !== 0) return;
+          pointerHeld = false;
+        }
+        if (needsExit) {
+          if (!inOpeningZone(next, state())) { needsExit = false; motionPoint = next; }
+          return;
+        }
         const moved = Boolean(event.movementX || event.movementY) ||
           Boolean(motionPoint && (next.x !== motionPoint.x || next.y !== motionPoint.y));
         motionPoint = next;
@@ -131,7 +161,7 @@
           return;
         }
         if (!inOpeningZone(point, s)) cancelOpen();
-        if (!moved || !inViewport(point, s) || distance(point, s) > s.edgeWidth || showTimer !== null) return;
+        if (!moved || !inViewport(point, s) || !inTriggerHeight(point, s) || distance(point, s) > s.edgeWidth || showTimer !== null) return;
         showTimer = setTimeout(() => {
           showTimer = null;
           const current = state();
@@ -183,7 +213,7 @@
     shadow.innerHTML = `
       <style>
         :host { all: initial; color-scheme: light dark; }
-        .edge { position: fixed; top: 0; right: 0; width: ${EDGE_WIDTH}px; height: 100vh; z-index: 2147483646; background: transparent; pointer-events: auto; }
+        .edge { position: fixed; top: 0; right: 0; width: ${EDGE_WIDTH}px; height: 100vh; z-index: 2147483646; background: transparent; pointer-events: none; }
         .panel { position: fixed; top: 0; right: 0; width: ${DEFAULT_PANEL_WIDTH}px; height: 100vh; z-index: 2147483647; transform: translateX(100%); transition: transform 170ms cubic-bezier(.2,.8,.2,1), box-shadow 170ms ease; background: Canvas; box-shadow: none; overflow: hidden; pointer-events: none; border-left: 1px solid color-mix(in srgb, CanvasText 10%, transparent); }
         .panel.open { transform: translateX(0); box-shadow: -18px 0 42px rgba(0,0,0,.34); pointer-events: auto; }
         .edge.left { left: 0; right: auto; }
@@ -209,6 +239,7 @@
     let cancelResize = null;
     let nativePanelOpen = false;
     let editorActive = false;
+    let preservedEditor = false;
     let currentWidth = DEFAULT_PANEL_WIDTH;
     let sidebarMode = OVERLAY_MODE;
     let edgeSide = 'right';
@@ -279,7 +310,8 @@
     };
 
     const refreshEdgeState = () => {
-      edge.style.pointerEvents = sidebarMode === OVERLAY_MODE && !nativePanelOpen ? 'auto' : 'none';
+      // The trigger never intercepts page clicks or scrollbar grabs.
+      edge.style.pointerEvents = 'none';
     };
 
     applyInitializedMode = mode => {
@@ -324,13 +356,40 @@
         enabled: !contextInvalid && !suspended && sidebarMode === OVERLAY_MODE && !nativePanelOpen && document.visibilityState !== 'hidden',
         viewportWidth: document.documentElement.clientWidth || window.innerWidth,
         viewportHeight: document.documentElement.clientHeight || window.innerHeight, browserWidth: window.innerWidth,
-        panelWidth: currentWidth, edgeWidth: EDGE_WIDTH, handleWidth: RESIZE_HANDLE_WIDTH, hideDelay }),
+        triggerTop: window.innerHeight * trigger.offset / 100,
+        triggerBottom: window.innerHeight * (trigger.offset + trigger.height) / 100,
+        panelWidth: currentWidth, edgeWidth: trigger.width, handleWidth: RESIZE_HANDLE_WIDTH, hideDelay }),
       open: () => { ensureHost(); openPanel(); }, close: closePanel, showDelay: SHOW_DELAY
     });
+
+    applyTrigger = value => {
+      const next = normalizeTrigger(value);
+      if (JSON.stringify(next) !== JSON.stringify(trigger)) hover.cancelOpening();
+      trigger = next;
+      edge.style.top = `${trigger.offset}vh`;
+      edge.style.height = `${trigger.height}vh`;
+      edge.style.width = `${trigger.width}px`;
+    };
+    applyTrigger(trigger);
+
+    // Close before the page handles the press, leaving its default action intact.
+    const dismissForPointer = event => {
+      if (event.isTrusted === false || event.target === host || event.composedPath?.().includes(host)) return;
+      if (isOpen || isResizing) {
+        preservedEditor ||= editorActive;
+        cancelResize?.();
+        forceClosePanel();
+      }
+      hover.press(event);
+    };
+    listen(document, 'pointerdown', dismissForPointer, { capture: true, passive: true });
+    listen(window, 'pointerup', () => hover.release(), { capture: true, passive: true });
+    listen(window, 'pointercancel', () => hover.release(), { capture: true, passive: true });
 
     const setEditorActive = open => {
       // A stale editor message cannot create an open panel by itself.
       editorActive = Boolean(open) && isOpen && iframe.hasAttribute('src');
+      if (isOpen) preservedEditor = editorActive;
       if (editorActive) {
         cancelClose();
         openPanel();
@@ -445,6 +504,7 @@
         // Reconnecting an iframe creates a new browsing context; discard stale
         // editor/resize locks so the edge cannot stay disabled indefinitely.
         editorActive = false;
+        preservedEditor = false;
         isResizing = false;
         panel.classList.remove('resizing');
         resizeHandle.classList.remove('resizing');
@@ -509,11 +569,12 @@
         cancelResize?.();
         forceClosePanel();
         // Keep unsaved editor contents, but never its visible/open state.
-        if (!editorActive) iframe.removeAttribute('src');
+        if (!editorActive && !preservedEditor) iframe.removeAttribute('src');
       }
     });
     // Capture fallback also works when a webpage's own overlay covers the edge.
     listen(document, 'pointermove', event => {
+      if (event.buttons) dismissForPointer(event);
       hover.move(event);
     }, { capture: true, passive: true });
     resume();
@@ -535,7 +596,7 @@
   let modeRequest = 0;
   const refreshMode = async () => {
     const request = ++modeRequest;
-    const stored = await callChrome(() => chrome.storage.local.get([SIDEBAR_MODE_KEY, TIMEOUT_KEY]));
+    const stored = await callChrome(() => chrome.storage.local.get([SIDEBAR_MODE_KEY, TIMEOUT_KEY, TRIGGER_KEY]));
     if (contextInvalid || request !== modeRequest) return;
     try {
       const value = stored?.[TIMEOUT_KEY];
@@ -543,6 +604,7 @@
       hideDelay = timeout;
       const mode = value === 0 ? NATIVE_MODE : stored?.[SIDEBAR_MODE_KEY] || OVERLAY_MODE;
       applyMode(mode);
+      applyTrigger(stored?.[TRIGGER_KEY]);
     } catch (error) { handleApiError(error); }
   };
   listen(window, 'focus', refreshMode);
@@ -555,6 +617,7 @@
       ++modeRequest;
       hideDelay = TIMEOUTS.has(message.timeout) && message.timeout > 0 ? message.timeout : 800;
       applyMode(message.mode);
+      applyTrigger(message.trigger);
       respond({ version: VERSION });
       return;
     }

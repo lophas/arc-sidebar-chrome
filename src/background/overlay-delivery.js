@@ -1,10 +1,12 @@
+import { EDGE_TRIGGER_KEY, edgeTrigger } from '../shared/edge-trigger.js';
 import { sidebarPreferences } from '../shared/sidebar-preferences.js';
-const VERSION = 'edge-intent-v3';
+const VERSION = 'edge-intent-v4';
 const pending = new Map();
 async function applyToTab(tabId) {
   const tab = await chrome.tabs.get(tabId);
   if (!/^https?:\/\//i.test(tab.pendingUrl || tab.url || '')) return;
-  const preferences = sidebarPreferences(await chrome.storage.local.get(['arcSidebarMode', 'arcSidebarAutohideTimeout']));
+  const stored = await chrome.storage.local.get(['arcSidebarMode', 'arcSidebarAutohideTimeout', EDGE_TRIGGER_KEY]);
+  const preferences = { ...sidebarPreferences(stored), trigger: edgeTrigger(stored[EDGE_TRIGGER_KEY]) };
   const message = { type: 'arc-sidebar-apply-mode', ...preferences };
   let response;
   try { response = await chrome.tabs.sendMessage(tabId, message); } catch {}
@@ -16,7 +18,8 @@ async function applyToTab(tabId) {
   }
   await chrome.scripting.executeScript({ target: { tabId }, files: ['src/overlay/overlay.js'] });
   // Mode can change while injection waits for the page. Apply the latest value.
-  const latest = sidebarPreferences(await chrome.storage.local.get(['arcSidebarMode', 'arcSidebarAutohideTimeout']));
+  const current = await chrome.storage.local.get(['arcSidebarMode', 'arcSidebarAutohideTimeout', EDGE_TRIGGER_KEY]);
+  const latest = { ...sidebarPreferences(current), trigger: edgeTrigger(current[EDGE_TRIGGER_KEY]) };
   await chrome.tabs.sendMessage(tabId, { type: 'arc-sidebar-apply-mode', ...latest });
 }
 export function syncFocusedSidebar(tabId) {

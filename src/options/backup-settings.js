@@ -1,9 +1,11 @@
-import { sidebarPreferences } from '../shared/sidebar-preferences.js';
-export const BACKUP_SETTING_KEYS = ['arcSidebarAutohideTimeout', 'arcSidebarMode', 'arcSidebarFavoriteSizePercent', 'arcSidebarOverlayWidth', 'arcSidebarAutoPipEnabled'];
-const timeouts = new Set([0, 500, 600, 700, 800, 900, 1000, 1100]);
+import { EDGE_TRIGGER_KEY, edgeTrigger, isEdgeTrigger } from '../shared/edge-trigger.js';
+import { sidebarPreferences, AUTOHIDE_TIMEOUTS } from '../shared/sidebar-preferences.js';
+export const BACKUP_SETTING_KEYS = ['arcSidebarAutohideTimeout', 'arcSidebarMode', 'arcSidebarFavoriteSizePercent', 'arcSidebarOverlayWidth', 'arcSidebarAutoPipEnabled', EDGE_TRIGGER_KEY];
+const timeouts = new Set([0, ...AUTOHIDE_TIMEOUTS]);
 const sizes = new Set([80, 90, 100, 110, 120]);
 export function exportBackupSettings(stored) {
   return {
+    edgeTrigger: edgeTrigger(stored[EDGE_TRIGGER_KEY]),
     autoPipEnabled: stored.arcSidebarAutoPipEnabled !== false,
     autohideTimeout: sidebarPreferences(stored).timeout,
     sidebarMode: sidebarPreferences(stored).mode,
@@ -15,6 +17,10 @@ export function restoreBackupSettings(settings) {
   if (settings === undefined) return {};
   if (!settings || typeof settings !== 'object' || Array.isArray(settings)) throw new Error('Invalid backup settings.');
   const values = {};
+  if (Object.hasOwn(settings, 'edgeTrigger')) {
+    if (!isEdgeTrigger(settings.edgeTrigger)) throw new Error('Invalid backup edge trigger.');
+    values[EDGE_TRIGGER_KEY] = edgeTrigger(settings.edgeTrigger);
+  }
   if (Object.hasOwn(settings, 'autoPipEnabled')) {
     if (typeof settings.autoPipEnabled !== 'boolean') throw new Error('Invalid backup mini player setting.');
     values.arcSidebarAutoPipEnabled = settings.autoPipEnabled;

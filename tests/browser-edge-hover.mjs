@@ -65,6 +65,31 @@ try {
     await f.context.close();
     console.log('PASS regression: previous controller reproduces missed edge hover with zero movement deltas');
   }
+  // Real press/release input: no click interception, no reopening during a
+  // drag, and an editor document remains alive after outside dismissal.
+  {
+    const f=await fixture(source),{page}=f;
+    const edge=await page.evaluate(()=>{const r=arcTestShadow.querySelector('.edge').getBoundingClientRect();return(r.left+r.right)/2;});
+    const open=async()=>{await page.mouse.move(640,300);await page.mouse.move(edge,300);await page.waitForFunction(()=>arcTestShadow.querySelector('.panel').classList.contains('open'));};
+    await open();
+    await page.waitForFunction(()=>!!arcTestShadow.querySelector('iframe').contentDocument?.querySelector('#inside'));
+    const frame=page.frames().find(frame=>frame.url().includes('/src/sidepanel/index.html'));
+    await frame.evaluate(()=>{const input=document.createElement('input');input.id='draft';input.value='Unsaved editor text';document.body.append(input);parent.postMessage({type:'arc-sidebar-editor-state',open:true},'*');});
+    await page.mouse.move(640,330);await page.mouse.down();
+    assert.equal(await f.isOpen(),false,'outside press hides immediately, even with an editor open');
+    await page.mouse.move(edge,330);await page.waitForTimeout(150);assert.equal(await f.isOpen(),false);
+    await page.mouse.up();await page.mouse.move(edge-1,330);await page.waitForTimeout(150);assert.equal(await f.isOpen(),false,'release and jitter cannot reopen');
+    const other=await f.context.newPage();await other.goto('about:blank');await page.bringToFront();await other.close();await open();
+    assert.equal(await frame.locator('#draft').inputValue(),'Unsaved editor text');
+    await frame.evaluate(()=>parent.postMessage({type:'arc-sidebar-editor-state',open:false},'*'));
+    await page.mouse.move(640,300);await page.waitForFunction(()=>!arcTestShadow.querySelector('.panel').classList.contains('open'));
+    await page.evaluate(()=>{arcSettings.arcSidebarEdgeTrigger={height:20,offset:40,width:10};window.dispatchEvent(new Event('focus'));});
+    await page.waitForFunction(()=>arcTestShadow.querySelector('.edge').style.height==='20vh');
+    await page.mouse.move(640,100);await page.mouse.move(edge,100);await page.waitForTimeout(150);assert.equal(await f.isOpen(),false,'outside trigger height stays closed');
+    await page.mouse.move(edge,400);await page.waitForFunction(()=>arcTestShadow.querySelector('.panel').classList.contains('open'));
+    assert.deepEqual(f.errors,[]);await f.context.close();
+    console.log('PASS real Chrome: outside pointerdown, drag/release rearming, preserved editor draft, and configurable trigger height');
+  }
   for (const scale of [1, 2]) {
     const f = await fixture(source, scale);
     const { page } = f;

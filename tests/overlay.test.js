@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';import fs from 'node:fs';import vm from 'node:vm';
-function setup(mode='overlay',side='right',timeout) {
+function setup(mode='overlay',side='right',timeout,trigger) {
  const events={window:{},document:{}},changes=[],messages=[],observers=[],timers=new Map(),due=new Map(),mutations=new Set();const delays=[];let seq=0,styleWrites=0,clock=0;
  const mutate=target=>observers.filter(o=>o.targets.has(target)).forEach(o=>mutations.add(o));
  const listener=(map,name,fn)=>(map[name]||=[]).push(fn);
@@ -13,7 +13,7 @@ function setup(mode='overlay',side='right',timeout) {
  const root=()=>({append(node){node.parentNode=this;}});
  const document={documentElement:root(),visibilityState:'visible',createElement:()=>host,addEventListener:(n,fn)=>listener(events.document,n,fn)};
  const window={innerWidth:1000,innerHeight:800,addEventListener:(n,fn)=>listener(events.window,n,fn),matchMedia:()=>({matches:false,addEventListener(){}})};window.top=window;
- const chrome={storage:{local:{get:async()=>({arcSidebarMode:mode,arcSidebarAutohideTimeout:timeout}),set:async()=>{}},onChanged:{addListener:fn=>changes.push(fn)}},runtime:{id:'test',getURL:path=>'chrome-extension://test/'+path,sendMessage:async message=>message.type==='arc-sidebar-panel-layout'?{side:chrome.panelSide}:{open:false},onMessage:{addListener:fn=>changes.push(fn)}}};
+ const chrome={storage:{local:{get:async()=>({arcSidebarMode:mode,arcSidebarAutohideTimeout:timeout,arcSidebarEdgeTrigger:trigger}),set:async()=>{}},onChanged:{addListener:fn=>changes.push(fn)}},runtime:{id:'test',getURL:path=>'chrome-extension://test/'+path,sendMessage:async message=>message.type==='arc-sidebar-panel-layout'?{side:chrome.panelSide}:{open:false},onMessage:{addListener:fn=>changes.push(fn)}}};
  chrome.panelSide=side;
  const context={document,window,chrome,URL,Node:class{},MutationObserver:class{constructor(fn){this.fn=fn;observers.push(this);}targets=new Set();observe(target){this.targets.add(target);}disconnect(){this.targets.clear();mutations.delete(this);}},setTimeout:(fn,delay)=>{delays.push(delay);timers.set(++seq,fn);due.set(seq,clock+delay);return seq;},clearTimeout:id=>{timers.delete(id);due.delete(id);}};
  vm.createContext(context);vm.runInContext(fs.readFileSync('src/overlay/overlay.js','utf8'),context);
@@ -108,7 +108,7 @@ test('Chrome layout changes remain dormant until focus and also apply on tab ret
 });
 
 test('every supported timeout controls delayed closing; zero disables overlay even with a legacy overlay preference',async()=>{
- for(const timeout of [500,600,700,800,900,1000,1100]){
+ for(const timeout of [400,500,600,700,800,900,1000,1100,1200]){
   const s=setup('overlay','right',timeout);await settled();
   s.emit('document','pointermove',{isTrusted:true,movementX:1,movementY:0,clientX:999});s.tick();
   s.emit('document','pointermove',{isTrusted:true,movementX:1,movementY:0,clientX:100});
@@ -309,4 +309,48 @@ test('scrollbar handoff preserves armed opening, but cannot open an idle panel',
  assert.equal(s.nodes['.panel'].classList.values.has('open'),true,'all handoff events preserve the first opening deadline');
  s.emit('document','pointermove',{clientX:400,movementX:-1});s.advance(800);
  assert.equal(s.nodes['.panel'].classList.values.has('open'),false,'leaving inward toward page content still closes');
+});
+
+
+test('pointerdown outside hides immediately, preserves editor iframe across tab switches and requires a fresh arrival',async()=>{
+ const s=setup();await settled();
+ const open=()=>{s.emit('document','pointermove',{clientX:500,movementX:1,buttons:0});s.emit('document','pointermove',{clientX:999,movementX:1,buttons:0});s.advance(80);};
+ open();s.emit('window','message',{source:s.nodes.iframe.contentWindow,data:{type:'arc-sidebar-editor-state',open:true}});
+ s.emit('document','pointerdown',{isTrusted:true,clientX:999,clientY:300,composedPath:()=>[s.context.document]});
+ assert.equal(s.nodes['.panel'].classList.values.has('open'),false,'press hides even with editor lock');
+ s.emit('document','pointermove',{clientX:998,buttons:1,movementX:1});s.advance(1000);assert.equal(s.nodes['.panel'].classList.values.has('open'),false);
+ s.emit('window','pointerup',{});s.emit('document','pointermove',{clientX:998,buttons:0});s.advance(1000);assert.equal(s.nodes['.panel'].classList.values.has('open'),false);
+ s.context.document.visibilityState='hidden';s.emit('document','visibilitychange');
+ s.changes.forEach(fn=>fn({type:'arc-sidebar-tab-activated'}));
+ assert.equal(s.nodes.iframe.hasAttribute('src'),true,'unsaved editor document survives hidden tab and activation');
+ s.context.document.visibilityState='visible';s.emit('document','visibilitychange');await settled();
+ open();assert.equal(s.nodes['.panel'].classList.values.has('open'),true);
+ s.emit('window','message',{source:s.nodes.iframe.contentWindow,data:{type:'arc-sidebar-editor-state',open:false}});
+ s.context.document.visibilityState='hidden';s.emit('document','visibilitychange');assert.equal(s.nodes.iframe.hasAttribute('src'),false,'idle iframe can unload after editor closes');
+});
+test('outside presses cancel delayed opening, sidebar presses stay open and drag motion without pointerdown cannot open',async()=>{
+ const s=setup();await settled();
+ s.emit('document','pointermove',{clientX:999,movementX:1});
+ s.emit('document','pointerdown',{isTrusted:true,clientX:999,clientY:300});s.advance(500);assert.equal(s.nodes['.panel'].classList.values.has('open'),false);
+ s.emit('window','pointerup',{});
+ s.emit('document','pointermove',{clientX:500,movementX:1,buttons:0});s.emit('document','pointermove',{clientX:999,movementX:1,buttons:0});s.advance(80);
+ s.emit('document','pointerdown',{isTrusted:true,target:s.host,composedPath:()=>[s.host]});assert.equal(s.nodes['.panel'].classList.values.has('open'),true);
+ s.emit('document','pointermove',{clientX:999,movementX:1,buttons:1});assert.equal(s.nodes['.panel'].classList.values.has('open'),false,'native drag motion hides even when initial press was not delivered');s.advance(1000);
+ s.emit('document','pointermove',{clientX:999,movementX:1,buttons:0});s.advance(1000);assert.equal(s.nodes['.panel'].classList.values.has('open'),false,'missed release cannot reopen until leaving the trigger');
+});
+test('trigger bounds work on both sides while the open sidebar retains its full height',async()=>{
+ for(const side of ['left','right']){
+  const s=setup('overlay',side,400,{height:20,offset:50,width:10});await settled();const x=side==='left'?1:999;
+  assert.equal(s.nodes['.edge'].style.top,'50vh');assert.equal(s.nodes['.edge'].style.height,'20vh');assert.equal(s.nodes['.edge'].style.width,'10px');assert.equal(s.nodes['.edge'].style.pointerEvents,'none');
+  for(const y of [100,399,560,700]){s.emit('document','pointermove',{clientX:x,clientY:y,movementX:1});s.advance(80);assert.equal(s.nodes['.panel'].classList.values.has('open'),false);}
+  s.emit('document','pointermove',{clientX:side==='left'?11:989,clientY:450,movementX:1});s.advance(80);assert.equal(s.nodes['.panel'].classList.values.has('open'),false,'outside configured width');
+  s.emit('document','pointermove',{clientX:x,clientY:450,movementX:1});s.advance(80);assert.equal(s.nodes['.panel'].classList.values.has('open'),true);
+  s.emit('document','pointermove',{clientX:side==='left'?200:800,clientY:100,movementX:1});s.advance(1000);assert.equal(s.nodes['.panel'].classList.values.has('open'),true,'trigger height does not shrink panel retention');
+ }
+});
+test('focus and explicit apply update trigger geometry without reloading',async()=>{
+ const s=setup();await settled();s.context.chrome.storage.local.get=async()=>({arcSidebarMode:'overlay',arcSidebarEdgeTrigger:{height:35,offset:90,width:22}});
+ s.emit('window','focus');await settled();assert.equal(s.nodes['.edge'].style.top,'65vh');
+ s.changes.forEach(fn=>fn({type:'arc-sidebar-apply-mode',mode:'overlay',timeout:1200,trigger:{height:30,offset:20,width:12}},{},()=>{}));
+ assert.equal(s.nodes['.edge'].style.height,'30vh');assert.equal(s.nodes['.edge'].style.top,'20vh');assert.equal(s.nodes['.edge'].style.width,'12px');
 });

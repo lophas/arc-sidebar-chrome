@@ -1,4 +1,5 @@
 import './panel-layout.js';
+import { reconcileTriggerSync } from './trigger-sync.js';
 import './auto-pip.js';
 import './auto-pip-settings.js';
 import './sidebar-mode.js';
@@ -458,7 +459,7 @@ chrome.storage.onChanged.addListener((changes, area) => {
   if (area === 'session' && changes[BINDINGS_KEY]) queueNativeGroupSync(80);
 
   if (area === 'local') {
-    if (changes[SIDEBAR_MODE_KEY] || changes.arcSidebarAutohideTimeout) {
+    if (changes[SIDEBAR_MODE_KEY] || changes.arcSidebarAutohideTimeout || changes.arcSidebarEdgeTrigger) {
       refreshActiveSidebar().catch(() => {});
     }
 
@@ -535,7 +536,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message?.type === 'arc-sidebar-sync-now') {
-    reconcileSidebarSync()
+    Promise.all([reconcileSidebarSync(), reconcileTriggerSync()]).then(([result]) => result)
       .then(result => sendResponse(result))
       .catch(error => sendResponse({ ok: false, reason: error?.message || 'sync-failed' }));
     return true;

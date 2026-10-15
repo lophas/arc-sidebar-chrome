@@ -141,7 +141,7 @@ Additional tabs opened during your work remain part of the Space and appear belo
 
 Use the icon to the left of search to switch between **Autohide** and **Fixed**. The current tab applies the change immediately; other open tabs apply it when you next focus them.
 
-- **Autohide**, the default, floats over the page when the pointer reaches the sidebar edge. It stays open over the sidebar and the adjacent scrollbar, then closes after the selected delay when you leave that area. Returning to a tab keeps it closed until a fresh edge hover. It stays open while you edit an item. Drag its resize handle to adjust the width.
+- **Autohide**, the default, floats over the page when the pointer reaches the sidebar edge. It stays open over the sidebar and the adjacent scrollbar, then closes after the selected delay when you leave that area. Returning to a tab keeps it closed until a fresh edge hover. Click outside the sidebar to hide it immediately, including while an editor is open; unsaved fields are kept until you return. Dragging outside does not reopen it. Drag its resize handle to adjust the width.
 - **Fixed** opens Chrome’s native side panel alongside the page through the extension’s toolbar button. On Chrome settings or browser error pages, use that toolbar button to open the fixed sidebar.
 
 Both modes follow **Chrome Settings → Appearance → Side panel position**. Each open tab picks up a position change when you next focus it. Each Space and the Open tabs view remember their own scroll position.
@@ -151,8 +151,12 @@ Open **Extension options** to adjust:
 | Preference | Choices | Default |
 | --- | --- | --- |
 | Automatic video mini player | On or off | On |
-| Autohide timeout | 500–1100 ms in 100 ms steps | 800 ms |
+| Autohide timeout | Slider: 400–1200 ms in 100 ms steps | 800 ms |
+| Edge trigger area | Two handles: top and bottom at 0–100%, at least 20% apart | 0–100% |
+| Edge trigger width | Slider: 10–22 px | 16 px |
 | Favorite button size | 80%, 90%, 100%, 110%, 120% | 100% |
+
+The trigger sliders include a live preview. Its position and height stay within the viewport, while the open sidebar remains full height. Use **Restore defaults** to reset the trigger and timeout. Changes apply to the active page immediately and to other pages on their next focus.
 
 In a Favorite or pinned link editor, choose **Use favicon** for the website’s icon or upload an **SVG, PNG, WebP or JPEG** by clicking the upload area or dropping a file onto it. Save to apply the choice.
 
@@ -182,17 +186,17 @@ Enter `%LOCALAPPDATA%\Packages` in File Explorer’s address bar. Open the folde
 
 ### Chrome Sync
 
-Enable **Chrome Sync** in Extension options to synchronize Spaces, Favorites, folders, pinned links, their order and custom icons across computers signed into the same Chrome Sync account.
+Enable **Chrome Sync** in Extension options to synchronize Spaces, Favorites, folders, pinned links, their order, custom icons and edge trigger settings across computers signed into the same Chrome Sync account.
 
 On a fresh installation or after a reset, enabling Sync restores the existing cloud snapshot. The empty starting layout is never uploaded. Sync starts uploading once you add a saved link, folder or customize your Spaces.
 
-Open tabs, the selected Space, folder expansion, scroll positions and sidebar preferences stay local to each computer. When different computers change the organization, the most recently updated sidebar becomes the synchronized version.
+Open tabs, the selected Space, folder expansion, scroll positions, sidebar mode, timeout, sidebar width and Favorite size stay local to each computer. When different computers change the organization, the most recently updated sidebar becomes the synchronized version.
 
 ### Backup, restore and reset
 
 Use **Extension options → Backup & restore** to download or restore a portable JSON backup.
 
-- **Download backup** saves Spaces, Favorites, folders, pinned links, custom icons, folder expanded/collapsed states, sidebar mode, autohide timeout, Favorite size, sidebar width and the automatic mini player preference.
+- **Download backup** saves Spaces, Favorites, folders, pinned links, custom icons, folder expanded/collapsed states, sidebar mode, autohide timeout, edge trigger settings, Favorite size, sidebar width and the automatic mini player preference.
 - **Restore backup** replaces the sidebar contents and restores the saved folder layout and preferences. Older backups preserve current preferences they do not contain.
 - **Reset all extension data** clears local organization and settings, turns Sync off and recreates Favorites and **🚀 My Space**. The cloud snapshot is kept; enable Sync again to restore it. Your Chrome tabs stay open.
 
