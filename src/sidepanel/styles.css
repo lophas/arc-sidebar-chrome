@@ -162,7 +162,6 @@ body {
   backdrop-filter: blur(18px);
   border-top: 1px solid var(--border);
   scrollbar-width: thin;
-  scrollbar-color: color-mix(in srgb, var(--muted) 55%, transparent) transparent;
 }
 .spaces::-webkit-scrollbar {
   display: block;
@@ -172,11 +171,11 @@ body {
   background: transparent;
 }
 .spaces::-webkit-scrollbar-thumb {
-  background: color-mix(in srgb, var(--muted) 55%, transparent);
+  background: var(--sidebar-scrollbar-thumb);
   border-radius: 999px;
 }
 .spaces::-webkit-scrollbar-thumb:hover {
-  background: color-mix(in srgb, var(--muted) 80%, transparent);
+  background: color-mix(in srgb, var(--text) 55%, var(--bg));
 }
 
 .space-button {
