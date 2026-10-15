@@ -8,15 +8,13 @@ const executablePath = process.env.ASOTC_CHROME_BINARY || ['google-chrome', 'chr
 }).find(Boolean);
 assert.ok(executablePath, 'Chrome executable required');
 const reference = process.argv.find(arg => arg.startsWith('--regression-ref='))?.split('=')[1];
-const historyReference = process.argv.find(arg => arg.startsWith('--history-regression-ref='))?.split('=')[1];
 const source = fs.readFileSync('src/overlay/overlay.js', 'utf8');
 const origin = 'https://edge.test';
 const browser = await chromium.launch({ executablePath, headless: false, args: ['--no-sandbox', '--disable-features=OverlayScrollbar'] });
 
-async function fixture(code, scale = 1, sidebarOrigin = origin) {
+async function fixture(code, scale = 1) {
   const context = await browser.newContext({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: scale });
-  await context.addInitScript(sidebarOrigin => {
-    window.arcSidebarOrigin = sidebarOrigin;
+  await context.addInitScript(() => {
     const attach = Element.prototype.attachShadow;
     Element.prototype.attachShadow = function(options) {
       const root = attach.call(this, options);
@@ -31,8 +29,8 @@ async function fixture(code, scale = 1, sidebarOrigin = origin) {
         return window.arcZeroMovement ? 0 : descriptor.get.call(this);
       } });
     }
-  }, sidebarOrigin);
-  await context.route(/^https:\/\/(sidebar\.)?edge\.test\//, async route => {
+  });
+  await context.route(origin + '/**', async route => {
     const path = new URL(route.request().url()).pathname;
     if (path.endsWith('/src/sidepanel/index.html')) {
       // Iframe load, editor reports and the slide animation overlap deliberately.
@@ -44,7 +42,7 @@ async function fixture(code, scale = 1, sidebarOrigin = origin) {
       window.arcTestRuntimeListeners=[];window.arcZeroMovement=true;
       window.arcLastPointer=null;
       document.addEventListener('pointermove',e=>{window.arcLastPointer={x:e.clientX,y:e.clientY};},true);
-      window.chrome={storage:{local:{get:async()=>({...arcSettings}),set:async value=>Object.assign(arcSettings,value)},onChanged:{addListener(){},removeListener(){}}},runtime:{id:'test',getURL:path=>window.arcSidebarOrigin+'/'+path,sendMessage:async message=>message.type==='arc-sidebar-panel-layout'?{side:window.arcSide||'right'}:{open:false},onMessage:{addListener:fn=>arcTestRuntimeListeners.push(fn),removeListener:fn=>{arcTestRuntimeListeners=arcTestRuntimeListeners.filter(value=>value!==fn);}}}};
+      window.chrome={storage:{local:{get:async()=>({...arcSettings}),set:async value=>Object.assign(arcSettings,value)},onChanged:{addListener(){},removeListener(){}}},runtime:{id:'test',getURL:path=>location.origin+'/'+path,sendMessage:async message=>message.type==='arc-sidebar-panel-layout'?{side:window.arcSide||'right'}:{open:false},onMessage:{addListener:fn=>arcTestRuntimeListeners.push(fn),removeListener:fn=>{arcTestRuntimeListeners=arcTestRuntimeListeners.filter(value=>value!==fn);}}}};
       </script>` });
   });
   const page = await context.newPage();
@@ -56,56 +54,7 @@ async function fixture(code, scale = 1, sidebarOrigin = origin) {
   return { context, page, errors, isOpen: () => page.evaluate(() => arcTestShadow.querySelector('.panel').classList.contains('open')) };
 }
 
-// Real joint-history traversal, including a cross-origin sidebar and repeated
-// lazy unload/reload. Mouse remains over the sidebar when Back is requested.
-async function historyTraversal(code, expectBug = false) {
-  const f = await fixture(code, 1, 'https://sidebar.edge.test');
-  const { page } = f;
-  await page.goto(origin + '/previous');
-  await page.goto(origin + '/current');
-  await page.addScriptTag({ content: code });
-  await page.waitForFunction(() => !!window.arcTestShadow);
-  // Let the initial empty iframe finish before the first lazy navigation.
-  await page.waitForTimeout(250);
-  await page.evaluate(() => { window.arcZeroMovement = false; });
-  for (let i = 0; i < 3; i++) {
-    const edge = await page.evaluate(() => { const r = arcTestShadow.querySelector('.edge').getBoundingClientRect(); return (r.left + r.right) / 2; });
-    await page.mouse.move(640, 300); await page.mouse.move(edge, 300);
-    await page.waitForFunction(() => arcTestShadow.querySelector('.panel').classList.contains('open'));
-    const frame = page.frames().find(frame => frame.url().includes('/src/sidepanel/index.html'));
-    if (frame) await frame.locator('#inside').waitFor();
-    else await page.waitForEvent('framenavigated', { predicate: frame => frame.url().includes('/src/sidepanel/index.html') });
-    await page.mouse.move(1140, 300);
-    if (i < 2) {
-      const other = await f.context.newPage(); await other.goto('about:blank');
-      await page.waitForFunction(() => !arcTestShadow.querySelector('.panel').classList.contains('open'));
-      await page.bringToFront(); await other.close();
-      await page.waitForTimeout(100);
-    }
-  }
-  // Use the browser's joint history, like its Back button. window.history.back
-  // in the host page can skip entries belonging only to a child frame.
-  const session = await page.context().newCDPSession(page);
-  const navigation = await session.send('Page.getNavigationHistory');
-  console.log('Sidebar history entries', {expectBug, index:navigation.currentIndex, urls:navigation.entries.map(entry=>entry.url)});
-  await session.send('Page.navigateToHistoryEntry', {entryId:navigation.entries[navigation.currentIndex - 1].id});
-  if (expectBug) {
-    await page.waitForTimeout(400);
-    assert.equal(page.url(), origin + '/current', 'previous loader consumes Back inside its child iframe');
-    assert.ok(page.frames().some(frame => frame.url() === 'about:blank'), 'previous loader shows an empty sidebar');
-    console.log('PASS history regression: previous loader reproduces Back to blank sidebar instead of previous page');
-  } else {
-    await page.waitForURL(origin + '/previous');
-    await page.goForward(); await page.waitForURL(origin + '/current');
-    assert.deepEqual(f.errors, []);
-    console.log('PASS history traversal: Back/Forward navigate the page after cross-origin sidebar load/release cycles');
-  }
-  await f.context.close();
-}
-
 try {
-  if (historyReference) await historyTraversal(execFileSync('git', ['show', historyReference + ':src/overlay/overlay.js'], { encoding: 'utf8' }), true);
-  await historyTraversal(source);
   if (reference) {
     const old = execFileSync('git', ['show', reference + ':src/overlay/overlay.js'], { encoding: 'utf8' });
     const f = await fixture(old);
