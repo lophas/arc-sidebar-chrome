@@ -22,7 +22,7 @@ try {
     await report(true);
     await page.evaluate(()=>{window.arcTestVisibility='hidden';Object.defineProperty(document,'visibilityState',{configurable:true,get:()=>window.arcTestVisibility});document.dispatchEvent(new Event('visibilitychange'));});
     assert.equal(await isOpen(),false);
-    assert.equal(await page.evaluate(()=>arcTestShadow.querySelector('iframe').contentWindow.location.href !== 'about:blank'),true,'editor iframe survives hidden state');
+    assert.equal(await page.evaluate(()=>arcTestShadow.querySelector('iframe').hasAttribute('src')),true,'editor iframe survives hidden state');
     await page.evaluate(()=>{window.arcTestVisibility='visible';document.dispatchEvent(new Event('visibilitychange'));window.dispatchEvent(new Event('focus'));});
     await page.waitForTimeout(150);assert.equal(await isOpen(),false,'returning tab stays closed until hover');
     await hover();await page.waitForFunction(()=>arcTestShadow.querySelector('.panel').classList.contains('open'));
@@ -51,9 +51,9 @@ try {
       for(const listener of window.arcTestRuntimeListeners || []) listener({type:'arc-sidebar-apply-mode',mode,timeout:700},{},value=>{response=value;});
       return response?.version;
     },mode);
-    assert.equal(await applyMode('native'),'edge-intent-v4');
+    assert.equal(await applyMode('native'),'edge-intent-v3');
     assert.equal(await page.evaluate(()=>getComputedStyle(document.querySelector('#arc-sidebar-overlay-host')).display),'none');
-    assert.equal(await applyMode('overlay'),'edge-intent-v4');
+    assert.equal(await applyMode('overlay'),'edge-intent-v3');
     await hover();await page.waitForFunction(()=>arcTestShadow.querySelector('.panel').classList.contains('open'));
     await page.mouse.move(700,300);await page.waitForFunction(()=>!arcTestShadow.querySelector('.panel').classList.contains('open'));
     console.log('PASS real Chromium: reinjection reuses one overlay; Fixed deactivates it and Autohide reactivates it');

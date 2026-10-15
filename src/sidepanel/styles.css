@@ -45,7 +45,9 @@
 }
 
 * { box-sizing: border-box; }
-html, body { height: 100%; }
+/* Keep horizontal history-swipe gestures inside the sidebar document. The
+   host page keeps its normal navigation gestures; vertical scrolling is free. */
+html, body { height: 100%; overscroll-behavior-x: none; }
 body {
   margin: 0;
   background: var(--bg);
