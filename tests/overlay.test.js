@@ -6,7 +6,7 @@ function setup(mode='overlay',side='right',timeout) {
  const element=()=>({id:'',parentNode:null,hidden:false,remove(){this.parentNode=null;},attributes:new Map(),events:{},style:{properties:new Map(),setProperty(n,v,p){styleWrites++;this.properties.set(n,{v,p});mutate(this.owner);},getPropertyValue(n){const value=this.properties.get(n)?.v||'';return n==='all'&&this.properties.size>1?'':value;},getPropertyPriority(n){return this.properties.get(n)?.p||'';}},classList:{values:new Set(),add(...names){names.forEach(n=>this.values.add(n));},remove(...names){names.forEach(n=>this.values.delete(n));}},addEventListener(n,fn){listener(this.events,n,fn);},removeEventListener(){},hasAttribute(n){return this.attributes.has(n);},removeAttribute(n){this.attributes.delete(n);},setPointerCapture(){},hasPointerCapture(){return false;},contains(){return false;}});
  const nodes={'.edge':element(),'.panel':element(),iframe:element(),'.resize-handle':element()};
  Object.defineProperty(nodes.iframe,'src',{get(){return this.attributes.get('src');},set(v){this.attributes.set('src',v);}});
- nodes.iframe.contentWindow={postMessage:message=>messages.push(message)};
+ nodes.iframe.navigations=[];nodes.iframe.contentWindow={location:{href:'about:blank',replace(url){nodes.iframe.navigations.push(url);this.href=url;}},postMessage:message=>messages.push(message)};
  const shadow={querySelector:selector=>nodes[selector]};const host=element();host.attachShadow=()=>shadow;
  host.style.owner=host;
  let cssText='';Object.defineProperty(host.style,'cssText',{get(){return cssText;},set(value){styleWrites++;cssText=value.replace(/0px/g,'0px');mutate(host);}});
@@ -20,8 +20,8 @@ function setup(mode='overlay',side='right',timeout) {
  return {delays,context,nodes,host,messages,observers,changes,styleWrites:()=>styleWrites,drainMutations:()=>{let rounds=0;while(mutations.size){if(++rounds>20)throw new Error('Mutation observer starved page event loop');const pending=[...mutations];mutations.clear();pending.forEach(o=>o.fn());}return rounds;},emit:(surface,type,event)=>(events[surface][type]||[]).forEach(fn=>fn(type==='pointermove'?{isTrusted:true,movementX:0,movementY:0,clientY:300,...event}:event)),tick:()=>{const fns=[...timers.values()];timers.clear();due.clear();fns.forEach(fn=>fn());},advance:ms=>{const target=clock+ms;while(true){const next=[...due].filter(([id,at])=>timers.has(id)&&at<=target).sort((a,b)=>a[1]-b[1])[0];if(!next)break;const [id,at]=next,fn=timers.get(id);timers.delete(id);due.delete(id);clock=at;fn();}clock=target;}};
 }
 async function settled(){for(let i=0;i<12;i++)await Promise.resolve();}
-test('lazy overlay loads only on hover and releases idle hidden-tab UI',async()=>{const s=setup();await settled();assert.equal(s.nodes.iframe.hasAttribute('src'),false);s.emit('document','pointermove',{isTrusted:true,movementX:1,movementY:0,clientX:999});s.tick();assert.equal(s.nodes.iframe.hasAttribute('src'),true);assert.equal(s.nodes['.panel'].classList.values.has('open'),true);assert.equal(s.messages.at(-1).open,true);s.context.document.visibilityState='hidden';s.emit('document','visibilitychange');assert.equal(s.nodes.iframe.hasAttribute('src'),false);assert.equal(s.nodes['.panel'].classList.values.has('open'),false);});
-test('open editors survive tab switches and hidden native mode never loads UI',async()=>{const s=setup();await settled();s.emit('document','pointermove',{isTrusted:true,movementX:1,movementY:0,clientX:999});s.tick();s.changes.forEach(fn=>fn({type:'arc-sidebar-editor-state',open:true}));s.context.document.visibilityState='hidden';s.emit('document','visibilitychange');assert.equal(s.nodes.iframe.hasAttribute('src'),true);assert.equal(s.messages.at(-1).open,false);const native=setup('native');await settled();native.emit('document','pointermove',{isTrusted:true,movementX:1,movementY:0,clientX:999});native.tick();assert.equal(native.nodes.iframe.hasAttribute('src'),false);});
+test('lazy overlay loads only on hover and releases idle hidden-tab UI',async()=>{const s=setup();await settled();assert.equal((s.nodes.iframe.contentWindow.location.href !== 'about:blank'),false);s.emit('document','pointermove',{isTrusted:true,movementX:1,movementY:0,clientX:999});s.tick();assert.equal((s.nodes.iframe.contentWindow.location.href !== 'about:blank'),true);assert.equal(s.nodes['.panel'].classList.values.has('open'),true);assert.equal(s.messages.at(-1).open,true);s.context.document.visibilityState='hidden';s.emit('document','visibilitychange');assert.equal((s.nodes.iframe.contentWindow.location.href !== 'about:blank'),false);assert.equal(s.nodes['.panel'].classList.values.has('open'),false);});
+test('open editors survive tab switches and hidden native mode never loads UI',async()=>{const s=setup();await settled();s.emit('document','pointermove',{isTrusted:true,movementX:1,movementY:0,clientX:999});s.tick();s.changes.forEach(fn=>fn({type:'arc-sidebar-editor-state',open:true}));s.context.document.visibilityState='hidden';s.emit('document','visibilitychange');assert.equal((s.nodes.iframe.contentWindow.location.href !== 'about:blank'),true);assert.equal(s.messages.at(-1).open,false);const native=setup('native');await settled();native.emit('document','pointermove',{isTrusted:true,movementX:1,movementY:0,clientX:999});native.tick();assert.equal((native.nodes.iframe.contentWindow.location.href !== 'about:blank'),false);});
 test('DOM repair reuses the same overlay host without duplicating listeners',async()=>{const s=setup();await settled();const original=s.host;for(let i=0;i<5;i++){s.host.parentNode=null;s.observers.forEach(o=>o.fn());s.tick();assert.equal(s.host.parentNode,s.context.document.documentElement);}assert.equal(s.host,original);assert.equal(s.observers.length,3);s.context.document.documentElement={append(node){node.parentNode=this;}};s.observers.forEach(o=>o.fn());s.tick();assert.equal(s.host.parentNode,s.context.document.documentElement);});
 
 test('host style repairs cannot recursively starve page loading',async()=>{
@@ -40,12 +40,12 @@ test('editor state cannot open another closed overlay, and tab return requires f
  const s=setup();await settled();
  s.changes.forEach(fn=>fn({type:'arc-sidebar-editor-state',open:true}));
  assert.equal(s.nodes['.panel'].classList.values.has('open'),false);
- assert.equal(s.nodes.iframe.hasAttribute('src'),false);
+ assert.equal((s.nodes.iframe.contentWindow.location.href !== 'about:blank'),false);
  s.emit('document','pointermove',{isTrusted:true,movementX:1,movementY:0,clientX:999});s.tick();
  s.changes.forEach(fn=>fn({type:'arc-sidebar-editor-state',open:true}));
  s.context.document.visibilityState='hidden';s.emit('document','visibilitychange');
  assert.equal(s.nodes['.panel'].classList.values.has('open'),false);
- assert.equal(s.nodes.iframe.hasAttribute('src'),true,'unsaved editor contents preserved');
+ assert.equal((s.nodes.iframe.contentWindow.location.href !== 'about:blank'),true,'unsaved editor contents preserved');
  s.context.document.visibilityState='visible';s.emit('document','visibilitychange');s.emit('window','focus');s.tick();
  assert.equal(s.nodes['.panel'].classList.values.has('open'),false);
  s.emit('document','pointermove',{isTrusted:true,movementX:1,movementY:0,clientX:999});s.tick();
@@ -118,7 +118,7 @@ test('every supported timeout controls delayed closing; zero disables overlay ev
  }
  const s=setup('overlay','right',0);await settled();
  s.emit('document','pointermove',{isTrusted:true,movementX:1,movementY:0,clientX:999});s.tick();
- assert.equal(s.nodes.iframe.hasAttribute('src'),false);
+ assert.equal((s.nodes.iframe.contentWindow.location.href !== 'about:blank'),false);
 });
 
 test('stationary pointer and synthesized enter on tab return cannot open; activation clears editor locks',async()=>{
@@ -140,7 +140,7 @@ test('fresh profile uses autohide; explicit active refresh and later focus apply
  s.context.chrome.storage.local.get=async()=>({arcSidebarMode:'native'});
  s.emit('window','focus'); await settled();
  s.emit('document','pointermove',{isTrusted:true,movementX:1,movementY:0,clientX:999});s.tick();
- assert.equal(s.nodes.iframe.hasAttribute('src'),false);
+ assert.equal((s.nodes.iframe.contentWindow.location.href !== 'about:blank'),false);
  s.context.chrome.storage.local.get=async()=>({arcSidebarMode:'overlay',arcSidebarAutohideTimeout:600});
  s.changes.forEach(fn=>fn({type:'arc-sidebar-refresh-mode'}));await settled();
  s.emit('document','pointermove',{isTrusted:true,movementX:1,movementY:0,clientX:999});s.tick();
@@ -160,7 +160,7 @@ test('extension reload catches synchronous storage throws and disposes obsolete 
  s.emit('window','focus');await settled();
  assert.equal(calls,1);assert.equal(s.host.parentNode,null);
  assert.equal(s.nodes['.panel'].classList.values.has('open'),false);
- assert.equal(s.nodes.iframe.hasAttribute('src'),false);
+ assert.equal((s.nodes.iframe.contentWindow.location.href !== 'about:blank'),false);
  assert.equal(s.observers.every(observer=>observer.targets.size===0),true);
  s.emit('window','focus');s.emit('window','pageshow');s.emit('document','pointermove',{isTrusted:true,movementX:1,movementY:0,clientX:999});s.tick();await settled();
  assert.equal(calls,1);assert.equal(s.host.parentNode,null);
@@ -171,7 +171,7 @@ test('rejected runtime promises invalidate the old overlay and cancel pending ed
  s.context.chrome.runtime.sendMessage=()=>Promise.reject(new Error('Extension context invalidated.'));
  s.emit('window','focus');await settled();s.tick();
  assert.equal(s.host.parentNode,null);assert.equal(s.nodes['.panel'].classList.values.has('open'),false);
- assert.equal(s.nodes.iframe.hasAttribute('src'),false);
+ assert.equal((s.nodes.iframe.contentWindow.location.href !== 'about:blank'),false);
 });
 test('missing runtime identity stops before touching invalid APIs; duplicate injection reuses one controller',async()=>{
  const s=setup();await settled();
@@ -309,4 +309,18 @@ test('scrollbar handoff preserves armed opening, but cannot open an idle panel',
  assert.equal(s.nodes['.panel'].classList.values.has('open'),true,'all handoff events preserve the first opening deadline');
  s.emit('document','pointermove',{clientX:400,movementX:-1});s.advance(800);
  assert.equal(s.nodes['.panel'].classList.values.has('open'),false,'leaving inward toward page content still closes');
+});
+
+
+test('lazy load and idle release replace iframe history instead of changing src',async()=>{
+ const s=setup();await settled();
+ for(let i=0;i<3;i++){
+  s.emit('document','pointermove',{clientX:999,movementX:1});s.advance(80);
+  assert.equal(s.nodes.iframe.contentWindow.location.href,'chrome-extension://test/src/sidepanel/index.html?overlay=1&theme=light');
+  s.context.document.visibilityState='hidden';s.emit('document','visibilitychange');
+  assert.equal(s.nodes.iframe.contentWindow.location.href,'about:blank');
+  s.context.document.visibilityState='visible';s.emit('document','visibilitychange');await settled();
+ }
+ assert.equal(s.nodes.iframe.navigations.length,6,'one replacing navigation per load/release');
+ assert.equal(s.nodes.iframe.hasAttribute('src'),false,'src must not introduce joint-history entries');
 });

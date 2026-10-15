@@ -21,7 +21,7 @@ jobs:
       - run: xvfb-run -a node tests/browser-tab-focus.mjs
       - run: ARC_PALETTE_SCREENSHOTS=1 xvfb-run -a node tests/browser-space-palette.mjs
       - run: python3 tests/browser-overlay.py --require-browser --regression-ref=0a7248abf3b70cc393ccfd091daecfd275e012cc
-      - run: xvfb-run -a node tests/browser-edge-hover.mjs --regression-ref=4c4372371cec936e65c804a043cb00a8878a7eca
+      - run: xvfb-run -a node tests/browser-edge-hover.mjs --regression-ref=4c4372371cec936e65c804a043cb00a8878a7eca --history-regression-ref=45750b31d79a4a40b1873e4f4b2305d7c6ae5d1e
       - run: node tests/browser-space-tabs.mjs
       - run: node tests/browser-command-search.mjs
       - run: xvfb-run -a node tests/browser-auto-pip-guide.mjs

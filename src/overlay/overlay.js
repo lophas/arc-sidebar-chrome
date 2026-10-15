@@ -1,7 +1,7 @@
 (() => {
   if (window.top !== window) return;
   const CONTROLLER_KEY = '__arcSidebarOverlayController';
-  const VERSION = 'edge-intent-v3';
+  const VERSION = 'edge-intent-v4';
   const previous = globalThis[CONTROLLER_KEY];
   if (previous?.version === VERSION && previous.active()) { previous.refresh(); return; }
   previous?.dispose();
@@ -209,6 +209,7 @@
     let cancelResize = null;
     let nativePanelOpen = false;
     let editorActive = false;
+    let sidebarLoaded = false;
     let currentWidth = DEFAULT_PANEL_WIDTH;
     let sidebarMode = OVERLAY_MODE;
     let edgeSide = 'right';
@@ -226,8 +227,18 @@
     const notifyVisibility = () => {
       try { iframe.contentWindow?.postMessage({ type: 'arc-sidebar-overlay-visibility', open: isOpen && sidebarMode === OVERLAY_MODE && !nativePanelOpen && document.visibilityState !== 'hidden' }, '*'); } catch {}
     };
+    // A late iframe.src assignment (or removing it to unload) adds a child-frame
+    // entry to the tab's joint history. Back/forward would then toggle the
+    // sidebar between its UI and about:blank instead of navigating the page.
     const ensureSidebarLoaded = () => {
-      if (!iframe.hasAttribute('src')) iframe.src = sidebarUrl.href;
+      if (sidebarLoaded) return;
+      iframe.contentWindow.location.replace(sidebarUrl.href);
+      sidebarLoaded = true;
+    };
+    const releaseSidebar = () => {
+      if (!sidebarLoaded) return;
+      iframe.contentWindow.location.replace('about:blank');
+      sidebarLoaded = false;
     };
     listen(iframe, 'load', () => { sendTheme(); notifyVisibility(); });
     listen(themeMedia, 'change', sendTheme);
@@ -330,7 +341,7 @@
 
     const setEditorActive = open => {
       // A stale editor message cannot create an open panel by itself.
-      editorActive = Boolean(open) && isOpen && iframe.hasAttribute('src');
+      editorActive = Boolean(open) && isOpen && sidebarLoaded;
       if (editorActive) {
         cancelClose();
         openPanel();
@@ -445,6 +456,7 @@
         // Reconnecting an iframe creates a new browsing context; discard stale
         // editor/resize locks so the edge cannot stay disabled indefinitely.
         editorActive = false;
+        sidebarLoaded = false;
         isResizing = false;
         panel.classList.remove('resizing');
         resizeHandle.classList.remove('resizing');
@@ -479,7 +491,7 @@
       rootObserver.disconnect();
       documentObserver.disconnect();
       hostObserver.disconnect();
-      iframe.removeAttribute('src');
+      releaseSidebar();
       host.remove?.();
     };
     const resume = () => {
@@ -509,7 +521,7 @@
         cancelResize?.();
         forceClosePanel();
         // Keep unsaved editor contents, but never its visible/open state.
-        if (!editorActive) iframe.removeAttribute('src');
+        if (!editorActive) releaseSidebar();
       }
     });
     // Capture fallback also works when a webpage's own overlay covers the edge.
