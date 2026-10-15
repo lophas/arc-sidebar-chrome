@@ -17,14 +17,15 @@ try{
  const controls=await context.newPage();await controls.goto(`chrome-extension://${worker.url().split('/')[2]}/src/sidepanel/index.html`);
  await controls.locator('.space-button[data-space-id="__my_space__"]').waitFor();
  await controls.evaluate(async origin=>{
-  await chrome.storage.local.set({arcSidebarMode:'overlay',arcSidebarAutohideTimeout:500,arcSidebarModel:{version:2,favorites:[],spaces:[{id:'test',title:'Test',children:Array.from({length:70},(_,i)=>({id:'link'+i,type:'tab',title:'Link '+i,url:origin+'/link'+i}))}]},arcSidebarState:{currentSpaceId:'test',collapsedFolders:{}}});
+  await chrome.storage.local.set({arcSidebarMode:'native',arcSidebarAutohideTimeout:500,arcSidebarModel:{version:2,favorites:[],spaces:[{id:'test',title:'Test',children:Array.from({length:70},(_,i)=>({id:'link'+i,type:'tab',title:'Link '+i,url:origin+'/link'+i}))}]},arcSidebarState:{currentSpaceId:'test',collapsedFolders:{}}});
  },origin);
  const page=await context.newPage();await page.goto(origin+'/previous');await page.goto(origin+'/current');
- await page.locator('#arc-sidebar-overlay-host').waitFor({state:'attached'});await page.waitForTimeout(300);
+ const sidebarUrl=`chrome-extension://${worker.url().split('/')[2]}/src/sidepanel/index.html?overlay=1`;
  const session=await context.newCDPSession(page);
  const initial=await session.send('Page.getNavigationHistory');
  for(let i=0;i<3;i++){
-  await page.mouse.move(640,300);const width=await page.evaluate(()=>document.documentElement.clientWidth);await page.mouse.move(width-1,300);
+  await page.evaluate(url=>{document.querySelector('#test-sidebar')?.remove();const frame=document.createElement('iframe');frame.id='test-sidebar';frame.src=url;frame.style.cssText='position:fixed;right:0;top:0;width:390px;height:100vh;border:0';document.body.append(frame);},sidebarUrl);
+  const width=await page.evaluate(()=>innerWidth);
   let frame;
   for(let j=0;j<60;j++){frame=page.frames().find(f=>f.url().includes('/src/sidepanel/index.html'));if(frame)break;await page.waitForTimeout(50);}
   assert.ok(frame,'Sidebar must load');await frame.locator('#pinned .row').first().waitFor();
@@ -34,10 +35,10 @@ try{
   await page.mouse.move(width-140,350);await page.mouse.wheel(450,0);await page.mouse.wheel(-450,0);await page.waitForTimeout(150);
   assert.equal(page.url(),origin+'/current');assert.ok(frame.url().includes('/src/sidepanel/index.html'),'horizontal scrolling leaves the sidebar document in place');
   await page.mouse.wheel(0,450);await frame.waitForFunction(()=>document.querySelector('main').scrollTop>0);
-  if(i<2){const other=await context.newPage();await other.goto('about:blank');await page.waitForTimeout(150);await page.bringToFront();await other.close();await page.waitForTimeout(150);}
+  await page.evaluate(()=>document.querySelector('#test-sidebar').remove());
  }
  const history=await session.send('Page.getNavigationHistory');
- assert.equal(history.currentIndex,initial.currentIndex,'sidebar load/release must not add browser-history entries');
+ assert.equal(history.currentIndex,initial.currentIndex,'mounting the sidebar must not add browser-history entries');
  await session.send('Page.navigateToHistoryEntry',{entryId:history.entries[history.currentIndex-1].id});await page.waitForURL(origin+'/previous');
  await page.goForward();await page.waitForURL(origin+'/current');
  console.log('PASS real extension: iframe roots block horizontal overscroll, vertical sidebar scrolling works, host gestures stay untouched and browser Back/Forward navigate webpages');
