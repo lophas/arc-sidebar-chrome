@@ -68,7 +68,8 @@ async function historyTraversal(code, expectBug = false) {
   // Let the initial empty iframe finish before the first lazy navigation.
   await page.waitForTimeout(250);
   for (let i = 0; i < 3; i++) {
-    await page.mouse.move(640, 300); await page.mouse.move(1255, 300);
+    const edge = await page.evaluate(() => { const r = arcTestShadow.querySelector('.edge').getBoundingClientRect(); return (r.left + r.right) / 2; });
+    await page.mouse.move(640, 300); await page.mouse.move(edge, 300);
     await page.waitForFunction(() => arcTestShadow.querySelector('.panel').classList.contains('open'));
     await page.waitForFunction(() => Array.from(frames).length === 1);
     const frame = page.frames().find(frame => frame.url().includes('/src/sidepanel/index.html'));
