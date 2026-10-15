@@ -73,20 +73,32 @@ try {
   const extension=`chrome-extension://${worker.url().split('/')[2]}`;
   const controls=await context.newPage();await controls.goto(extension+'/src/options/index.html');for(const page of context.pages())if(page!==controls&&page.url()==='about:blank')await page.close();
   await controls.evaluate(async model=>{await chrome.storage.local.set({arcSidebarModel:model,arcSidebarState:{currentSpaceId:'work',collapsedFolders:{resources:true}},arcSidebarMode:'native',arcSidebarAutohideTimeout:800,arcSidebarOverlayWidth:390,arcSidebarAutoPipEnabled:true});},model);
-  const live=await controls.evaluate(async()=>{
-    const windowId=(await chrome.windows.getCurrent()).id,ids={};
-    for(const itemId of ['mail','calendar','weekend','article','dashboard','brief']){const result=await chrome.runtime.sendMessage({type:'arc-sidebar-tab-action',action:'open',itemId,windowId});if(!result.ok)throw Error(result.error);ids[itemId]=result.values;}
-    let groupId=-1;for(let i=0;i<100;i++){groupId=(await chrome.tabs.get(ids.brief)).groupId;if(groupId>=0)break;await new Promise(done=>setTimeout(done,50));}if(groupId<0)throw Error('Space group did not initialize');
-    ids.review=(await chrome.tabs.create({url:'https://github.com/lophas/arc-sidebar-chrome/pull/42',active:false})).id;await chrome.tabs.group({tabIds:[ids.review],groupId});
-    ids.notes=(await chrome.tabs.create({url:'https://notes.example.test/tomorrow',active:false})).id;
-    ids.nativePin=(await chrome.tabs.create({url:'https://calendar.google.com/pinned',pinned:true,active:false})).id;
-    await chrome.storage.local.set({arcSidebarState:{currentSpaceId:'work',collapsedFolders:{resources:true}}});return {...ids,windowId};
-  });
-  // Extension-created tabs can start navigating before Playwright attaches.
-  // Populate the website fixtures after targets exist; the sidebar stays real.
-  for(const [name,id]of Object.entries(live)){const url=targets.get(name);if(!url)continue;const current=await controls.evaluate(async id=>(await chrome.tabs.get(id)).url,id);const page=context.pages().find(page=>page.url()===current);assert.ok(page,'Loaded browser target for '+name);await page.route('**/*',route=>route.fulfill({status:200,contentType:'text/html',body:website(route.request().url())}));await page.goto(url,{waitUntil:'domcontentloaded'});await page.waitForFunction(title=>document.title===title,titles.get(url));}
-  const briefUrl=await controls.evaluate(async id=>(await chrome.tabs.get(id)).url,live.brief);
-  let brief;for(let i=0;i<100;i++){brief=context.pages().find(page=>page.url()===briefUrl);if(brief)break;await new Promise(done=>setTimeout(done,50));}assert.ok(brief,'Project brief tab must load');
+  const windowId=await controls.evaluate(async()=>(await chrome.windows.getCurrent()).id);
+  const fixturePages=new Map();
+  const createTab=async(name,url)=>{
+    const page=await context.newPage();
+    await page.route('**/*',route=>route.fulfill({status:200,contentType:'text/html',body:website(route.request().url())}));
+    await page.goto(url,{waitUntil:'domcontentloaded'});
+    const id=await controls.evaluate(async({url,windowId})=>{const tab=(await chrome.tabs.query({url}))[0];if(!tab)throw Error('Missing browser tab: '+url);if(tab.windowId!==windowId)await chrome.tabs.move(tab.id,{windowId,index:-1});return tab.id;},{url,windowId});
+    fixturePages.set(name,page);return id;
+  };
+  const live={windowId};
+  for(const name of ['mail','calendar','weekend','article','dashboard','brief'])live[name]=await createTab(name,targets.get(name));
+  await controls.evaluate(async live=>{
+    const bindings=Object.fromEntries(Object.entries(live).filter(([key])=>key!=='windowId'));
+    await chrome.storage.session.set({arcSidebarBindings:bindings});
+    for(const itemId of Object.keys(bindings)){const result=await chrome.runtime.sendMessage({type:'arc-sidebar-tab-action',action:'open',itemId,windowId:live.windowId});if(!result.ok)throw Error(result.error);}
+  },live);
+  live.review=await createTab('review',targets.get('review'));
+  live.notes=await createTab('notes',targets.get('notes'));
+  live.nativePin=await createTab('nativePin',targets.get('nativePin'));
+  await controls.evaluate(async live=>{
+    let groupId=-1;for(let i=0;i<100;i++){groupId=(await chrome.tabs.get(live.brief)).groupId;if(groupId>=0)break;await new Promise(done=>setTimeout(done,50));}if(groupId<0)throw Error('Space group did not initialize');
+    await chrome.tabs.group({tabIds:[live.review],groupId});
+    await chrome.tabs.update(live.nativePin,{pinned:true});
+    await chrome.storage.local.set({arcSidebarState:{currentSpaceId:'work',collapsedFolders:{resources:true}}});
+  },live);
+  const brief=fixturePages.get('brief');assert.ok(brief,'Project brief tab must load');
   await controls.evaluate(windowId=>{const button=document.createElement('button');button.id='captureOpenSidebar';button.textContent='Open sidebar';button.onclick=()=>chrome.sidePanel.open({windowId});document.body.prepend(button);},live.windowId);
   await controls.locator('#captureOpenSidebar').click();await brief.bringToFront();await brief.waitForTimeout(1200);
   const desktop=name=>execFileSync('import',['-window','root',join(output,name)]);
