@@ -142,7 +142,9 @@ Additional tabs opened during your work remain part of the Space and appear belo
 Use the icon to the left of search to switch between **Autohide** and **Fixed**. The current tab applies the change immediately; other open tabs apply it when you next focus them.
 
 - **Autohide**, the default, floats over the page when the pointer reaches the sidebar edge. It stays open over the sidebar and the adjacent scrollbar, then closes after the selected delay when you leave that area. Returning to a tab keeps it closed until a fresh edge hover. Click outside the sidebar to hide it immediately, including while an editor is open; unsaved fields are kept until you return. Dragging outside does not reopen it. Drag its resize handle to adjust the width.
-- **Fixed** opens Chrome’s native side panel alongside the page through the extension’s toolbar button. On Chrome settings or browser error pages, use that toolbar button to open the fixed sidebar.
+- **Fixed** opens Chrome’s native side panel alongside the page through the extension’s toolbar button. On Chrome settings, Chrome Web Store or browser error pages, use that toolbar button to open the fixed sidebar.
+
+In Autohide mode, a yellow **!** on the toolbar icon marks pages where autohide is unavailable. Hover over the icon for guidance, or click it to open the fixed sidebar. The indicator clears in Fixed mode.
 
 Both modes follow **Chrome Settings → Appearance → Side panel position**. Each open tab picks up a position change when you next focus it. Each Space and the Open tabs view remember their own scroll position.
 

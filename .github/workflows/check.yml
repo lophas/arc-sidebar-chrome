@@ -17,6 +17,7 @@ jobs:
       - run: python3 -m unittest discover -s tests -p 'release_automation_test.py'
       - run: npm install --no-save --package-lock=false --ignore-scripts playwright-core@1.56.1
       - run: npx playwright-core install chromium --no-shell
+      - run: xvfb-run -a node tests/browser-autohide-indicator.mjs
       - run: xvfb-run -a node tests/browser-link-title.mjs
       - run: xvfb-run -a node tests/browser-tab-focus.mjs
       - run: xvfb-run -a node tests/browser-sidebar-history.mjs

@@ -1,10 +1,12 @@
 import { EDGE_TRIGGER_KEY, edgeTrigger } from '../shared/edge-trigger.js';
 import { sidebarPreferences } from '../shared/sidebar-preferences.js';
+import { canAutohideUrl } from '../shared/autohide-availability.js';
+import { markAutohideBlocked } from './autohide-indicator.js';
 const VERSION = 'edge-intent-v4';
 const pending = new Map();
 async function applyToTab(tabId) {
   const tab = await chrome.tabs.get(tabId);
-  if (!/^https?:\/\//i.test(tab.pendingUrl || tab.url || '')) return;
+  if (!canAutohideUrl(tab.pendingUrl || tab.url || '')) return;
   const stored = await chrome.storage.local.get(['arcSidebarMode', 'arcSidebarAutohideTimeout', EDGE_TRIGGER_KEY]);
   const preferences = { ...sidebarPreferences(stored), trigger: edgeTrigger(stored[EDGE_TRIGGER_KEY]) };
   const message = { type: 'arc-sidebar-apply-mode', ...preferences };
@@ -25,7 +27,7 @@ async function applyToTab(tabId) {
 export function syncFocusedSidebar(tabId) {
   if (tabId == null) return Promise.resolve();
   const previous = pending.get(tabId) || Promise.resolve();
-  const operation = previous.then(() => applyToTab(tabId)).catch(() => {});
+  const operation = previous.then(() => applyToTab(tabId)).catch(error => markAutohideBlocked(tabId, error));
   pending.set(tabId, operation);
   operation.finally(() => { if (pending.get(tabId) === operation) pending.delete(tabId); });
   return operation;
