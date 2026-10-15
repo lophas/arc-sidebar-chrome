@@ -42,7 +42,19 @@ async function metric(page,gc=false){
 async function launch(mode){
  const profile=await fs.mkdtemp(path.join(os.tmpdir(),'arc-audit-'));
  const extension=mode!=='baseline';
- const context=await chromium.launchPersistentContext(profile,{channel:'chromium',headless:false,viewport:{width:1280,height:800},ignoreDefaultArgs:extension?['--disable-extensions']:[],args:['--no-sandbox',...(extension?[`--disable-extensions-except=${process.cwd()}`,`--load-extension=${process.cwd()}`]:[])]});
+ let extensionDir=process.cwd();
+ if(mode==='deferred-frame'){
+  extensionDir=await fs.mkdtemp(path.join(os.tmpdir(),'arc-audit-variant-'));
+  await fs.cp('src',path.join(extensionDir,'src'),{recursive:true});await fs.copyFile('manifest.json',path.join(extensionDir,'manifest.json'));
+  const file=path.join(extensionDir,'src/overlay/overlay.js');let code=await fs.readFile(file,'utf8');
+  const tag='<iframe title="Arc Side of the Chrome" data-sidebar-src="${sidebarUrl.href}"></iframe>';
+  assert.ok(code.includes(tag),'Audited iframe template must match');
+  code=code.replace(tag,'').replace("const iframe = shadow.querySelector('iframe');", "const iframe = document.createElement('iframe'); iframe.title = 'Arc Side of the Chrome';");
+  code=code.replace("if (!iframe.hasAttribute('src')) iframe.src = sidebarUrl.href;", "if (!iframe.hasAttribute('src')) iframe.src = sidebarUrl.href; if (!iframe.isConnected) panel.append(iframe);");
+  code=code.replace("if (!editorActive && !preservedEditor) iframe.removeAttribute('src');", "if (!editorActive && !preservedEditor) { iframe.removeAttribute('src'); iframe.remove(); }");
+  await fs.writeFile(file,code);
+ }
+ const context=await chromium.launchPersistentContext(profile,{channel:'chromium',headless:false,viewport:{width:1280,height:800},ignoreDefaultArgs:extension?['--disable-extensions']:[],args:['--no-sandbox',...(extension?[`--disable-extensions-except=${extensionDir}`,`--load-extension=${extensionDir}`]:[])]});
  await context.route(origin+'/**',route=>{const heavy=route.request().url().includes('/heavy');return route.fulfill({contentType:'text/html',body:'<!doctype html><title>Audit fixture</title><style>body{margin:0}#items{width:600px}span{display:block;height:2px}</style><main id="items">'+Array.from({length:heavy?20000:100},(_,i)=>'<span>Row '+i+'</span>').join('')+'</main>'});});
  let control,extensionId,worker;
  if(extension){
@@ -51,7 +63,7 @@ async function launch(mode){
   await control.evaluate(async({mode,model})=>{await chrome.storage.sync.set({arcSidebarSyncEnabled:false});await chrome.storage.local.set({arcSidebarMode:mode==='fixed-off'?'native':'overlay',arcSidebarAutoPipEnabled:mode!=='fixed-off',arcSidebarModel:model,arcSidebarState:{currentSpaceId:'s0',collapsedFolders:{}}});},{mode,model:model(200)});
   await control.close();
  }
- return{context,profile,seedPage:context.pages().find(p=>p.url()==='about:blank'),extensionId,worker,close:async()=>{await context.close();await fs.rm(profile,{recursive:true,force:true});}};
+ return{context,profile,seedPage:context.pages().find(p=>p.url()==='about:blank'),extensionId,worker,close:async()=>{await context.close();await fs.rm(profile,{recursive:true,force:true});if(extensionDir!==process.cwd())await fs.rm(extensionDir,{recursive:true,force:true});}};
 }
 async function memoryRun(mode,rep){
  const f=await launch(mode),pages=[],run={mode,rep,stages:[]};
@@ -110,7 +122,8 @@ async function eventRun(){
   await fs.writeFile(output,JSON.stringify(results,null,2));console.log('AUDIT_EVENTS '+JSON.stringify(results.events));
  }finally{await f.close();}
 }
-if(process.env.AUDIT_SCOPE==='lifecycle')await memoryRun('autohide',1);
+if(process.env.AUDIT_SCOPE==='ablation'){for(const rep of [3,4])for(const mode of ['autohide','deferred-frame'])await memoryRun(mode,rep);}
+else if(process.env.AUDIT_SCOPE==='lifecycle')await memoryRun('autohide',1);
 else{
 for(let rep=1;rep<=2;rep++)for(const mode of ['baseline','autohide'])await memoryRun(mode,rep);
 await memoryRun('fixed-off',1);
