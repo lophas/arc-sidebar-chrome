@@ -2,8 +2,14 @@ name: Footprint audit
 on:
   push:
     branches: ['audit/footprint-*']
-    paths: ['tools/footprint-audit.mjs', '.github/workflows/footprint-audit.yml']
+    paths: ['tools/footprint-audit.mjs']
   workflow_dispatch:
+    inputs:
+      scope:
+        description: 'Measurement scope'
+        type: choice
+        default: full
+        options: [full, lifecycle, ablation]
 permissions:
   contents: read
 jobs:
@@ -19,7 +25,7 @@ jobs:
       - run: npx playwright-core install chromium --no-shell
       - run: xvfb-run -a node tools/footprint-audit.mjs
         env:
-          AUDIT_SCOPE: ablation
+          AUDIT_SCOPE: ${{ inputs.scope || 'full' }}
       - uses: actions/upload-artifact@v4
         if: always()
         with:

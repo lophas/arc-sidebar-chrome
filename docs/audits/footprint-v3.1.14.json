@@ -1,0 +1,953 @@
+{
+  "productionSha": "593f731f85e5f4b4fc66f7888b814b2ebbd53b4f",
+  "productionTag": "v3.1.14",
+  "fullRun": 38745202000,
+  "lifecycleRun": 38745835979,
+  "ablationRun": 38746215572,
+  "full": {
+    "sourceSha": "31c4cabb480944bb227c3f979d753d57c299b3e3",
+    "extensionVersion": "3.1.14",
+    "platform": "linux",
+    "cpu": "AMD EPYC 7763 64-Core Processor",
+    "logicalCpus": 4,
+    "totalMemory": 16766414848,
+    "runs": [
+      {
+        "mode": "baseline",
+        "rep": 1,
+        "stages": [
+          {
+            "tabs": 1,
+            "idle": {
+              "wallSeconds": 3.054144996,
+              "cpuSeconds": 0.06000000000000004,
+              "oneCorePercent": 1.9645432708198782
+            },
+            "pssBytes": 364344320,
+            "rssBytes": 872812544,
+            "processes": 8,
+            "activePageTarget": {
+              "heapBytes": 619424,
+              "nodes": 210,
+              "documents": 1,
+              "listeners": 0,
+              "scriptSeconds": 0,
+              "taskSeconds": 0.000012
+            },
+            "loadedSidebarFrames": 0
+          },
+          {
+            "tabs": 20,
+            "idle": {
+              "wallSeconds": 3.055677979,
+              "cpuSeconds": 0.030000000000000027,
+              "oneCorePercent": 0.9817788460097426
+            },
+            "pssBytes": 601635840,
+            "rssBytes": 3161968640,
+            "processes": 27,
+            "activePageTarget": {
+              "heapBytes": 619424,
+              "nodes": 210,
+              "documents": 1,
+              "listeners": 0,
+              "scriptSeconds": 0,
+              "taskSeconds": 0.000012
+            },
+            "loadedSidebarFrames": 0
+          },
+          {
+            "tabs": 50,
+            "idle": {
+              "wallSeconds": 3.071185011000001,
+              "cpuSeconds": 0.07000000000000005,
+              "oneCorePercent": 2.2792505091449216
+            },
+            "pssBytes": 956358656,
+            "rssBytes": 6743302144,
+            "processes": 57,
+            "activePageTarget": {
+              "heapBytes": 619424,
+              "nodes": 210,
+              "documents": 1,
+              "listeners": 0,
+              "scriptSeconds": 0,
+              "taskSeconds": 0.000012
+            },
+            "loadedSidebarFrames": 0
+          }
+        ]
+      },
+      {
+        "mode": "autohide",
+        "rep": 1,
+        "stages": [
+          {
+            "tabs": 1,
+            "idle": {
+              "wallSeconds": 3.0634468720000005,
+              "cpuSeconds": 0.07000000000000003,
+              "oneCorePercent": 2.2850078008468895
+            },
+            "pssBytes": 419805184,
+            "rssBytes": 1068879872,
+            "processes": 9,
+            "activePageTarget": {
+              "heapBytes": 1550948,
+              "nodes": 227,
+              "documents": 2,
+              "listeners": 30,
+              "scriptSeconds": 0,
+              "taskSeconds": 0.000011
+            },
+            "loadedSidebarFrames": 0
+          },
+          {
+            "tabs": 20,
+            "idle": {
+              "wallSeconds": 3.0705813290000044,
+              "cpuSeconds": 0.030000000000000013,
+              "oneCorePercent": 0.9770136917288593
+            },
+            "pssBytes": 713783296,
+            "rssBytes": 3679752192,
+            "processes": 28,
+            "activePageTarget": {
+              "heapBytes": 1550800,
+              "nodes": 227,
+              "documents": 2,
+              "listeners": 30,
+              "scriptSeconds": 0,
+              "taskSeconds": 0.000016
+            },
+            "loadedSidebarFrames": 0
+          },
+          {
+            "tabs": 50,
+            "idle": {
+              "wallSeconds": 3.070891034,
+              "cpuSeconds": 0.05000000000000003,
+              "oneCorePercent": 1.6281919301731897
+            },
+            "pssBytes": 1173841920,
+            "rssBytes": 7800889344,
+            "processes": 58,
+            "activePageTarget": {
+              "heapBytes": 1550800,
+              "nodes": 227,
+              "documents": 2,
+              "listeners": 30,
+              "scriptSeconds": 0,
+              "taskSeconds": 0.000014
+            },
+            "loadedSidebarFrames": 0
+          }
+        ],
+        "coldOpenMs": 310.7229539999971,
+        "openMemory": {
+          "pssBytes": 1213636608,
+          "rssBytes": 7861923840,
+          "processes": 58
+        },
+        "openSidebarHeap": {
+          "usedSize": 2267944,
+          "totalSize": 2920448,
+          "embedderHeapUsedSize": 1457408,
+          "backingStorageSize": 363182
+        },
+        "hiddenSameTabMemory": {
+          "pssBytes": 1206801408,
+          "rssBytes": 7857811456,
+          "processes": 58
+        },
+        "sidebarMeasurementError": "page.waitForFunction: Timeout 3000ms exceeded."
+      },
+      {
+        "mode": "baseline",
+        "rep": 2,
+        "stages": [
+          {
+            "tabs": 1,
+            "idle": {
+              "wallSeconds": 3.068182987,
+              "cpuSeconds": 0.040000000000000036,
+              "oneCorePercent": 1.3037032070603822
+            },
+            "pssBytes": 371159040,
+            "rssBytes": 884408320,
+            "processes": 8,
+            "activePageTarget": {
+              "heapBytes": 619424,
+              "nodes": 210,
+              "documents": 1,
+              "listeners": 0,
+              "scriptSeconds": 0,
+              "taskSeconds": 0.000014
+            },
+            "loadedSidebarFrames": 0
+          },
+          {
+            "tabs": 20,
+            "idle": {
+              "wallSeconds": 3.075741887999997,
+              "cpuSeconds": 0.040000000000000036,
+              "oneCorePercent": 1.300499243972974
+            },
+            "pssBytes": 605921280,
+            "rssBytes": 3162267648,
+            "processes": 27,
+            "activePageTarget": {
+              "heapBytes": 619424,
+              "nodes": 210,
+              "documents": 1,
+              "listeners": 0,
+              "scriptSeconds": 0,
+              "taskSeconds": 0.000011
+            },
+            "loadedSidebarFrames": 0
+          },
+          {
+            "tabs": 50,
+            "idle": {
+              "wallSeconds": 3.073874764,
+              "cpuSeconds": 0.08000000000000025,
+              "oneCorePercent": 2.602578378824292
+            },
+            "pssBytes": 961767424,
+            "rssBytes": 6734196736,
+            "processes": 57,
+            "activePageTarget": {
+              "heapBytes": 619424,
+              "nodes": 210,
+              "documents": 1,
+              "listeners": 0,
+              "scriptSeconds": 0,
+              "taskSeconds": 0.000009
+            },
+            "loadedSidebarFrames": 0
+          }
+        ]
+      },
+      {
+        "mode": "autohide",
+        "rep": 2,
+        "stages": [
+          {
+            "tabs": 1,
+            "idle": {
+              "wallSeconds": 3.062230933999992,
+              "cpuSeconds": 0.050000000000000044,
+              "oneCorePercent": 1.6327965159273052
+            },
+            "pssBytes": 421402624,
+            "rssBytes": 1072640000,
+            "processes": 9,
+            "activePageTarget": {
+              "heapBytes": 1551092,
+              "nodes": 227,
+              "documents": 2,
+              "listeners": 30,
+              "scriptSeconds": 0,
+              "taskSeconds": 0.00001
+            },
+            "loadedSidebarFrames": 0
+          },
+          {
+            "tabs": 20,
+            "idle": {
+              "wallSeconds": 3.0955122830000037,
+              "cpuSeconds": 0.030000000000000013,
+              "oneCorePercent": 0.9691449187507546
+            },
+            "pssBytes": 757041152,
+            "rssBytes": 3731648512,
+            "processes": 28,
+            "activePageTarget": {
+              "heapBytes": 1551744,
+              "nodes": 227,
+              "documents": 2,
+              "listeners": 30,
+              "scriptSeconds": 0,
+              "taskSeconds": 0.000014
+            },
+            "loadedSidebarFrames": 0
+          },
+          {
+            "tabs": 50,
+            "idle": {
+              "wallSeconds": 3.080840976000007,
+              "cpuSeconds": 0.04999999999999914,
+              "oneCorePercent": 1.6229334908715856
+            },
+            "pssBytes": 1268282368,
+            "rssBytes": 7886434304,
+            "processes": 58,
+            "activePageTarget": {
+              "heapBytes": 1551744,
+              "nodes": 227,
+              "documents": 2,
+              "listeners": 30,
+              "scriptSeconds": 0,
+              "taskSeconds": 0.000056
+            },
+            "loadedSidebarFrames": 0
+          }
+        ]
+      },
+      {
+        "mode": "fixed-off",
+        "rep": 1,
+        "stages": [
+          {
+            "tabs": 1,
+            "idle": {
+              "wallSeconds": 3.083033249,
+              "cpuSeconds": 0.06000000000000004,
+              "oneCorePercent": 1.9461353528853893
+            },
+            "pssBytes": 415424512,
+            "rssBytes": 1059303424,
+            "processes": 9,
+            "activePageTarget": {
+              "heapBytes": 876372,
+              "nodes": 210,
+              "documents": 1,
+              "listeners": 6,
+              "scriptSeconds": 0,
+              "taskSeconds": 0.000011
+            },
+            "loadedSidebarFrames": 0
+          },
+          {
+            "tabs": 20,
+            "idle": {
+              "wallSeconds": 3.0681296100000037,
+              "cpuSeconds": 0.04000000000000023,
+              "oneCorePercent": 1.3037258879034181
+            },
+            "pssBytes": 667783168,
+            "rssBytes": 3515617280,
+            "processes": 28,
+            "activePageTarget": {
+              "heapBytes": 875940,
+              "nodes": 210,
+              "documents": 1,
+              "listeners": 6,
+              "scriptSeconds": 0,
+              "taskSeconds": 0.000012
+            },
+            "loadedSidebarFrames": 0
+          },
+          {
+            "tabs": 50,
+            "idle": {
+              "wallSeconds": 3.0758620479999954,
+              "cpuSeconds": 0.07999999999999985,
+              "oneCorePercent": 2.6008968787146323
+            },
+            "pssBytes": 1062712320,
+            "rssBytes": 7388151808,
+            "processes": 58,
+            "activePageTarget": {
+              "heapBytes": 876372,
+              "nodes": 210,
+              "documents": 1,
+              "listeners": 6,
+              "scriptSeconds": 0,
+              "taskSeconds": 0.000012
+            },
+            "loadedSidebarFrames": 0
+          }
+        ]
+      }
+    ],
+    "events": [
+      {
+        "name": "idle20tabs",
+        "cpu": {
+          "wallSeconds": 5.082890507000004,
+          "cpuSeconds": 0.019999999999999574,
+          "oneCorePercent": 0.3934769000523654
+        },
+        "api": {
+          "tabs.sendMessage": 0,
+          "tabs.get": 0,
+          "script.executeScript": 0,
+          "local.get": 0,
+          "session.get": 0,
+          "groups.query": 0,
+          "tabs.query": 0
+        },
+        "events": {
+          "tabActivated": 0
+        }
+      },
+      {
+        "name": "30switches-heavy-light",
+        "cpu": {
+          "wallSeconds": 3.7079818139999987,
+          "cpuSeconds": 1.7000000000000004,
+          "oneCorePercent": 45.84704254970763
+        },
+        "api": {
+          "tabs.sendMessage": 120,
+          "tabs.get": 180,
+          "script.executeScript": 180,
+          "local.get": 150,
+          "session.get": 60,
+          "groups.query": 30,
+          "tabs.query": 30
+        },
+        "events": {
+          "tabActivated": 30
+        }
+      },
+      {
+        "name": "30backgroundTitleChanges",
+        "cpu": {
+          "wallSeconds": 1.8281567450000002,
+          "cpuSeconds": 0.18999999999999995,
+          "oneCorePercent": 10.392981921252048
+        },
+        "api": {
+          "tabs.sendMessage": 0,
+          "tabs.get": 0,
+          "script.executeScript": 0,
+          "local.get": 60,
+          "session.get": 30,
+          "groups.query": 0,
+          "tabs.query": 30
+        },
+        "events": {
+          "tabActivated": 0,
+          "tabUpdated": 30
+        }
+      },
+      {
+        "name": "30switches-pip-disabled",
+        "cpu": {
+          "wallSeconds": 3.7325455689999942,
+          "cpuSeconds": 1.45,
+          "oneCorePercent": 38.847482855741184
+        },
+        "api": {
+          "tabs.sendMessage": 120,
+          "tabs.get": 180,
+          "script.executeScript": 120,
+          "local.get": 150,
+          "session.get": 60,
+          "groups.query": 30,
+          "tabs.query": 30
+        },
+        "events": {
+          "tabActivated": 30,
+          "tabUpdated": 0,
+          "storageChanged": 0
+        }
+      },
+      {
+        "name": "media-scan-microbenchmark",
+        "domNodes": 107,
+        "times": [
+          0.10000000000582077,
+          0,
+          0,
+          0.10000000000582077,
+          0,
+          0.10000000000582077,
+          0,
+          0,
+          0,
+          0,
+          0.09999999997671694,
+          0,
+          0,
+          0,
+          0.10000000000582077,
+          0,
+          0,
+          0.10000000000582077,
+          0.10000000000582077,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      {
+        "name": "media-scan-microbenchmark",
+        "domNodes": 20007,
+        "times": [
+          7.699999999982538,
+          6,
+          5.900000000023283,
+          5,
+          5.2999999999883585,
+          5.5,
+          5.5,
+          4.600000000005821,
+          6.699999999982538,
+          5.400000000023283,
+          5.2999999999883585,
+          5.399999999994179,
+          5,
+          5.2000000000116415,
+          5.199999999982538,
+          5.5,
+          4.600000000005821,
+          5.800000000017462,
+          4.7999999999883585,
+          5.2999999999883585,
+          5,
+          5.100000000005821,
+          5.100000000005821,
+          4.899999999994179,
+          5.300000000017462
+        ]
+      }
+    ],
+    "browserVersion": "141.0.7390.37"
+  },
+  "lifecycle": {
+    "sourceSha": "ac873df19eecc54fd30bc6855871030bcbc0a07b",
+    "extensionVersion": "3.1.14",
+    "platform": "linux",
+    "cpu": "AMD EPYC 7763 64-Core Processor",
+    "logicalCpus": 4,
+    "totalMemory": 16770744320,
+    "runs": [
+      {
+        "mode": "autohide",
+        "rep": 1,
+        "stages": [
+          {
+            "tabs": 1,
+            "idle": {
+              "wallSeconds": 3.0592910989999993,
+              "cpuSeconds": 0,
+              "oneCorePercent": 0
+            },
+            "pssBytes": 420859904,
+            "rssBytes": 1076867072,
+            "processes": 9,
+            "activePageTarget": {
+              "heapBytes": 1550780,
+              "nodes": 227,
+              "documents": 2,
+              "listeners": 30,
+              "scriptSeconds": 0,
+              "taskSeconds": 0.000013
+            },
+            "loadedSidebarFrames": 0
+          },
+          {
+            "tabs": 20,
+            "idle": {
+              "wallSeconds": 3.050598193,
+              "cpuSeconds": 0.08000000000000007,
+              "oneCorePercent": 2.622436484213838
+            },
+            "pssBytes": 749361152,
+            "rssBytes": 3728736256,
+            "processes": 28,
+            "activePageTarget": {
+              "heapBytes": 1550800,
+              "nodes": 227,
+              "documents": 2,
+              "listeners": 30,
+              "scriptSeconds": 0,
+              "taskSeconds": 0.000022
+            },
+            "loadedSidebarFrames": 0
+          },
+          {
+            "tabs": 50,
+            "idle": {
+              "wallSeconds": 3.0694170889999985,
+              "cpuSeconds": 0.040000000000000036,
+              "oneCorePercent": 1.3031790349819108
+            },
+            "pssBytes": 1262417920,
+            "rssBytes": 7913553920,
+            "processes": 58,
+            "activePageTarget": {
+              "heapBytes": 1550800,
+              "nodes": 227,
+              "documents": 2,
+              "listeners": 30,
+              "scriptSeconds": 0,
+              "taskSeconds": 0.000011
+            },
+            "loadedSidebarFrames": 0
+          }
+        ],
+        "coldOpenMs": 280.0666060000003,
+        "openMemory": {
+          "pssBytes": 1300662272,
+          "rssBytes": 7970598912,
+          "processes": 58
+        },
+        "openSidebarHeap": {
+          "usedSize": 2267948,
+          "totalSize": 2920448,
+          "embedderHeapUsedSize": 1424128,
+          "backingStorageSize": 363182
+        },
+        "hiddenSameTabMemory": {
+          "pssBytes": 1293113344,
+          "rssBytes": 7965732864,
+          "processes": 58
+        },
+        "cyclesCpu": {
+          "wallSeconds": 24.759264105000003,
+          "cpuSeconds": 12.139999999999947,
+          "oneCorePercent": 49.03215195942895
+        },
+        "warmOpenMs": [
+          175.08884699999908,
+          167.7732939999987,
+          201.80799299999853,
+          169.12854099999822,
+          149.51419499999975,
+          204.33151900000303,
+          170.8044660000014,
+          160.64631999999983,
+          185.0801530000026,
+          186.10236200000145,
+          188.01758400000108,
+          160.10612100000435,
+          169.6920669999963,
+          162.85203300000285,
+          163.40443499999674,
+          187.17846600000485,
+          178.07093100000202,
+          161.03324799999973,
+          189.64797499999986,
+          176.37188400000014,
+          164.3207229999971,
+          171.4003209999937,
+          163.93534499999805,
+          197.28115599999728,
+          177.83272399999987,
+          185.5582560000039,
+          177.19440700000268,
+          201.1455700000006,
+          153.2670469999939,
+          182.1066370000044,
+          165.74431999999797,
+          173.95983600000181,
+          166.19621299999562,
+          172.33012899999449,
+          180.5142979999946,
+          179.00279600000067,
+          172.4180370000031,
+          175.52221700000518,
+          171.7698639999944,
+          169.62274099999922
+        ],
+        "sidebarHeapAfter40Cycles": {
+          "usedSize": 2549900,
+          "totalSize": 3182592,
+          "embedderHeapUsedSize": 2283784,
+          "backingStorageSize": 362995
+        },
+        "sidebarDomAfter40Cycles": {
+          "documents": 2,
+          "nodes": 536,
+          "jsEventListeners": 780
+        },
+        "afterTabSwitchMemory": {
+          "pssBytes": 1261745152,
+          "rssBytes": 8134938624,
+          "processes": 58
+        },
+        "framesAfterSwitch": 1,
+        "searchOpenMemory": {
+          "pssBytes": 1275947008,
+          "rssBytes": 8153280512,
+          "processes": 58
+        }
+      }
+    ],
+    "events": [],
+    "browserVersion": "141.0.7390.37"
+  },
+  "ablation": {
+    "sourceSha": "4059ad9a815a05e52fd65976cd639241ea89bd45",
+    "extensionVersion": "3.1.14",
+    "platform": "linux",
+    "cpu": "AMD EPYC 9V45 96-Core Processor",
+    "logicalCpus": 4,
+    "totalMemory": 16766414848,
+    "runs": [
+      {
+        "mode": "autohide",
+        "rep": 3,
+        "stages": [
+          {
+            "tabs": 1,
+            "idle": {
+              "wallSeconds": 3.036088781999999,
+              "cpuSeconds": 0.030000000000000027,
+              "oneCorePercent": 0.9881133970080338
+            },
+            "pssBytes": 416080896,
+            "rssBytes": 1064329216,
+            "processes": 9,
+            "activePageTarget": {
+              "heapBytes": 1551744,
+              "nodes": 227,
+              "documents": 2,
+              "listeners": 30,
+              "scriptSeconds": 0,
+              "taskSeconds": 0.000009
+            },
+            "loadedSidebarFrames": 0
+          },
+          {
+            "tabs": 20,
+            "idle": {
+              "wallSeconds": 3.027148794000001,
+              "cpuSeconds": 0.010000000000000009,
+              "oneCorePercent": 0.33034385425059504
+            },
+            "pssBytes": 740758528,
+            "rssBytes": 3788582912,
+            "processes": 28,
+            "activePageTarget": {
+              "heapBytes": 1551576,
+              "nodes": 227,
+              "documents": 2,
+              "listeners": 30,
+              "scriptSeconds": 0,
+              "taskSeconds": 0.000009
+            },
+            "loadedSidebarFrames": 0
+          },
+          {
+            "tabs": 50,
+            "idle": {
+              "wallSeconds": 3.032475140999999,
+              "cpuSeconds": 0.05000000000000003,
+              "oneCorePercent": 1.6488181328837492
+            },
+            "pssBytes": 1211064320,
+            "rssBytes": 7968174080,
+            "processes": 58,
+            "activePageTarget": {
+              "heapBytes": 1550632,
+              "nodes": 227,
+              "documents": 2,
+              "listeners": 30,
+              "scriptSeconds": 0,
+              "taskSeconds": 0.000009
+            },
+            "loadedSidebarFrames": 0
+          }
+        ]
+      },
+      {
+        "mode": "deferred-frame",
+        "rep": 3,
+        "stages": [
+          {
+            "tabs": 1,
+            "idle": {
+              "wallSeconds": 3.027155953999998,
+              "cpuSeconds": 0.049999999999999975,
+              "oneCorePercent": 1.6517153645133937
+            },
+            "pssBytes": 416190464,
+            "rssBytes": 1064333312,
+            "processes": 9,
+            "activePageTarget": {
+              "heapBytes": 986292,
+              "nodes": 223,
+              "documents": 1,
+              "listeners": 30,
+              "scriptSeconds": 0,
+              "taskSeconds": 0.00001
+            },
+            "loadedSidebarFrames": 0
+          },
+          {
+            "tabs": 20,
+            "idle": {
+              "wallSeconds": 3.025585138999999,
+              "cpuSeconds": 0.010000000000000009,
+              "oneCorePercent": 0.33051457951387075
+            },
+            "pssBytes": 706910208,
+            "rssBytes": 3704995840,
+            "processes": 28,
+            "activePageTarget": {
+              "heapBytes": 1003764,
+              "nodes": 223,
+              "documents": 1,
+              "listeners": 30,
+              "scriptSeconds": 0,
+              "taskSeconds": 0.000007
+            },
+            "loadedSidebarFrames": 0
+          },
+          {
+            "tabs": 50,
+            "idle": {
+              "wallSeconds": 3.037745590000006,
+              "cpuSeconds": 0.07000000000000002,
+              "oneCorePercent": 2.304340436882994
+            },
+            "pssBytes": 1132606464,
+            "rssBytes": 7783415808,
+            "processes": 58,
+            "activePageTarget": {
+              "heapBytes": 1004560,
+              "nodes": 223,
+              "documents": 1,
+              "listeners": 30,
+              "scriptSeconds": 0,
+              "taskSeconds": 0.000008
+            },
+            "loadedSidebarFrames": 0
+          }
+        ]
+      },
+      {
+        "mode": "autohide",
+        "rep": 4,
+        "stages": [
+          {
+            "tabs": 1,
+            "idle": {
+              "wallSeconds": 3.0240221070000044,
+              "cpuSeconds": 0.02999999999999997,
+              "oneCorePercent": 0.9920562396206031
+            },
+            "pssBytes": 416513024,
+            "rssBytes": 1062518784,
+            "processes": 9,
+            "activePageTarget": {
+              "heapBytes": 1533308,
+              "nodes": 227,
+              "documents": 2,
+              "listeners": 30,
+              "scriptSeconds": 0,
+              "taskSeconds": 0.00001
+            },
+            "loadedSidebarFrames": 0
+          },
+          {
+            "tabs": 20,
+            "idle": {
+              "wallSeconds": 3.0274658009999986,
+              "cpuSeconds": 0.020000000000000018,
+              "oneCorePercent": 0.6606185276607862
+            },
+            "pssBytes": 741760000,
+            "rssBytes": 3762159616,
+            "processes": 28,
+            "activePageTarget": {
+              "heapBytes": 1550948,
+              "nodes": 227,
+              "documents": 2,
+              "listeners": 30,
+              "scriptSeconds": 0,
+              "taskSeconds": 0.00001
+            },
+            "loadedSidebarFrames": 0
+          },
+          {
+            "tabs": 50,
+            "idle": {
+              "wallSeconds": 3.0299052479999955,
+              "cpuSeconds": 0.05999999999999982,
+              "oneCorePercent": 1.980259945079309
+            },
+            "pssBytes": 1238382592,
+            "rssBytes": 7993008128,
+            "processes": 58,
+            "activePageTarget": {
+              "heapBytes": 1550800,
+              "nodes": 227,
+              "documents": 2,
+              "listeners": 30,
+              "scriptSeconds": 0,
+              "taskSeconds": 0.000007
+            },
+            "loadedSidebarFrames": 0
+          }
+        ]
+      },
+      {
+        "mode": "deferred-frame",
+        "rep": 4,
+        "stages": [
+          {
+            "tabs": 1,
+            "idle": {
+              "wallSeconds": 3.0377867179999956,
+              "cpuSeconds": 0.030000000000000013,
+              "oneCorePercent": 0.9875611023722982
+            },
+            "pssBytes": 417661952,
+            "rssBytes": 1067528192,
+            "processes": 9,
+            "activePageTarget": {
+              "heapBytes": 1003784,
+              "nodes": 223,
+              "documents": 1,
+              "listeners": 30,
+              "scriptSeconds": 0,
+              "taskSeconds": 0.000007
+            },
+            "loadedSidebarFrames": 0
+          },
+          {
+            "tabs": 20,
+            "idle": {
+              "wallSeconds": 3.0384241120000004,
+              "cpuSeconds": 0.03,
+              "oneCorePercent": 0.9873539339527199
+            },
+            "pssBytes": 682307584,
+            "rssBytes": 3639140352,
+            "processes": 28,
+            "activePageTarget": {
+              "heapBytes": 1004728,
+              "nodes": 223,
+              "documents": 1,
+              "listeners": 30,
+              "scriptSeconds": 0,
+              "taskSeconds": 0.000009
+            },
+            "loadedSidebarFrames": 0
+          },
+          {
+            "tabs": 50,
+            "idle": {
+              "wallSeconds": 3.0308515330000083,
+              "cpuSeconds": 0.05000000000000003,
+              "oneCorePercent": 1.6497013943308811
+            },
+            "pssBytes": 1109541888,
+            "rssBytes": 7740350464,
+            "processes": 58,
+            "activePageTarget": {
+              "heapBytes": 1003784,
+              "nodes": 223,
+              "documents": 1,
+              "listeners": 30,
+              "scriptSeconds": 0,
+              "taskSeconds": 0.000013
+            },
+            "loadedSidebarFrames": 0
+          }
+        ]
+      }
+    ],
+    "events": [],
+    "browserVersion": "141.0.7390.37"
+  }
+}
