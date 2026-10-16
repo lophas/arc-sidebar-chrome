@@ -1,0 +1,26 @@
+{
+  "extensionVersion": "4.0.2",
+  "browser": "141.0.7390.37",
+  "source": "Real installed extension, native Chrome groups and native PiP; fictional example sites and workspace data. Search, palette and Options captures are arranged in HTML presentation frames.",
+  "screenshots": [
+    "01-spaces-and-chrome.jpg",
+    "02-search-every-tab.jpg",
+    "03-video-mini-player.jpg",
+    "04-space-palettes.jpg",
+    "05-sidebar-options.jpg"
+  ],
+  "screenshotSize": [
+    1280,
+    800
+  ],
+  "promoTiles": {
+    "small": [
+      440,
+      280
+    ],
+    "marquee": [
+      1400,
+      560
+    ]
+  }
+}
