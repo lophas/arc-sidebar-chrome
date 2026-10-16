@@ -9,10 +9,10 @@ export async function buildWebStoreAssets(context, source, version) {
     const bytes = await readFile(join(directory, name));
     return `data:image/${name.endsWith('.jpg') ? 'jpeg' : 'png'};base64,${bytes.toString('base64')}`;
   };
-  const [search, appearance, favorite, backup, work, personal, reading, logo] = await Promise.all([
+  const [search, appearance, favorite, backup, work, personal, logo] = await Promise.all([
     image('search-popup.png'), image('appearance.png'), image('favorite-size.png'), image('backup-sync.png'),
     // The three actual sidebars were captured together without changing their UI.
-    image('sidebar.png'), image('space-palettes.png'), image('open-tabs.png'),
+    image('sidebar.png'), image('space-palettes.png'),
     image('icon128.png', 'src/icons')
   ]);
   const palette = personal;
