@@ -12,7 +12,8 @@ let context;
 try {
   await cp('src', join(directory, 'src'), { recursive: true });
   await cp('manifest.json', join(directory, 'manifest.json'));
-  context = await chromium.launchPersistentContext('', { channel: 'chromium', headless: false, ignoreDefaultArgs: ['--disable-extensions'], args: ['--no-sandbox', `--disable-extensions-except=${directory}`, `--load-extension=${directory}`] });
+  context = await chromium.launchPersistentContext('', { channel: 'chromium', headless: false, ignoreDefaultArgs: ['--disable-extensions'], args: ['--no-sandbox', '--enable-unsafe-extension-debugging', `--disable-extensions-except=${directory}`, `--load-extension=${directory}`] });
+  const devtools = await context.browser().newBrowserCDPSession();
   let [worker] = context.serviceWorkers();
   if (!worker) worker = await context.waitForEvent('serviceworker');
   let controls = await context.newPage();
@@ -50,15 +51,13 @@ try {
     assert.fail(`Tab ${id} did not receive toolbar badge ${JSON.stringify(text)}`);
   };
   const reloadExtension = async () => {
-    await controls.evaluate(() => chrome.runtime.reload()).catch(error => {
-      assert.match(error.message, /closed|destroyed/i);
-    });
-    // Playwright may reuse the service-worker target across runtime.reload(), so
-    // query the real action through a fresh extension page instead of waiting
-    // for a new worker target. Neither protected tab is reactivated.
+    // Wait for Chrome's unpacked loader to finish reloading the same extension.
+    // runtime.reload() can unload a command-line extension without reloading it.
     if (!controls.isClosed()) await controls.close();
+    const { id } = await devtools.send('Extensions.loadUnpacked', { path: directory });
+    assert.equal(id, worker.url().split('/')[2]);
     controls = await context.newPage();
-    await controls.goto(`chrome-extension://${worker.url().split('/')[2]}/src/options/index.html`);
+    await controls.goto(`chrome-extension://${id}/src/options/index.html`);
     await controls.evaluate(() => chrome.runtime.sendMessage({ type: 'arc-sidebar-panel-layout' }));
   };
   await poll(ids.protected, '!'); await poll(ids.regular, '');
