@@ -5,11 +5,38 @@ from pathlib import Path
 import subprocess
 import tempfile
 import unittest
+import zipfile
 from unittest.mock import patch
 
 spec = importlib.util.spec_from_file_location('release_prepare', Path(__file__).resolve().parents[1] / 'scripts/prepare-release.py')
 release = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(release)
+
+
+package_spec = importlib.util.spec_from_file_location('release_build', Path(__file__).resolve().parents[1] / 'scripts/build-release.py')
+package = importlib.util.module_from_spec(package_spec)
+package_spec.loader.exec_module(package)
+
+
+class ReleasePackageTests(unittest.TestCase):
+    def test_store_package_removes_only_development_key_and_keeps_all_extension_files(self):
+        root = Path(__file__).resolve().parents[1]
+        original = (root / 'manifest.json').read_bytes()
+        with tempfile.TemporaryDirectory() as output:
+            regular, store = package.build_packages(root, output)
+            with zipfile.ZipFile(regular) as a, zipfile.ZipFile(store) as b:
+                expected = {'manifest.json'} | {p.relative_to(root).as_posix() for p in (root / 'src').rglob('*') if p.is_file()}
+                self.assertEqual(set(a.namelist()), expected)
+                self.assertEqual(set(b.namelist()), expected)
+                local_manifest = json.loads(a.read('manifest.json'))
+                store_manifest = json.loads(b.read('manifest.json'))
+                self.assertTrue(local_manifest['key'])
+                self.assertNotIn('key', store_manifest)
+                del local_manifest['key']
+                self.assertEqual(local_manifest, store_manifest)
+                for path in expected - {'manifest.json'}:
+                    self.assertEqual(a.read(path), b.read(path))
+        self.assertEqual((root / 'manifest.json').read_bytes(), original)
 
 
 class AutomaticReleaseTests(unittest.TestCase):

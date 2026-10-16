@@ -4,7 +4,7 @@
 
 ## Installation and updates
 
-1. Download the extension ZIP from [GitHub Releases](https://github.com/lophas/arc-sidebar-chrome/releases).
+1. Download `arc-side-of-the-chrome-v<VERSION>.zip` from [GitHub Releases](https://github.com/lophas/arc-sidebar-chrome/releases). Use the separate `-webstore.zip` package only when uploading to the Chrome Web Store.
 2. Extract it to a permanent folder.
 3. Open `chrome://extensions` and enable **Developer mode**.
 4. Click **Load unpacked** and select the folder containing `manifest.json`.

@@ -32,33 +32,9 @@ jobs:
           ARC_SOURCE_SHA: ${{ github.event.workflow_run.head_sha }}
         run: python3 scripts/prepare-release.py
 
-      - name: Build unpacked-extension ZIP
+      - name: Build unpacked-install and Chrome Web Store ZIPs
         if: steps.prepare.outputs.publish == 'true'
-        env:
-          RELEASE_TAG: ${{ steps.prepare.outputs.tag }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          VERSION="${RELEASE_TAG#v}"
-          PACKAGE_DIR="dist/arc-side-of-the-chrome-v${VERSION}"
-          ZIP_FILE="dist/arc-side-of-the-chrome-v${VERSION}.zip"
-          mkdir -p "$PACKAGE_DIR"
-          cp manifest.json "$PACKAGE_DIR/"
-          cp -R src "$PACKAGE_DIR/"
-          (
-            cd "$PACKAGE_DIR"
-            zip -qr "../arc-side-of-the-chrome-v${VERSION}.zip" manifest.json src
-          )
-          python3 - "$ZIP_FILE" "$VERSION" <<'PYZIP'
-          import json, sys, zipfile
-          with zipfile.ZipFile(sys.argv[1]) as archive:
-              assert archive.testzip() is None
-              manifest = json.loads(archive.read('manifest.json'))
-              assert manifest.get('version_name', manifest['version']) == sys.argv[2]
-              for icon in manifest['icons'].values():
-                  assert icon in archive.namelist()
-          PYZIP
-          echo "Built and verified $ZIP_FILE"
+        run: python3 scripts/build-release.py
 
       - name: Publish GitHub Release
         if: steps.prepare.outputs.publish == 'true'
@@ -71,6 +47,7 @@ jobs:
           set -euo pipefail
           VERSION="${RELEASE_TAG#v}"
           ZIP_FILE="dist/arc-side-of-the-chrome-v${VERSION}.zip"
+          STORE_ZIP_FILE="dist/arc-side-of-the-chrome-v${VERSION}-webstore.zip"
           EXTRA_ARGS=()
           if [[ "$VERSION" == *-* ]]; then
             EXTRA_ARGS+=(--prerelease)
@@ -81,6 +58,7 @@ jobs:
           fi
           gh release create "$RELEASE_TAG" \
             "$ZIP_FILE" \
+            "$STORE_ZIP_FILE" \
             --target "$RELEASE_SHA" \
             --title "Arc Side of the Chrome ${VERSION}" \
             --notes-file RELEASE_NOTES.md \

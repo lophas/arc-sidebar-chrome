@@ -1,9 +1,9 @@
-## Arc Side of the Chrome 4.0.1
+## Arc Side of the Chrome 4.0.2
 
 *Spaces, tabs & a little harmony.*
 
-- Add a 50–150% Favorite size slider and preserve device-local sizing with backups
+- Add a dedicated Chrome Web Store upload ZIP with the development-only manifest key removed.
+- Keep the standard ZIP for unpacked installations, preserving their existing extension identity.
 
-Download `arc-side-of-the-chrome-v4.0.1.zip`, replace the files in your existing extension folder and click **Reload** at `chrome://extensions`. Your saved organization and preferences are retained.
-
-[Full changelog](https://github.com/lophas/arc-sidebar-chrome/compare/v4.0.0...v4.0.1)
+For Chrome Web Store uploads, use `arc-side-of-the-chrome-v4.0.2-webstore.zip`.
+For an existing unpacked installation, use `arc-side-of-the-chrome-v4.0.2.zip` and click **Reload** at `chrome://extensions`.

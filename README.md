@@ -127,7 +127,7 @@ For step-by-step controls, permissions, import file paths and exact Sync/backup 
 
 ## Installation
 
-1. Download the ZIP from the [**latest GitHub release**](https://github.com/lophas/arc-sidebar-chrome/releases/latest).
+1. Download `arc-side-of-the-chrome-v<VERSION>.zip` from the [**latest GitHub release**](https://github.com/lophas/arc-sidebar-chrome/releases/latest). The separate `-webstore.zip` package is for Chrome Web Store uploads.
 2. Extract it to a permanent folder.
 3. Open `chrome://extensions` and enable **Developer mode**.
 4. Choose **Load unpacked** and select the folder containing `manifest.json`.
