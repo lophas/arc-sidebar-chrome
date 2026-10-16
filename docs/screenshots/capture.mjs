@@ -7,7 +7,8 @@ import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { chromium } from 'playwright-core';
 
-const output = 'docs/screenshots';
+const webstore = process.env.ARC_CAPTURE_WEBSTORE === '1';
+const output = webstore ? 'dist/webstore-capture' : 'docs/screenshots';
 const temporary = await mkdtemp(join(tmpdir(), 'arc-readme-'));
 const version = JSON.parse(await readFile('manifest.json', 'utf8')).version;
 const icons = new Map();
@@ -67,7 +68,7 @@ const videoBytes=await readFile(videoFile);
 let context;
 try {
   await mkdir(output,{recursive:true});
-  context=await chromium.launchPersistentContext(profile,{channel:'chromium',headless:false,viewport:null,colorScheme:'dark',ignoreDefaultArgs:['--disable-extensions','--mute-audio','--enable-automation'],args:['--no-sandbox','--force-dark-mode','--force-device-scale-factor=1','--window-position=0,0','--window-size=1280,900','--enable-features=AutoPictureInPictureForVideoPlayback,MediaSessionEnterPictureInPicture',`--disable-extensions-except=${process.cwd()}`,`--load-extension=${process.cwd()}`]});
+  context=await chromium.launchPersistentContext(profile,{channel:'chromium',headless:false,viewport:null,colorScheme:'dark',ignoreDefaultArgs:['--disable-extensions','--mute-audio','--enable-automation'],args:['--no-sandbox','--force-dark-mode','--force-device-scale-factor=1','--window-position=0,0',`--window-size=1280,${webstore ? 800 : 900}`,'--enable-features=AutoPictureInPictureForVideoPlayback,MediaSessionEnterPictureInPicture',`--disable-extensions-except=${process.cwd()}`,`--load-extension=${process.cwd()}`]});
   await context.route('https://**/*',route=>route.request().url()==='https://video.example.test/demo.webm'?route.fulfill({status:200,contentType:'video/webm',body:videoBytes}):route.fulfill({status:200,contentType:'text/html',body:website(route.request().url())}));
   let [worker]=context.serviceWorkers();if(!worker)worker=await context.waitForEvent('serviceworker');
   const extension=`chrome-extension://${worker.url().split('/')[2]}`;
@@ -102,11 +103,11 @@ try {
   await controls.evaluate(windowId=>{const button=document.createElement('button');button.id='captureOpenSidebar';button.textContent='Open sidebar';button.onclick=()=>chrome.sidePanel.open({windowId});document.body.prepend(button);},live.windowId);
   await controls.locator('#captureOpenSidebar').click();await brief.bringToFront();await brief.waitForTimeout(1200);
   const desktop=name=>execFileSync('import',['-window','root',join(output,name)]);
-  desktop('workspace.png');console.log('Captured native Chrome groups and sidebar');
+  desktop(webstore ? 'workspace.jpg' : 'workspace.png');console.log('Captured native Chrome groups and sidebar');
 
   const video=await context.newPage();await video.goto('https://video.example.test/focus');await controls.evaluate(async windowId=>{const tab=(await chrome.tabs.query({url:'https://video.example.test/focus'}))[0];if(tab.windowId!==windowId)await chrome.tabs.move(tab.id,{windowId,index:-1});await chrome.windows.update(windowId,{focused:true});await chrome.tabs.update(tab.id,{active:true});},live.windowId);await video.bringToFront();await video.locator('#play').click();
   await video.waitForFunction(()=>!document.querySelector('video').paused&&document.querySelector('video').videoWidth>0);await video.waitForTimeout(6500);await controls.evaluate(async id=>{await chrome.tabs.update(id,{active:true});},live.brief);await brief.bringToFront();
-  try{await video.waitForFunction(()=>globalThis.__arcSidebarAutoPip?.getState().player==='video',{},{timeout:12000});}catch{console.log('Preparing the same native PiP surface explicitly for the screenshot');await video.bringToFront();await video.evaluate(()=>{const button=document.createElement('button');button.id='capturePip';button.textContent='Open mini player';button.onclick=()=>document.querySelector('video').requestPictureInPicture();document.body.append(button);});await video.locator('#capturePip').click();await brief.bringToFront();}await brief.waitForTimeout(1000);desktop('mini-player.png');
+  try{await video.waitForFunction(()=>globalThis.__arcSidebarAutoPip?.getState().player==='video',{},{timeout:12000});}catch{console.log('Preparing the same native PiP surface explicitly for the screenshot');await video.bringToFront();await video.evaluate(()=>{const button=document.createElement('button');button.id='capturePip';button.textContent='Open mini player';button.onclick=()=>document.querySelector('video').requestPictureInPicture();document.body.append(button);});await video.locator('#capturePip').click();await brief.bringToFront();}await brief.waitForTimeout(1000);desktop(webstore ? 'mini-player.jpg' : 'mini-player.png');
   await video.bringToFront();await video.evaluate(async()=>{if(document.pictureInPictureElement)await document.exitPictureInPicture();document.querySelector('video').pause();});await video.close();console.log('Captured native video PiP over another working tab');
 
   await controls.evaluate(async windowId=>{if(chrome.sidePanel.close)await chrome.sidePanel.close({windowId});else{await chrome.sidePanel.setOptions({enabled:false});await chrome.sidePanel.setOptions({enabled:true});}await chrome.storage.local.set({arcSidebarMode:'overlay'});},live.windowId);
@@ -124,9 +125,13 @@ try {
   await controls.setViewportSize({width:980,height:900});await controls.bringToFront();await controls.locator('#captureOpenSidebar').evaluate(element=>element.remove());
   const card=title=>controls.locator('section.card').filter({has:controls.getByRole('heading',{name:title,exact:true})});
   for(const[id,value]of[['triggerBottom','85'],['triggerTop','25']])await controls.locator('#'+id).evaluate((element,value)=>{element.value=value;element.dispatchEvent(new Event('input',{bubbles:true}));element.dispatchEvent(new Event('change',{bubbles:true}));},value);
-  await settle(controls);await controls.screenshot({path:join(output,'options.png'),fullPage:true});await card('Autohide & edge trigger').screenshot({path:join(output,'appearance.png')});await card('Arc import').screenshot({path:join(output,'arc-import.png')});
+  await settle(controls);await controls.screenshot({path:join(output,'options.png'),fullPage:true});await card('Autohide & edge trigger').screenshot({path:join(output,'appearance.png')});await card('Favorite button size').screenshot({path:join(output,'favorite-size.png')});await card('Arc import').screenshot({path:join(output,'arc-import.png')});
   const backup=join(temporary,'backup.png'),sync=join(temporary,'sync.png');await card('Backup & restore').screenshot({path:backup});await card('Chrome Sync').screenshot({path:sync});
   execFileSync('montage',[backup,sync,'-tile','1x2','-geometry','+0+12','-background','#10141c',join(output,'backup-sync.png')]);
   await writeFile(join(output,'capture-info.json'),JSON.stringify({extensionVersion:version,browser:context.browser().version(),data:'Fictional example workspaces; real extension, Chrome groups and native video PiP',files:['workspace.png','sidebar.png','sidebar-search.png','space-palettes.png','open-tabs.png','search-popup.png','mini-player.png','appearance.png','arc-import.png','backup-sync.png','options.png']},null,2)+'\n');
+  if (webstore) {
+    const { buildWebStoreAssets } = await import('../webstore/render.mjs');
+    await buildWebStoreAssets(context, output, version);
+  }
   console.log(`Captured 11 current screenshots for extension ${version}`);
 }finally{await context?.close();await rm(temporary,{recursive:true,force:true});}
