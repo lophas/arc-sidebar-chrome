@@ -15,7 +15,7 @@ try {
   context = await chromium.launchPersistentContext('', { channel: 'chromium', headless: false, ignoreDefaultArgs: ['--disable-extensions'], args: ['--no-sandbox', `--disable-extensions-except=${directory}`, `--load-extension=${directory}`] });
   let [worker] = context.serviceWorkers();
   if (!worker) worker = await context.waitForEvent('serviceworker');
-  const controls = await context.newPage();
+  let controls = await context.newPage();
   await controls.goto(`chrome-extension://${worker.url().split('/')[2]}/src/options/index.html`);
   // Exercise the real service-worker-compatible canvas and action.setIcon API.
   const coverage = await controls.evaluate(async () => {
@@ -36,7 +36,7 @@ try {
     assert.ok(icon.width >= icon.size - 2, 'Colored arch must fill the available toolbar width');
     assert.ok(icon.height >= icon.size - 2, 'Colored arch must fill the available toolbar height');
   }
-  const ids = await worker.evaluate(async origin => {
+  const ids = await controls.evaluate(async origin => {
     await chrome.storage.local.set({ arcSidebarMode: 'overlay', arcSidebarAutohideTimeout: 800 });
     const protectedTab = await chrome.tabs.create({ url: 'chrome://version/', active: false });
     const regularTab = await chrome.tabs.create({ url: origin, active: true });
@@ -44,36 +44,41 @@ try {
   }, `http://127.0.0.1:${server.address().port}/`);
   const poll = async (id, text) => {
     for (let i = 0; i < 100; i++) {
-      if (await worker.evaluate(async ({ id, text }) => (await chrome.action.getBadgeText({ tabId: id })) === text, { id, text })) return;
+      if (await controls.evaluate(async ({ id, text }) => (await chrome.action.getBadgeText({ tabId: id })) === text, { id, text })) return;
       await new Promise(done => setTimeout(done, 50));
     }
     assert.fail(`Tab ${id} did not receive toolbar badge ${JSON.stringify(text)}`);
   };
   const reloadExtension = async () => {
-    const nextWorker = context.waitForEvent('serviceworker', { predicate: next => next.url() === worker.url() });
-    await worker.evaluate(() => chrome.runtime.reload()).catch(error => {
+    await controls.evaluate(() => chrome.runtime.reload()).catch(error => {
       assert.match(error.message, /closed|destroyed/i);
     });
-    worker = await nextWorker;
+    // Playwright may reuse the service-worker target across runtime.reload(), so
+    // query the real action through a fresh extension page instead of waiting
+    // for a new worker target. Neither protected tab is reactivated.
+    if (!controls.isClosed()) await controls.close();
+    controls = await context.newPage();
+    await controls.goto(`chrome-extension://${worker.url().split('/')[2]}/src/options/index.html`);
+    await controls.evaluate(() => chrome.runtime.sendMessage({ type: 'arc-sidebar-panel-layout' }));
   };
   await poll(ids.protected, '!'); await poll(ids.regular, '');
-  // Leave a protected tab active and another inactive across an actual extension
-  // reload. Neither gets a mode change or a tab activation to repair its badge.
-  const secondProtected = await worker.evaluate(() => chrome.tabs.create({ url: 'chrome://extensions/', active: true }));
+  // Reload with a protected tab active and another inactive. Neither gets a
+  // mode change or a subsequent protected-tab activation to repair its badge.
+  const secondProtected = await controls.evaluate(() => chrome.tabs.create({ url: 'chrome://extensions/', active: true }));
   await poll(secondProtected.id, '!');
   await reloadExtension();
   await poll(ids.protected, '!'); await poll(secondProtected.id, '!'); await poll(ids.regular, '');
-  assert.equal(await worker.evaluate(async () => (await chrome.storage.local.get('arcSidebarMode')).arcSidebarMode), 'overlay');
-  assert.match(await worker.evaluate(id => chrome.action.getTitle({ tabId: id }), ids.protected), /Click to open the fixed sidebar/);
-  assert.deepEqual(await worker.evaluate(id => chrome.action.getBadgeBackgroundColor({ tabId: id }), ids.protected), [251, 191, 36, 255]);
-  await worker.evaluate(() => chrome.storage.local.set({ arcSidebarMode: 'native' }));
+  assert.equal(await controls.evaluate(async () => (await chrome.storage.local.get('arcSidebarMode')).arcSidebarMode), 'overlay');
+  assert.match(await controls.evaluate(id => chrome.action.getTitle({ tabId: id }), ids.protected), /Click to open the fixed sidebar/);
+  assert.deepEqual(await controls.evaluate(id => chrome.action.getBadgeBackgroundColor({ tabId: id }), ids.protected), [251, 191, 36, 255]);
+  await controls.evaluate(() => chrome.storage.local.set({ arcSidebarMode: 'native' }));
   await poll(ids.protected, '');
   await reloadExtension();
   await poll(ids.protected, ''); await poll(secondProtected.id, '');
-  assert.equal(await worker.evaluate(id => chrome.action.getTitle({ tabId: id }), ids.protected), 'Open Arc Side of the Chrome');
-  await worker.evaluate(() => chrome.storage.local.set({ arcSidebarMode: 'overlay' }));
+  assert.equal(await controls.evaluate(id => chrome.action.getTitle({ tabId: id }), ids.protected), 'Open Arc Side of the Chrome');
+  await controls.evaluate(() => chrome.storage.local.set({ arcSidebarMode: 'overlay' }));
   await poll(ids.protected, '!');
-  await worker.evaluate(({ id, url }) => chrome.tabs.update(id, { url }), { id: ids.protected, url: `http://127.0.0.1:${server.address().port}/ordinary` });
+  await controls.evaluate(({ id, url }) => chrome.tabs.update(id, { url }), { id: ids.protected, url: `http://127.0.0.1:${server.address().port}/ordinary` });
   await poll(ids.protected, '');
   console.log('PASS real Chrome toolbar: larger icon renders, active and inactive protected tabs retain yellow warnings after extension reload, Fixed stays unmarked and ordinary navigation restores the tooltip');
 } finally {
