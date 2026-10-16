@@ -1,15 +1,15 @@
 import { EDGE_TRIGGER_KEY, edgeTrigger, isEdgeTrigger } from '../shared/edge-trigger.js';
 import { sidebarPreferences, AUTOHIDE_TIMEOUTS } from '../shared/sidebar-preferences.js';
+import { favoriteSize, isFavoriteSize } from '../shared/favorite-size.js';
 export const BACKUP_SETTING_KEYS = ['arcSidebarAutohideTimeout', 'arcSidebarMode', 'arcSidebarFavoriteSizePercent', 'arcSidebarOverlayWidth', 'arcSidebarAutoPipEnabled', EDGE_TRIGGER_KEY];
 const timeouts = new Set([0, ...AUTOHIDE_TIMEOUTS]);
-const sizes = new Set([80, 90, 100, 110, 120]);
 export function exportBackupSettings(stored) {
   return {
     edgeTrigger: edgeTrigger(stored[EDGE_TRIGGER_KEY]),
     autoPipEnabled: stored.arcSidebarAutoPipEnabled !== false,
     autohideTimeout: sidebarPreferences(stored).timeout,
     sidebarMode: sidebarPreferences(stored).mode,
-    favoriteSizePercent: sizes.has(stored.arcSidebarFavoriteSizePercent) ? stored.arcSidebarFavoriteSizePercent : 100,
+    favoriteSizePercent: favoriteSize(stored.arcSidebarFavoriteSizePercent),
     sidebarWidth: Number.isFinite(stored.arcSidebarOverlayWidth) ? Math.max(120, Math.min(720, stored.arcSidebarOverlayWidth)) : 390
   };
 }
@@ -35,7 +35,7 @@ export function restoreBackupSettings(settings) {
     values.arcSidebarMode = settings.sidebarMode;
   }
   if (Object.hasOwn(settings, 'favoriteSizePercent')) {
-    if (!sizes.has(settings.favoriteSizePercent)) throw new Error('Invalid backup Favorite size.');
+    if (!isFavoriteSize(settings.favoriteSizePercent)) throw new Error('Invalid backup Favorite size.');
     values.arcSidebarFavoriteSizePercent = settings.favoriteSizePercent;
   }
   if (Object.hasOwn(settings, 'sidebarWidth')) {

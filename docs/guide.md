@@ -121,7 +121,7 @@ Open **Extension options** to adjust:
 | Autohide timeout | Slider: 400–1200 ms in 100 ms steps | 800 ms |
 | Edge trigger area | Two handles: top and bottom at 0–100%, at least 20% apart | 0–100% |
 | Edge trigger width | Slider: 10–22 px | 16 px |
-| Favorite button size | 80%, 90%, 100%, 110%, 120% | 100% |
+| Favorite button size | Slider: 50–150%, in 10% steps; local to this computer, included in backups | 100% |
 
 The trigger sliders include a live preview. Its position and height stay within the viewport, while the open sidebar remains full height. Use **Restore defaults** to reset the trigger and timeout. Changes apply to the active page immediately and to other pages on their next focus.
 

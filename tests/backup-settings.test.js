@@ -22,3 +22,10 @@ test('edge trigger is backed up and invalid combinations are rejected',()=>{
  assert.deepEqual(restoreBackupSettings(exportBackupSettings(stored)).arcSidebarEdgeTrigger,stored.arcSidebarEdgeTrigger);
  for(const edgeTrigger of [{height:10,offset:0,width:16},{height:50,offset:51,width:16},{height:20,offset:0,width:23},{height:20,offset:0,width:'16'},null])assert.throws(()=>restoreBackupSettings({edgeTrigger}));
 });
+
+test('Favorite size backups preserve the complete slider range and reject off-step values',()=>{
+ for(let size=50;size<=150;size+=10){
+  assert.equal(restoreBackupSettings(exportBackupSettings({arcSidebarFavoriteSizePercent:size})).arcSidebarFavoriteSizePercent,size);
+ }
+ for(const size of [40,55,151,'100',null])assert.throws(()=>restoreBackupSettings({favoriteSizePercent:size}));
+});

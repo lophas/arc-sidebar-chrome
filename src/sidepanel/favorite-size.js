@@ -1,9 +1,7 @@
 import { isSidebarActive } from './lifecycle.js';
 import { createStorageClient } from '../shared/storage-client.js';
+import { FAVORITE_SIZE_KEY, DEFAULT_FAVORITE_SIZE, favoriteSize } from '../shared/favorite-size.js';
 const sidebarStorage = createStorageClient({ isActive: isSidebarActive });
-const FAVORITE_SIZE_KEY = 'arcSidebarFavoriteSizePercent';
-const ALLOWED_SIZES = new Set([80, 90, 100, 110, 120]);
-const DEFAULT_SIZE = 100;
 
 const BASE = {
   gridMin: 72,
@@ -16,17 +14,12 @@ const BASE = {
   customFont: 27
 };
 
-function normalizeSize(value) {
-  const size = Number(value);
-  return ALLOWED_SIZES.has(size) ? size : DEFAULT_SIZE;
-}
-
 function px(value, scale) {
   return `${Math.round(value * scale * 10) / 10}px`;
 }
 
 function applyFavoriteSize(value) {
-  const size = normalizeSize(value);
+  const size = favoriteSize(value);
   const scale = size / 100;
   const root = document.documentElement;
   root.dataset.favoriteSize = String(size);
@@ -42,7 +35,7 @@ function applyFavoriteSize(value) {
 
 sidebarStorage.local.get(FAVORITE_SIZE_KEY)
   .then(stored => applyFavoriteSize(stored[FAVORITE_SIZE_KEY]))
-  .catch(() => applyFavoriteSize(DEFAULT_SIZE));
+  .catch(() => applyFavoriteSize(DEFAULT_FAVORITE_SIZE));
 
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area === 'local' && changes[FAVORITE_SIZE_KEY]) {

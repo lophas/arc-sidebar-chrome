@@ -90,7 +90,7 @@ Chrome Sync keeps your organization available across computers. Portable backups
 
 Choose **Fixed** for a sidebar that stays beside your page, or **Autohide** for an overlay that appears at the edge. The toolbar button opens Fixed mode; the switch beside search returns to Autohide. Browser settings, Chrome Web Store and error pages use the toolbar button; in Autohide mode, a yellow **!** identifies pages where a manual click is needed.
 
-The trigger controls let you keep the active area away from an embedded scrollbar. Set its top and bottom anywhere from 0–100% with a minimum 20% height, its width from 10–22 px, and the close delay from 400–1200 ms. Resize the sidebar by dragging its edge and adjust Favorite tile size in Options.
+The trigger controls let you keep the active area away from an embedded scrollbar. Set its top and bottom anywhere from 0–100% with a minimum 20% height, its width from 10–22 px, and the close delay from 400–1200 ms. Resize the sidebar by dragging its edge and adjust Favorite tile size from 50–150% in Options. Favorite size stays local to each computer and is included in backups.
 
 <img src="docs/screenshots/appearance.png" width="760" alt="Autohide delay and edge trigger sliders with a live preview of the active area">
 
