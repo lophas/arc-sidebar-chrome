@@ -145,4 +145,4 @@ For setup and usage details, read the [user guide](docs/guide.md). Report proble
 
 Arc Side of the Chrome is an independent extension developed entirely from scratch. It is **not affiliated with, endorsed by or sponsored by The Browser Company or Arc Browser**.
 
-See [LICENSE](LICENSE).
+[Privacy policy](PRIVACY.md) · [License](LICENSE).
