@@ -49,17 +49,33 @@ try {
     }
     assert.fail(`Tab ${id} did not receive toolbar badge ${JSON.stringify(text)}`);
   };
+  const reloadExtension = async () => {
+    const nextWorker = context.waitForEvent('serviceworker', { predicate: next => next.url() === worker.url() });
+    await worker.evaluate(() => chrome.runtime.reload()).catch(error => {
+      assert.match(error.message, /closed|destroyed/i);
+    });
+    worker = await nextWorker;
+  };
   await poll(ids.protected, '!'); await poll(ids.regular, '');
+  // Leave a protected tab active and another inactive across an actual extension
+  // reload. Neither gets a mode change or a tab activation to repair its badge.
+  const secondProtected = await worker.evaluate(() => chrome.tabs.create({ url: 'chrome://extensions/', active: true }));
+  await poll(secondProtected.id, '!');
+  await reloadExtension();
+  await poll(ids.protected, '!'); await poll(secondProtected.id, '!'); await poll(ids.regular, '');
+  assert.equal(await worker.evaluate(async () => (await chrome.storage.local.get('arcSidebarMode')).arcSidebarMode), 'overlay');
   assert.match(await worker.evaluate(id => chrome.action.getTitle({ tabId: id }), ids.protected), /Click to open the fixed sidebar/);
   assert.deepEqual(await worker.evaluate(id => chrome.action.getBadgeBackgroundColor({ tabId: id }), ids.protected), [251, 191, 36, 255]);
   await worker.evaluate(() => chrome.storage.local.set({ arcSidebarMode: 'native' }));
   await poll(ids.protected, '');
+  await reloadExtension();
+  await poll(ids.protected, ''); await poll(secondProtected.id, '');
   assert.equal(await worker.evaluate(id => chrome.action.getTitle({ tabId: id }), ids.protected), 'Open Arc Side of the Chrome');
   await worker.evaluate(() => chrome.storage.local.set({ arcSidebarMode: 'overlay' }));
   await poll(ids.protected, '!');
   await worker.evaluate(({ id, url }) => chrome.tabs.update(id, { url }), { id: ids.protected, url: `http://127.0.0.1:${server.address().port}/ordinary` });
   await poll(ids.protected, '');
-  console.log('PASS real Chrome toolbar: larger icon renders, protected-page badge is yellow and tab-specific, Fixed clears inactive tabs and ordinary navigation restores the tooltip');
+  console.log('PASS real Chrome toolbar: larger icon renders, active and inactive protected tabs retain yellow warnings after extension reload, Fixed stays unmarked and ordinary navigation restores the tooltip');
 } finally {
   await context?.close();
   await new Promise(done => server.close(done));

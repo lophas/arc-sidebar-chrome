@@ -23,13 +23,16 @@ async function apply(tab, autohide) {
   } catch { /* A tab can close while its toolbar state is being updated. */ }
 }
 
-export function refreshAutohideIndicator(tabId) {
+export function refreshAutohideIndicator(tabId, force = false) {
   // Read preferences inside the queue so a delayed navigation cannot restore a
   // warning after Fixed has been selected. No polling or page injection needed.
   tail = tail.then(async () => {
     const stored = await chrome.storage.local.get(['arcSidebarMode', 'arcSidebarAutohideTimeout']);
     const autohide = sidebarPreferences(stored).mode === 'overlay';
     const tabs = tabId == null ? await chrome.tabs.query({}) : [await chrome.tabs.get(tabId)];
+    // A reload/update can reset Chrome's action after our initial module sweep.
+    // Invalidate inside the queue so an earlier sweep cannot refill stale cache.
+    if (force) for (const tab of tabs) states.delete(tab.id);
     await Promise.all(tabs.map(tab => apply(tab, autohide)));
   }).catch(() => {});
   return tail;
@@ -52,5 +55,8 @@ chrome.tabs.onRemoved.addListener(tabId => { states.delete(tabId); blocked.delet
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area === 'local' && (changes.arcSidebarMode || changes.arcSidebarAutohideTimeout)) refreshAutohideIndicator();
 });
+const recheckOpenTabs = () => refreshAutohideIndicator(undefined, true);
+chrome.runtime.onInstalled.addListener(recheckOpenTabs);
+chrome.runtime.onStartup.addListener(recheckOpenTabs);
 refreshAutohideIndicator();
 enlargeToolbarIcon().catch(error => console.warn('Arc Side of the Chrome: could not size the toolbar icon', error));

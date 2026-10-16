@@ -14,7 +14,7 @@ function setup(settings = {}) {
     calls.push([name, details]);
     toolbar.set(details.tabId, { ...toolbar.get(details.tabId), ...details });
   }]));
-  const chrome = { action, storage: { local: { get: async () => ({ ...settings }) }, onChanged: event('storage') }, tabs: {
+  const chrome = { action, runtime: { onInstalled: event('installed'), onStartup: event('startup') }, storage: { local: { get: async () => ({ ...settings }) }, onChanged: event('storage') }, tabs: {
     get: async id => { if (!tabs.has(id)) throw Error('No tab'); return { ...tabs.get(id) }; },
     query: async () => [...tabs.values()].map(tab => ({ ...tab })),
     onActivated: event('activate'), onUpdated: event('update'), onRemoved: event('remove')
@@ -67,3 +67,24 @@ test('queued stale refresh cannot leave a warning after a mode change', async ()
   s.events.storage({ arcSidebarMode: {} }, 'local'); await pending; await s.refresh();
   assert.equal(s.toolbar.get(2).text, '');
 });
+
+for (const lifecycle of ['installed', 'startup']) {
+  test(`${lifecycle} rechecks already-open tabs after Chrome resets toolbar state without changing the mode`, async () => {
+    const s = setup({ arcSidebarMode: 'overlay', arcSidebarAutohideTimeout: 800 });
+    await s.refresh();
+    assert.equal(s.toolbar.get(2).text, '!');
+    // Extension initialization can run before Chrome finishes resetting the action.
+    s.toolbar.clear();
+    s.events[lifecycle]({ reason: 'update' });
+    await s.refresh();
+    assert.equal(s.toolbar.get(2).text, '!');
+    assert.match(s.toolbar.get(2).title, /Click to open the fixed sidebar/);
+    assert.equal(s.toolbar.get(1).text, '');
+    assert.equal(s.settings.arcSidebarMode, 'overlay');
+    s.settings.arcSidebarMode = 'native';
+    s.toolbar.clear();
+    s.events[lifecycle]({ reason: 'update' });
+    await s.refresh();
+    assert.equal(s.toolbar.get(2).text, '');
+  });
+}
