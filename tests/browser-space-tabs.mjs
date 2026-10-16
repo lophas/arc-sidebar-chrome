@@ -23,6 +23,34 @@ try{
  await page.waitForFunction(()=>document.querySelectorAll('#openTabs .row').length===3);
  assert.deepEqual(await ids(),[11,12,21]);assert.equal(await page.locator('.other-window-label').textContent(),'Other window');
  {
+ const workDot='[data-space-id="work"] .space-live-dot';
+ const original=await page.evaluate(()=>structuredClone({tabs:fixture.tabs,session:fixture.data.session}));
+ await page.locator(workDot).waitFor();
+ await page.evaluate(async()=>{
+  for(const id of [10,22]){fixture.tabs.splice(fixture.tabs.findIndex(tab=>tab.id===id),1);chrome.tabs.onRemoved.emit(id);}
+  await fixture.write('session',{arcSidebarBindings:{}});
+ });
+ await page.waitForFunction(()=>!document.querySelector('.row.has-binding'));
+ assert.equal(await page.locator(workDot).count(),1,'Workflow tabs keep the Space indicator after all saved tabs close');
+ await page.evaluate(()=>{for(const id of [11,12]){fixture.tabs.splice(fixture.tabs.findIndex(tab=>tab.id===id),1);chrome.tabs.onRemoved.emit(id);}});
+ await page.waitForFunction(()=>document.querySelectorAll('#openTabs .row').length===1);
+ assert.equal(await page.locator(workDot).count(),1,'A workflow tab in another window keeps the Space open');
+ await page.evaluate(()=>{fixture.tabs.find(tab=>tab.id===21).groupId=5;chrome.tabs.onUpdated.emit(21,{groupId:5});});
+ await page.waitForFunction(()=>!document.querySelector('[data-space-id="work"] .space-live-dot'));
+ await page.evaluate(()=>{fixture.tabs.push({id:31,windowId:1,index:1,groupId:2,pinned:true,title:'Native pinned',url:'https://native.test'});chrome.tabs.onCreated.emit(fixture.tabs.at(-1));});
+ await page.locator('[data-space-id="__open_tabs__"]').click();
+ await page.waitForFunction(()=>document.querySelector('[data-native-pinned-tab-id="31"]'));
+ assert.equal(await page.locator(workDot).count(),0,'Chrome pinned tabs do not affect Space status');
+ await page.locator('[data-space-id="work"]').click();
+ await page.evaluate(()=>{fixture.tabs.push({id:32,windowId:1,index:2,groupId:2,discarded:true,title:'Unloaded workflow',url:'https://workflow.test'});chrome.tabs.onCreated.emit(fixture.tabs.at(-1));});
+ await page.locator(workDot).waitFor();
+ await page.evaluate(()=>{fixture.tabs.splice(fixture.tabs.findIndex(tab=>tab.id===32),1);chrome.tabs.onRemoved.emit(32);});
+ await page.waitForFunction(()=>!document.querySelector('[data-space-id="work"] .space-live-dot'));
+ await page.evaluate(async original=>{fixture.tabs.splice(0,fixture.tabs.length,...original.tabs);await fixture.write('session',original.session);},original);
+ await page.waitForFunction(()=>document.querySelectorAll('#openTabs .row').length===3);
+ console.log('PASS Space indicator: workflow-only groups across windows, moved tabs, native pinned exclusion and unloaded tabs');
+ }
+ {
  // Both editors use the same title resolver; current URL/title and Cancel win.
  const base=`http://127.0.0.1:${server.address().port}`;
  await page.evaluate(()=>fixture.tabs.find(tab=>tab.id===10).title='Fresh live page title');

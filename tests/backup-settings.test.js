@@ -29,3 +29,11 @@ test('Favorite size backups preserve the complete slider range and reject off-st
  }
  for(const size of [40,55,151,'100',null])assert.throws(()=>restoreBackupSettings({favoriteSizePercent:size}));
 });
+
+test('all device-local autohide preferences remain portable through backups',()=>{
+ for(const mode of ['native','overlay']){
+  const stored={arcSidebarMode:mode,arcSidebarAutohideTimeout:1200,arcSidebarEdgeTrigger:{height:35,offset:60,width:22},arcSidebarFavoriteSizePercent:50,arcSidebarOverlayWidth:512};
+  const restored=restoreBackupSettings(exportBackupSettings(stored));
+  for(const [key,value]of Object.entries(stored))assert.deepEqual(restored[key],value);
+ }
+});

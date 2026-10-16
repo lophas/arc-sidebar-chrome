@@ -90,7 +90,7 @@ Choosing a pinned link or its bound open tab selects its Space and expands its p
 
 Chrome’s own pinned tabs appear first in a blue, read-only section with a **Pinned tab** tooltip. They have no sidebar actions or live indicators and are excluded from sidebar close operations.
 
-A **filled red dot** marks a loaded open tab; an **outlined red dot** marks a tab unloaded from memory by Chrome. Folder and group dots are outlined when all their open tabs are unloaded. Favorite dots sit discreetly in the button’s bottom-right corner. Hover over a dot to reveal **×** and **Close**; click it to close the associated tab or tabs while keeping saved links.
+A **filled red dot** marks a loaded open tab; an **outlined red dot** marks a tab unloaded from memory by Chrome. Folder and group dots are outlined when all their open tabs are unloaded. Favorite dots sit discreetly in the button’s bottom-right corner. A Space’s dot stays visible while any tab in its managed Chrome groups remains open, including additional tabs after all pinned links have closed. Hover over a dot to reveal **×** and **Close**; click it to close the associated tab or tabs while keeping saved links.
 
 When a close action would leave a window empty, the extension opens a default new tab to keep the window available. The next sidebar opening reuses that temporary tab, or removes it when activating an existing tab in the same window. If you navigate away from the temporary tab, it stays as a regular tab.
 
@@ -153,11 +153,11 @@ Enter `%LOCALAPPDATA%\Packages` in File Explorer’s address bar. Open the folde
 
 ## Chrome Sync
 
-Enable **Chrome Sync** in Extension options to synchronize Spaces, Favorites, folders, pinned links, their order, custom icons and edge trigger settings across computers signed into the same Chrome Sync account.
+Enable **Chrome Sync** in Extension options to synchronize Spaces, Favorites, folders, pinned links, their order, custom icons and palettes across computers signed into the same Chrome Sync account.
 
 On a fresh installation or after a reset, enabling Sync restores the existing cloud snapshot. The empty starting layout is never uploaded. Sync starts uploading once you add a saved link, folder or customize your Spaces.
 
-Open tabs, the selected Space, folder expansion, scroll positions, sidebar mode, timeout, sidebar width and Favorite size stay local to each computer. When different computers change the organization, the most recently updated sidebar becomes the synchronized version.
+Open tabs, the selected Space, folder expansion, scroll positions, sidebar mode, timeout, edge trigger geometry, sidebar width and Favorite size stay local to each computer. When different computers change the organization, the most recently updated sidebar becomes the synchronized version.
 
 ## Backup, restore and reset
 

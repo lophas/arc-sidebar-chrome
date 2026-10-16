@@ -1,7 +1,7 @@
 import { createFavicon } from '../shared/favicon.js';
 import { applyPaletteStyle, paletteColors } from '../shared/space-palette.js';
 import { groupOpenTabs } from '../shared/open-tab-groups.js';
-import { spaceWorkflowTabs } from '../shared/space-tabs.js';
+import { spaceWorkflowTabs, spaceOpenState } from '../shared/space-tabs.js';
 import { isSidebarActive } from './lifecycle.js';
 import { sidebarTabAction } from './tab-actions.js';
 import { createStorageClient } from '../shared/storage-client.js';
@@ -442,6 +442,12 @@ function renderSpaces() {
     button.dataset.spaceId = space.id;
     button.style.setProperty('--space-color', paletteColors(space.palette)[0]);
     button.setAttribute('aria-label', label);
+    if (spaceOpenState(space, bindings, allTabs, nativeGroupMap, nativeGroups).openTabs.length) {
+      const dot = document.createElement('span');
+      dot.className = 'space-live-dot';
+      dot.setAttribute('aria-hidden', 'true');
+      button.append(dot);
+    }
     button.addEventListener('click', async () => {
       if (state.currentSpaceId === space.id) return;
       state.currentSpaceId = space.id;

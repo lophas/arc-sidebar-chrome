@@ -29,3 +29,17 @@ test('live group changes move workflow rows immediately and pinning removes only
  const pinned=structuredClone(model);pinned.spaces[0].children.push({id:'new',type:'tab'});
  assert.deepEqual(spaceWorkflowTabs(pinned,pinned.spaces[0],{...bindings,new:2},tabs,groupMap,groups,1).map(t=>t.id),[3,6]);
 });
+
+test('Space presence shares bulk-close membership across workflow-only groups and windows', async()=>{
+ const {spaceOpenState}=await import('../src/shared/space-tabs.js');
+ const workflow=tabs.filter(tab=>![1,4,5].includes(tab.id));
+ assert.deepEqual(spaceOpenState(space,{},workflow,groupMap,groups).openTabs.map(tab=>tab.id),[2,3,6]);
+ assert.deepEqual(spaceOpenState(space,{},workflow.filter(tab=>tab.windowId===2),groupMap,groups).openTabs.map(tab=>tab.id),[6]);
+ assert.deepEqual(spaceOpenState(space,{},workflow.filter(tab=>tab.groupId!==10&&tab.groupId!==20),groupMap,groups).openTabs,[]);
+ const detached={id:1,groupId:-1,windowId:1,pinned:false};
+ assert.deepEqual(spaceOpenState(space,bindings,[detached],{},[]).openTabs,[detached]);
+ assert.deepEqual(spaceOpenState(space,bindings,[{...detached,pinned:true}],{},[]).openTabs,[]);
+ const renamed=groups.map(group=>({...group,title:'Unrelated'}));
+ assert.deepEqual(spaceOpenState(space,{},workflow,groupMap,renamed).openTabs,[]);
+ assert.equal(spaceOpenState(space,{},[{...tabs[1],discarded:true}],groupMap,groups).openTabs.length,1);
+});

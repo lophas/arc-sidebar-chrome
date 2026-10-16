@@ -25,9 +25,11 @@ Importing Arc Browser data, restoring a backup and preparing uploaded icon files
 
 ## Optional Chrome Sync
 
-When you enable the extension's Chrome Sync option, it uses Google's Chrome Storage Sync service to synchronize your saved Spaces, Favorites, folders, pinned links, order, palettes, custom icons and edge-trigger settings between eligible Chrome installations. This includes the saved URLs and titles in that organization. Google handles this synchronization under its own Chrome/account policies and settings; the developer does not receive your cloud workspace.
+When you enable the extension's Chrome Sync option, it uses Google's Chrome Storage Sync service to synchronize your saved Spaces, Favorites, folders, pinned links, order, palettes and custom icons between eligible Chrome installations. This includes the saved URLs and titles in that organization. Google handles this synchronization under its own Chrome/account policies and settings; the developer does not receive your cloud workspace.
 
-Live open-tab lists, tab restoration bindings, the selected Space, folder expansion, sidebar scroll positions, sidebar mode, close delay, sidebar width, Favorite button size and mini player preference are not included in the extension's synchronized workspace.
+Live open-tab lists, tab restoration bindings, the selected Space, folder expansion, sidebar scroll positions, sidebar mode, close delay, edge-trigger geometry, sidebar width, Favorite button size and mini player preference are not included in the extension's synchronized workspace.
+
+In version 4.0.2, Chrome Sync also included edge-trigger geometry. From version 4.0.3, all autohide preferences remain local; the legacy synchronized trigger entry is removed without replacing the device’s current settings.
 
 Turning Sync off stops further workspace synchronization by this extension. **Reset all extension data** clears local data and turns the extension's Sync option off while deliberately preserving the previous cloud snapshot, so you can restore it by enabling Sync again. Manage any remaining cloud data through Chrome/Google's applicable Sync data controls.
 

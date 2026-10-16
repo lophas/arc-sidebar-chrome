@@ -1,5 +1,5 @@
 import './panel-layout.js';
-import { reconcileTriggerSync } from './trigger-sync.js';
+import { clearLegacyTriggerSync } from './trigger-sync.js';
 import './auto-pip.js';
 import './auto-pip-settings.js';
 import './sidebar-mode.js';
@@ -536,7 +536,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message?.type === 'arc-sidebar-sync-now') {
-    Promise.all([reconcileSidebarSync(), reconcileTriggerSync()]).then(([result]) => result)
+    Promise.all([reconcileSidebarSync(), clearLegacyTriggerSync()]).then(([result]) => result)
       .then(result => sendResponse(result))
       .catch(error => sendResponse({ ok: false, reason: error?.message || 'sync-failed' }));
     return true;

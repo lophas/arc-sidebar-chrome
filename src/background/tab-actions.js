@@ -1,5 +1,5 @@
 import { recalcModelStats } from '../shared/state-merge.js';
-import { savedItemIds, spaceGroupIds } from '../shared/space-tabs.js';
+import { savedItemIds, spaceOpenState } from '../shared/space-tabs.js';
 import { bindingsReady, restoreSessionBindings, preserveWindowBindings } from './persistent-bindings.js';
 import { serializeState } from './state-controller.js';
 import { createWindowPlaceholder, reuseWindowPlaceholder, dismissWindowPlaceholder } from './window-placeholders.js';
@@ -119,11 +119,8 @@ async function spaceCloseTargets(spaceId) {
   const groupMap = session.arcSidebarNativeGroups || {};
   const results = await Promise.allSettled([...new Set(Object.values(groupMap))].map(id => chrome.tabGroups.get(id)));
   const groups = results.filter(result => result.status === 'fulfilled').map(result => result.value);
-  const groupIds = spaceGroupIds(space, bindings, tabs, groupMap, groups);
-  const live = new Set(tabs.filter(tab => !tab.pinned).map(tab => tab.id));
-  const tabIds = new Set(savedItemIds(space.children).map(id => Number(bindings[id])).filter(id => live.has(id)));
-  for (const tab of tabs) if (!tab.pinned && groupIds.has(tab.groupId)) tabIds.add(tab.id);
-  return { tabIds: [...tabIds], bindings, groupCount: groupIds.size };
+  const { groupIds, openTabs } = spaceOpenState(space, bindings, tabs, groupMap, groups);
+  return { tabIds: openTabs.map(tab => tab.id), bindings, groupCount: groupIds.size };
 }
 export async function getSpaceCloseInfo(spaceId) {
   await bindingsReady;

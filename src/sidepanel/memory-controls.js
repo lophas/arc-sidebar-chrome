@@ -8,7 +8,6 @@ const BINDINGS_KEY = 'arcSidebarBindings';
 let menu = null;
 let bypassContextMenu = false;
 let decorateTimer = null;
-let liveSpaceIds = new Set();
 
 function collectTabIds(nodes, out = []) {
   for (const node of nodes || []) {
@@ -160,32 +159,9 @@ function decorateImmediateLiveDots() {
     button.textContent = '';
     button.title = 'Close tab';
   });
-
-  for (const button of document.querySelectorAll('.space-button[data-space-id]')) {
-    const spaceId = button.dataset.spaceId;
-    if (!spaceId || spaceId === '__open_tabs__') continue;
-    let dot = button.querySelector('.space-live-dot');
-    if (!liveSpaceIds.has(spaceId)) {
-      dot?.remove();
-      continue;
-    }
-    if (!dot) {
-      dot = document.createElement('span');
-      dot.className = 'space-live-dot';
-      dot.setAttribute('aria-hidden', 'true');
-      button.append(dot);
-    }
-  }
 }
 
-async function decorateMemoryControls() {
-  const { model, bindings } = await getModelAndBindings();
-
-  liveSpaceIds = new Set();
-  for (const space of model?.spaces || []) {
-    if (liveItemIdsForNodes(space.children || [], bindings).length) liveSpaceIds.add(space.id);
-  }
-
+function decorateMemoryControls() {
   decorateImmediateLiveDots();
   document.querySelectorAll('.folder-reset').forEach(button => { button.classList.add('live-dot-close'); button.textContent = ''; button.title = 'Close'; });
 }
@@ -196,7 +172,7 @@ function scheduleDecorate() {
   if (decorateTimer) clearTimeout(decorateTimer);
   decorateTimer = setTimeout(() => {
     decorateTimer = null;
-    decorateMemoryControls().catch(() => {});
+    decorateMemoryControls();
   }, 0);
 }
 

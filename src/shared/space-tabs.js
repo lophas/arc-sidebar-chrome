@@ -31,3 +31,11 @@ export function spaceWorkflowTabs(model, space, bindings, tabs, groupMap, groups
     .sort((a, b) => Number(b.windowId === windowId) - Number(a.windowId === windowId)
       || a.windowId - b.windowId || a.index - b.index);
 }
+
+// Presence and bulk-close controls must include workflow-only groups too.
+export function spaceOpenState(space, bindings, tabs, groupMap, groups) {
+  const groupIds = spaceGroupIds(space, bindings, tabs, groupMap, groups);
+  const boundIds = new Set(savedItemIds(space?.children).map(id => Number(bindings[id])).filter(Number.isInteger));
+  const openTabs = tabs.filter(tab => !tab.pinned && (boundIds.has(tab.id) || groupIds.has(tab.groupId)));
+  return { groupIds, openTabs };
+}

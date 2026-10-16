@@ -83,7 +83,7 @@ Chrome Sync keeps your organization available across computers. Portable backups
 | **Automatic mini player** | Continue compatible playing videos when switching tabs; return them to the page on return. Turn automatic PiP off in Options, or follow the per-site permission guide. |
 | **Fixed or Autohide** | Switch beside search. Autohide follows Chrome’s side-panel position; choose the close delay and the edge trigger’s top, bottom and width. Click outside to hide it; unsaved editor fields are kept. |
 | **Right-click pinning** | Save the current webpage or a link directly to Favorites or a Space from Chrome’s context menu. All destination selectors list Favorites first. |
-| **Chrome Sync** | Sync Spaces, palettes, Favorites, folders, links, icons, order and edge trigger settings. On a fresh installation, restore the existing cloud setup before uploading any new organization. |
+| **Chrome Sync** | Sync Spaces, palettes, Favorites, folders, links, icons and order. On a fresh installation, restore the existing cloud setup before uploading any new organization. |
 | **Backup and restore** | Save a portable JSON copy including custom icons, palettes, expanded/collapsed folders, sidebar mode, timeout, trigger settings, Favorite size, width and automatic PiP preference. |
 
 ### Fit the sidebar to the way you browse

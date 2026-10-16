@@ -1,6 +1,6 @@
 # Chrome Web Store Privacy practices
 
-Prepared from the shipped 4.0.2 source. Recheck after changing permissions or data handling.
+Prepared from the 4.0.3 source. Recheck after changing permissions or data handling.
 
 ## Single purpose description
 
@@ -20,7 +20,7 @@ Create and manage native Chrome groups associated with Favorites and Spaces. Kee
 
 ## storage justification
 
-Store the user’s Spaces, Favorites, folders, saved URLs and titles, custom icons, palettes, preferences and tab-restoration metadata. Session storage keeps temporary tab/group bindings. When the user enables Chrome Sync, synchronize the saved organization and edge-trigger settings through chrome.storage.sync. Favorite button size and other device-specific appearance settings remain local and can be included in backups.
+Store the user’s Spaces, Favorites, folders, saved URLs and titles, custom icons, palettes, preferences and tab-restoration metadata. Session storage keeps temporary tab/group bindings. When the user enables Chrome Sync, synchronize the saved organization through chrome.storage.sync. Fixed/Autohide mode, timeout, edge-trigger geometry, Favorite button size and sidebar width remain local and are included in backups.
 
 ## sidePanel justification
 
