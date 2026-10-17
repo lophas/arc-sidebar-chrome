@@ -1,7 +1,7 @@
 (() => {
   if (window.top !== window) return;
   const CONTROLLER_KEY = '__arcSidebarOverlayController';
-  const VERSION = 'edge-intent-v4';
+  const VERSION = 'edge-intent-v5';
   const previous = globalThis[CONTROLLER_KEY];
   if (previous?.version === VERSION && previous.active()) { previous.refresh(); return; }
   previous?.dispose();
@@ -425,8 +425,11 @@
     });
 
     listen(window, 'message', event => {
-      if (event.source !== iframe.contentWindow || event.data?.type !== 'arc-sidebar-editor-state') return;
-      setEditorActive(event.data.open);
+      if (event.source !== iframe.contentWindow) return;
+      if (event.data?.type === 'arc-sidebar-fixed-handoff') {
+        ++modeRequest;
+        applyInitializedMode(NATIVE_MODE);
+      } else if (event.data?.type === 'arc-sidebar-editor-state') setEditorActive(event.data.open);
     });
 
     // Opening requires pointer movement, never a synthesized enter on tab return.

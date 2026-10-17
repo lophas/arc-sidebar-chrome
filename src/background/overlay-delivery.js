@@ -2,7 +2,7 @@ import { EDGE_TRIGGER_KEY, edgeTrigger } from '../shared/edge-trigger.js';
 import { sidebarPreferences } from '../shared/sidebar-preferences.js';
 import { canAutohideUrl } from '../shared/autohide-availability.js';
 import { markAutohideBlocked } from './autohide-indicator.js';
-const VERSION = 'edge-intent-v4';
+const VERSION = 'edge-intent-v5';
 const pending = new Map();
 async function applyToTab(tabId) {
   const tab = await chrome.tabs.get(tabId);
@@ -14,8 +14,12 @@ async function applyToTab(tabId) {
   try { response = await chrome.tabs.sendMessage(tabId, message); } catch {}
   if (response?.version === VERSION) return;
   if (preferences.mode === 'native') {
-    // A stale host can remain after an extension update even without a receiver.
-    await chrome.scripting.executeScript({ target: { tabId }, func: () => document.getElementById('arc-sidebar-overlay-host')?.remove() });
+    // A retired controller can still repair its host after its message receiver
+    // was lost. Stop its observers/listeners before removing the stale DOM.
+    await chrome.scripting.executeScript({ target: { tabId }, func: () => {
+      globalThis.__arcSidebarOverlayController?.dispose();
+      document.getElementById('arc-sidebar-overlay-host')?.remove();
+    } });
     return;
   }
   await chrome.scripting.executeScript({ target: { tabId }, files: ['src/overlay/overlay.js'] });

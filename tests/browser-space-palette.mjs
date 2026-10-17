@@ -209,4 +209,21 @@ try{
  await active.waitForFunction(()=>document.getElementById('arc-sidebar-overlay-host')?.style.display==='block');
  assert.equal(await page.evaluate(async()=>(await chrome.storage.local.get('arcSidebarAutohideTimeout')).arcSidebarAutohideTimeout),900);
  console.log('PASS real native panel: open selects Fixed, switch updates, active overlay deactivates without reload, other tab follows on focus, close keeps Fixed and explicit Autohide restores timeout');
+ // Exercise the actual toggle in the closed-shadow autohide iframe, rather than
+ // the separate controls fixture used above for opening Chrome's native panel.
+ await active.evaluate(()=>document.getElementById('nativeControls').remove());
+ await active.setViewportSize({width:1100,height:850});
+ const layout=await page.evaluate(()=>chrome.sidePanel.getLayout());
+ await active.mouse.move(550,300);await active.mouse.move(layout.side==='left'?2:1098,300);
+ let overlayFrame;
+ await poll(()=>{overlayFrame=active.frames().find(frame=>frame.url().includes('/src/sidepanel/index.html?overlay=1'));return!!overlayFrame;},'Real autohide iframe did not load');
+ await poll(()=>overlayFrame.locator('#toggleSidebarMode').getAttribute('aria-pressed').then(value=>value==='false'),'Real overlay mode switch was not ready');
+ await overlayFrame.locator('#toggleSidebarMode').click();
+ await active.waitForFunction(()=>document.getElementById('arc-sidebar-overlay-host')?.style.display==='none');
+ assert.equal(await page.evaluate(async()=>(await chrome.storage.local.get('arcSidebarMode')).arcSidebarMode),'native');
+ await active.mouse.move(550,300);await active.mouse.move(layout.side==='left'?2:1098,300);await active.waitForTimeout(250);
+ assert.equal(await active.evaluate(()=>document.getElementById('arc-sidebar-overlay-host')?.style.display),'none','Fixed must keep the autohide host deactivated');
+ assert.equal(await active.evaluate(()=>window.modeMarker),'kept');
+ console.log('PASS real autohide button: clicking Fixed opens the native panel and retires its own overlay without reloading the page');
+
 }finally{await context?.close();await new Promise(done=>server.close(done));await rm(directory,{recursive:true,force:true});}

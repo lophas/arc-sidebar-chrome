@@ -12,8 +12,14 @@ async function refresh() {
 button.addEventListener('click', async () => {
   button.disabled = true;
   try {
-    const response = await chrome.runtime.sendMessage({ type: 'arc-sidebar-switch-mode', windowId, mode: mode === 'native' ? 'overlay' : 'native' });
+    const targetMode = mode === 'native' ? 'overlay' : 'native';
+    const response = await chrome.runtime.sendMessage({ type: 'arc-sidebar-switch-mode', windowId, mode: targetMode });
     if (!response?.ok) throw new Error(response?.error || 'Could not switch sidebar mode.');
+    // Complete the handoff with our own host, even if background tab delivery
+    // missed it while Chrome resized/focused the newly opened native panel.
+    if (targetMode === 'native' && window.parent !== window) {
+      window.parent.postMessage({ type: 'arc-sidebar-fixed-handoff' }, '*');
+    }
     await refresh();
   } catch (error) {
     button.title = error.message;
