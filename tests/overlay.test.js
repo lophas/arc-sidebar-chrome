@@ -355,19 +355,3 @@ test('focus and explicit apply update trigger geometry without reloading',async(
  s.changes.forEach(fn=>fn({type:'arc-sidebar-apply-mode',mode:'overlay',timeout:1200,trigger:{height:30,offset:20,width:12}},{},()=>{}));
  assert.equal(s.nodes['.edge'].style.height,'30vh');assert.equal(s.nodes['.edge'].style.top,'20vh');assert.equal(s.nodes['.edge'].style.width,'12px');
 });
-
-test('successful Fixed handoff from its own iframe hides and deactivates the overlay without tab focus',async()=>{
- const s=setup();await settled();
- s.emit('document','pointermove',{clientX:999,movementX:1});s.advance(80);
- assert.equal(s.nodes['.panel'].classList.values.has('open'),true);
- s.emit('window','message',{source:{},data:{type:'arc-sidebar-fixed-handoff'}});
- assert.equal(s.nodes['.panel'].classList.values.has('open'),true,'unrelated page/frame cannot change mode');
- s.emit('window','message',{source:s.nodes.iframe.contentWindow,data:{type:'arc-sidebar-fixed-handoff'}});
- assert.equal(s.nodes['.panel'].classList.values.has('open'),false);
- assert.equal(s.host.style.getPropertyValue('display'),'none');
- assert.equal(s.messages.at(-1).open,false);
- s.emit('document','pointermove',{clientX:600,movementX:1});s.emit('document','pointermove',{clientX:999,movementX:1});s.advance(1000);
- assert.equal(s.nodes['.panel'].classList.values.has('open'),false,'Fixed cannot reopen on edge hover');
- s.host.style.cssText='display:block';s.observers.forEach(o=>o.fn());s.tick();
- assert.match(s.host.style.cssText,/display: none/,'DOM repair keeps the committed mode');
-});

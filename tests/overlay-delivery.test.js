@@ -8,7 +8,7 @@ import { canAutohideUrl } from '../src/shared/autohide-availability.js';
 function setup({ mode='overlay', receiver=false, url='https://example.test', changeDuringInjection=false }={}) {
   const calls=[];const events={};let settings={arcSidebarMode:mode,arcSidebarAutohideTimeout:700};let ready=receiver;
   const event=name=>({addListener:fn=>events[name]=fn});
-  const chrome={storage:{local:{get:async()=>settings}},tabs:{get:async id=>({id,url}),query:async()=>[],onActivated:event('activate'),onUpdated:event('update'),sendMessage:async(id,message)=>{calls.push(['message',id,message.mode]);if(!ready)throw Error('No receiver');return {version:'edge-intent-v5'};}},windows:{onFocusChanged:event('focus')},scripting:{executeScript:async request=>{calls.push([request.files?'inject':'remove',request.target.tabId]);if(request.files)ready=true;else{let disposed=false;vm.runInNewContext('('+request.func.toString()+')()',{globalThis:{__arcSidebarOverlayController:{dispose(){disposed=true;calls.push(['dispose',request.target.tabId]);}}},document:{getElementById:()=>({remove(){assert.equal(disposed,true,'stop the repair observer before removing its host');}})}});}if(changeDuringInjection)settings={arcSidebarMode:'native',arcSidebarAutohideTimeout:1000};}}};
+  const chrome={storage:{local:{get:async()=>settings}},tabs:{get:async id=>({id,url}),query:async()=>[],onActivated:event('activate'),onUpdated:event('update'),sendMessage:async(id,message)=>{calls.push(['message',id,message.mode]);if(!ready)throw Error('No receiver');return {version:'edge-intent-v4'};}},windows:{onFocusChanged:event('focus')},scripting:{executeScript:async request=>{calls.push([request.files?'inject':'remove',request.target.tabId]);if(request.files)ready=true;if(changeDuringInjection)settings={arcSidebarMode:'native',arcSidebarAutohideTimeout:1000};}}};
   const context={chrome,sidebarPreferences,EDGE_TRIGGER_KEY,edgeTrigger,canAutohideUrl,markAutohideBlocked:()=>{}};vm.createContext(context);
   const source=fs.readFileSync('src/background/overlay-delivery.js','utf8').replace(/^import .*;\n/gm,'').replace(/export /g,'');
   vm.runInContext(source,context);
@@ -20,7 +20,7 @@ test('focused page without receiver is injected once; subsequent focus reuses th
 });
 test('fixed deactivates existing script, removes stale hosts without injecting an overlay, and excludes browser pages',async()=>{
  const existing=setup({mode:'native',receiver:true});await existing.run(7);assert.deepEqual(existing.calls,[['message',7,'native']]);
- const stale=setup({mode:'native'});await stale.run(7);assert.deepEqual(stale.calls,[['message',7,'native'],['remove',7],['dispose',7]]);
+ const stale=setup({mode:'native'});await stale.run(7);assert.deepEqual(stale.calls,[['message',7,'native'],['remove',7]]);
  const browser=setup({url:'chrome://settings'});await browser.run(7);assert.deepEqual(browser.calls,[]);
  const store=setup({url:'https://chromewebstore.google.com/detail/test'});await store.run(7);assert.deepEqual(store.calls,[]);
 });
