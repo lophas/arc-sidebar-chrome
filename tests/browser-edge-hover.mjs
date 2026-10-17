@@ -87,7 +87,10 @@ try {
     await f.page.evaluate(side => { arcSide = side; window.dispatchEvent(new Event('focus')); }, side === 'left' ? 'right' : 'left');
     await f.page.waitForTimeout(450);
     assert.deepEqual(await f.page.evaluate(() => arcUnexpectedPaints), [], 'changing sides while closed never reveals the panel');
-    const edge = side === 'left' ? 1270 : 1;
+    const edge = await f.page.evaluate(() => {
+      const rect = arcTestShadow.querySelector('.edge').getBoundingClientRect();
+      return (rect.left + rect.right) / 2;
+    });
     await f.page.mouse.move(640, 300); await f.page.mouse.move(edge, 300);
     await f.page.waitForFunction(() => arcTestShadow.querySelector('.panel').classList.contains('open'));
     assert.equal(await f.page.evaluate(() => getComputedStyle(arcTestShadow.querySelector('.panel')).visibility), 'visible');
