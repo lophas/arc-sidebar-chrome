@@ -214,8 +214,8 @@
       <style>
         :host { all: initial; color-scheme: light dark; }
         .edge { position: fixed; top: 0; right: 0; width: ${EDGE_WIDTH}px; height: 100vh; z-index: 2147483646; background: transparent; pointer-events: none; }
-        .panel { position: fixed; top: 0; right: 0; width: ${DEFAULT_PANEL_WIDTH}px; height: 100vh; z-index: 2147483647; transform: translateX(100%); transition: transform 170ms cubic-bezier(.2,.8,.2,1), box-shadow 170ms ease; background: Canvas; box-shadow: none; overflow: hidden; pointer-events: none; border-left: 1px solid color-mix(in srgb, CanvasText 10%, transparent); }
-        .panel.open { transform: translateX(0); box-shadow: -18px 0 42px rgba(0,0,0,.34); pointer-events: auto; }
+        .panel { position: fixed; top: 0; right: 0; width: ${DEFAULT_PANEL_WIDTH}px; height: 100vh; z-index: 2147483647; transform: translateX(100%); visibility: hidden; transition: transform 170ms cubic-bezier(.2,.8,.2,1), box-shadow 170ms ease, visibility 0s linear 170ms; background: Canvas; box-shadow: none; overflow: hidden; pointer-events: none; border-left: 1px solid color-mix(in srgb, CanvasText 10%, transparent); }
+        .panel.open { transform: translateX(0); visibility: visible; transition-delay: 0s; box-shadow: -18px 0 42px rgba(0,0,0,.34); pointer-events: auto; }
         .edge.left { left: 0; right: auto; }
         .panel.left { left: 0; right: auto; transform: translateX(-100%); border-left: 0; border-right: 1px solid color-mix(in srgb, CanvasText 10%, transparent); }
         .panel.left.open { transform: translateX(0); box-shadow: 18px 0 42px rgba(0,0,0,.34); }
@@ -273,9 +273,12 @@
 
     const applyEdgeSide = value => {
       const side = value === 'left' ? 'left' : 'right';
-      if (side !== edgeSide) {
+      const changed = side !== edgeSide;
+      if (changed) {
         cancelResize?.();
         clearTimers();
+        // A side change is a relocation, not an opening/closing animation.
+        panel.style.transition = 'none';
       }
       edgeSide = side;
       for (const node of [edge, panel]) {
@@ -283,6 +286,12 @@
         else node.classList.remove('left');
       }
       applyWidth(currentWidth);
+      if (changed) {
+        // Commit the new offscreen position before restoring hover animations.
+        // This layout read occurs only when Chrome's chosen side changes.
+        panel.getBoundingClientRect();
+        panel.style.transition = '';
+      }
     };
     let layoutRequest = 0;
     const refreshLayout = async () => {

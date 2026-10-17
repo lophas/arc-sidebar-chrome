@@ -5,6 +5,7 @@ function setup(mode='overlay',side='right',timeout,trigger) {
  const listener=(map,name,fn)=>(map[name]||=[]).push(fn);
  const element=()=>({id:'',parentNode:null,hidden:false,remove(){this.parentNode=null;},attributes:new Map(),events:{},style:{properties:new Map(),setProperty(n,v,p){styleWrites++;this.properties.set(n,{v,p});mutate(this.owner);},getPropertyValue(n){const value=this.properties.get(n)?.v||'';return n==='all'&&this.properties.size>1?'':value;},getPropertyPriority(n){return this.properties.get(n)?.p||'';}},classList:{values:new Set(),add(...names){names.forEach(n=>this.values.add(n));},remove(...names){names.forEach(n=>this.values.delete(n));}},addEventListener(n,fn){listener(this.events,n,fn);},removeEventListener(){},hasAttribute(n){return this.attributes.has(n);},removeAttribute(n){this.attributes.delete(n);},setPointerCapture(){},hasPointerCapture(){return false;},contains(){return false;}});
  const nodes={'.edge':element(),'.panel':element(),iframe:element(),'.resize-handle':element()};
+ nodes['.panel'].getBoundingClientRect=()=>({});
  Object.defineProperty(nodes.iframe,'src',{get(){return this.attributes.get('src');},set(v){this.attributes.set('src',v);}});
  nodes.iframe.contentWindow={postMessage:message=>messages.push(message)};
  const shadow={querySelector:selector=>nodes[selector]};const host=element();host.attachShadow=()=>shadow;

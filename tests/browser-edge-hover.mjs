@@ -12,9 +12,11 @@ const source = fs.readFileSync('src/overlay/overlay.js', 'utf8');
 const origin = 'https://edge.test';
 const browser = await chromium.launch({ executablePath, headless: false, args: ['--no-sandbox', '--disable-features=OverlayScrollbar'] });
 
-async function fixture(code, scale = 1) {
+async function fixture(code, scale = 1, { side = 'right', layoutDelay = 0, sampleClosed = false } = {}) {
   const context = await browser.newContext({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: scale });
-  await context.addInitScript(() => {
+  await context.addInitScript(({ side, layoutDelay }) => {
+    window.arcSide = side;
+    window.arcLayoutDelay = layoutDelay;
     const attach = Element.prototype.attachShadow;
     Element.prototype.attachShadow = function(options) {
       const root = attach.call(this, options);
@@ -29,7 +31,7 @@ async function fixture(code, scale = 1) {
         return window.arcZeroMovement ? 0 : descriptor.get.call(this);
       } });
     }
-  });
+  }, { side, layoutDelay });
   await context.route(origin + '/**', async route => {
     const path = new URL(route.request().url()).pathname;
     if (path.endsWith('/src/sidepanel/index.html')) {
@@ -42,19 +44,57 @@ async function fixture(code, scale = 1) {
       window.arcTestRuntimeListeners=[];window.arcZeroMovement=true;
       window.arcLastPointer=null;
       document.addEventListener('pointermove',e=>{window.arcLastPointer={x:e.clientX,y:e.clientY};},true);
-      window.chrome={storage:{local:{get:async()=>({...arcSettings}),set:async value=>Object.assign(arcSettings,value)},onChanged:{addListener(){},removeListener(){}}},runtime:{id:'test',getURL:path=>location.origin+'/'+path,sendMessage:async message=>message.type==='arc-sidebar-panel-layout'?{side:window.arcSide||'right'}:{open:false},onMessage:{addListener:fn=>arcTestRuntimeListeners.push(fn),removeListener:fn=>{arcTestRuntimeListeners=arcTestRuntimeListeners.filter(value=>value!==fn);}}}};
+      window.chrome={storage:{local:{get:async()=>({...arcSettings}),set:async value=>Object.assign(arcSettings,value)},onChanged:{addListener(){},removeListener(){}}},runtime:{id:'test',getURL:path=>location.origin+'/'+path,sendMessage:async message=>{if(message.type==='arc-sidebar-panel-layout'){if(window.arcLayoutDelay)await new Promise(done=>setTimeout(done,window.arcLayoutDelay));return{side:window.arcSide||'right'};}return{open:false};},onMessage:{addListener:fn=>arcTestRuntimeListeners.push(fn),removeListener:fn=>{arcTestRuntimeListeners=arcTestRuntimeListeners.filter(value=>value!==fn);}}}};
       </script>` });
   });
   const page = await context.newPage();
   const errors = [];
   page.on('pageerror', error => errors.push(error.message));
   await page.goto(origin + '/page');
+  if (sampleClosed) await page.evaluate(() => {
+    window.arcUnexpectedPaints = [];
+    const sample = () => {
+      const panel = window.arcTestShadow?.querySelector('.panel');
+      if (panel && !panel.classList.contains('open')) {
+        const style = getComputedStyle(panel), rect = panel.getBoundingClientRect();
+        if (style.visibility !== 'hidden' && style.display !== 'none' && Number(style.opacity) > 0 && rect.left < innerWidth - .5 && rect.right > .5) {
+          arcUnexpectedPaints.push({ left: rect.left, right: rect.right, visibility: style.visibility });
+        }
+      }
+      requestAnimationFrame(sample);
+    };
+    requestAnimationFrame(sample);
+  });
   await page.addScriptTag({ content: code });
   await page.waitForFunction(() => !!window.arcTestShadow);
   return { context, page, errors, isOpen: () => page.evaluate(() => arcTestShadow.querySelector('.panel').classList.contains('open')) };
 }
 
 try {
+  // Delay Chrome's layout response beyond first paint. A closed panel must not
+  // sweep through the viewport while its initial right position becomes left.
+  const beforeFlashFix = execFileSync('git', ['show', '036769edace4c8a945f079d49c62d95b757a05af:src/overlay/overlay.js'], { encoding: 'utf8' });
+  const regression = await fixture(beforeFlashFix, 1, { side: 'left', layoutDelay: 180, sampleClosed: true });
+  await regression.page.waitForTimeout(450);
+  assert.ok((await regression.page.evaluate(() => arcUnexpectedPaints.length)) > 0, 'old version must reproduce a visible closed panel during startup');
+  await regression.context.close();
+  for (const side of ['left', 'right']) {
+    const f = await fixture(source, 1, { side, layoutDelay: 180, sampleClosed: true });
+    await f.page.waitForTimeout(450);
+    assert.deepEqual(await f.page.evaluate(() => arcUnexpectedPaints), [], `${side} startup never paints the closed panel`);
+    assert.equal(await f.page.evaluate(() => arcTestShadow.querySelector('iframe').hasAttribute('src')), false);
+    // Check the opposite side with no edge input, then deliberate opening.
+    await f.page.evaluate(side => { arcSide = side; window.dispatchEvent(new Event('focus')); }, side === 'left' ? 'right' : 'left');
+    await f.page.waitForTimeout(450);
+    assert.deepEqual(await f.page.evaluate(() => arcUnexpectedPaints), [], 'changing sides while closed never reveals the panel');
+    const edge = side === 'left' ? 1270 : 1;
+    await f.page.mouse.move(640, 300); await f.page.mouse.move(edge, 300);
+    await f.page.waitForFunction(() => arcTestShadow.querySelector('.panel').classList.contains('open'));
+    assert.equal(await f.page.evaluate(() => getComputedStyle(arcTestShadow.querySelector('.panel')).visibility), 'visible');
+    assert.deepEqual(f.errors, []);
+    await f.context.close();
+  }
+  console.log('PASS real Chrome: old startup flash reproduced; left/right initialization and closed relocation never paint the panel, deliberate hover still opens it');
   if (reference) {
     const old = execFileSync('git', ['show', reference + ':src/overlay/overlay.js'], { encoding: 'utf8' });
     const f = await fixture(old);
