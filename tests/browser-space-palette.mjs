@@ -16,6 +16,10 @@ let context;
 try{
  context=await chromium.launchPersistentContext('',{channel:'chromium',headless:false,acceptDownloads:true,viewport:{width:420,height:900},ignoreDefaultArgs:['--disable-extensions'],args:['--no-sandbox',`--disable-extensions-except=${directory}`,`--load-extension=${directory}`]});
  let[worker]=context.serviceWorkers();if(!worker)worker=await context.waitForEvent('serviceworker');const origin=`chrome-extension://${worker.url().split('/')[2]}`;
+ const commands=await worker.evaluate(()=>chrome.commands.getAll());
+ assert.equal(commands.find(command=>command.name==='arc-command-bar-v4')?.shortcut,'Alt+K');
+ assert.equal(commands.some(command=>command.name==='arc-command-bar-v3'),false);
+ console.log('PASS real extension: Chrome registers the new Alt+K search command');
  const page=await context.newPage(),errors=[];page.on('pageerror',error=>{errors.push(error.message);console.error('Palette page error:',error.message);});await page.emulateMedia({colorScheme:'light'});
  await page.goto(origin+'/src/sidepanel/index.html');await page.locator('.space-button[data-space-id="__my_space__"]').waitFor();
  assert.deepEqual(await page.evaluate(async()=>(await chrome.storage.local.get('arcSidebarModel')).arcSidebarModel.spaces[0].palette),{kind:'preset',id:'black'});

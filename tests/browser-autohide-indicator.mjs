@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { cp, mkdtemp, rm } from 'node:fs/promises';
+import { cp, mkdtemp, rm, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { createServer } from 'node:http';
@@ -11,7 +11,12 @@ await new Promise(done => server.listen(0, '127.0.0.1', done));
 let context;
 try {
   await cp('src', join(directory, 'src'), { recursive: true });
-  await cp('manifest.json', join(directory, 'manifest.json'));
+  const currentManifest = JSON.parse(await readFile('manifest.json', 'utf8'));
+  // Start with the retired binding, then update the same installed extension.
+  const previousManifest = { ...currentManifest, commands: { 'arc-command-bar-v3': {
+    suggested_key: { default: 'Ctrl+K', mac: 'Command+K' }, description: 'Open search'
+  } } };
+  await writeFile(join(directory, 'manifest.json'), JSON.stringify(previousManifest));
   context = await chromium.launchPersistentContext('', { channel: 'chromium', headless: false, ignoreDefaultArgs: ['--disable-extensions'], args: ['--no-sandbox', '--enable-unsafe-extension-debugging', `--disable-extensions-except=${directory}`, `--load-extension=${directory}`] });
   const devtools = await context.browser().newBrowserCDPSession();
   let [worker] = context.serviceWorkers();
@@ -30,10 +35,11 @@ try {
           xs.push((i / 4) % image.width); ys.push(Math.floor(i / 4 / image.width));
         }
       }
-      return { size: Number(size), width: Math.max(...xs) - Math.min(...xs) + 1, height: Math.max(...ys) - Math.min(...ys) + 1 };
+      return { centerAlpha: image.data[(Math.floor(image.height / 2) * image.width + Math.floor(image.width / 2)) * 4 + 3], size: Number(size), width: Math.max(...xs) - Math.min(...xs) + 1, height: Math.max(...ys) - Math.min(...ys) + 1 };
     });
   });
   for (const icon of coverage) {
+    assert.equal(icon.centerAlpha, 0, 'The arch opening must reveal the toolbar background');
     assert.ok(icon.width >= icon.size - 2, 'Colored arch must fill the available toolbar width');
     assert.ok(icon.height >= icon.size - 2, 'Colored arch must fill the available toolbar height');
   }
@@ -65,7 +71,12 @@ try {
   // mode change or a subsequent protected-tab activation to repair its badge.
   const secondProtected = await controls.evaluate(() => chrome.tabs.create({ url: 'chrome://extensions/', active: true }));
   await poll(secondProtected.id, '!');
+  await writeFile(join(directory, 'manifest.json'), JSON.stringify(currentManifest));
   await reloadExtension();
+  const commands = await controls.evaluate(() => chrome.commands.getAll());
+  assert.equal(commands.find(command => command.name === 'arc-command-bar-v4')?.shortcut, 'Alt+K');
+  assert.equal(commands.some(command => command.name === 'arc-command-bar-v3'), false);
+  console.log('PASS real Chrome: updating the existing extension retires Ctrl+K and registers Alt+K');
   await poll(ids.protected, '!'); await poll(secondProtected.id, '!'); await poll(ids.regular, '');
   assert.equal(await controls.evaluate(async () => (await chrome.storage.local.get('arcSidebarMode')).arcSidebarMode), 'overlay');
   assert.match(await controls.evaluate(id => chrome.action.getTitle({ tabId: id }), ids.protected), /Click to open the fixed sidebar/);

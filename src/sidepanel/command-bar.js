@@ -1,3 +1,4 @@
+import { getSearchShortcut, isDefaultSearchShortcut } from '../shared/search-shortcut.js';
 import { createFavicon } from '../shared/favicon.js';
 import { isSidebarActive } from './lifecycle.js';
 import { createStorageClient } from '../shared/storage-client.js';
@@ -64,7 +65,7 @@ function open() {
   refresh();
 }
 async function executeSelected() {
-  // A quick Cmd+K → Enter must wait for this opening's data, never use stale
+  // A quick Alt+K → Enter must wait for this opening's data, never use stale
   // results from the last time the shared search dialog was opened.
   const context = openContext;
   while (pendingRefresh && dialog.open && openContext === context) await pendingRefresh;
@@ -95,8 +96,24 @@ dialog.addEventListener('close', () => {
   if (standalone) window.close();
 });
 dialog.addEventListener('click', event => { if (event.target === dialog) { const r = dialog.getBoundingClientRect(); if (event.clientX < r.left || event.clientX > r.right || event.clientY < r.top || event.clientY > r.bottom) dialog.close(); } });
-document.querySelector('#openCommandBar')?.addEventListener('click', open);
-document.addEventListener('keydown', event => { if ((event.metaKey || event.ctrlKey) && !event.altKey && !event.shiftKey && event.code === 'KeyK') { event.preventDefault(); open(); } });
+const launcher = document.querySelector('#openCommandBar');
+launcher?.addEventListener('click', open);
+let shortcut = '';
+async function refreshShortcut() {
+  shortcut = await getSearchShortcut();
+  if (!launcher) return;
+  const hint = launcher.querySelector('span');
+  if (hint) hint.textContent = shortcut || 'Set shortcut';
+  launcher.title = shortcut ? `Search open tabs or enter a URL · ${shortcut}`
+    : 'Search open tabs or enter a URL · No shortcut assigned. Set one at chrome://extensions/shortcuts';
+}
+refreshShortcut();
+window.addEventListener('focus', refreshShortcut);
+// Custom bindings are handled by Chrome. This local fallback applies only to
+// the registered default, including Option+K's non-letter key on macOS.
+document.addEventListener('keydown', event => {
+  if (isDefaultSearchShortcut(event, shortcut)) { event.preventDefault(); open(); }
+});
 chrome.storage.onChanged.addListener(changes => { if (dialog.open && (changes.arcSidebarModel || changes.arcSidebarBindings)) refresh(); });
 for (const event of [chrome.tabs.onCreated, chrome.tabs.onRemoved, chrome.tabs.onUpdated, chrome.tabs.onActivated]) event.addListener(() => { if (dialog.open) refresh(); });
 for (const event of [chrome.tabGroups.onCreated, chrome.tabGroups.onRemoved, chrome.tabGroups.onUpdated]) event?.addListener(() => { if (dialog.open) refresh(); });

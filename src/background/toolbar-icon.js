@@ -8,14 +8,18 @@ export async function enlargeToolbarIcon() {
     for (const size of [16, 32]) {
       const canvas = new OffscreenCanvas(size, size);
       const context = canvas.getContext('2d');
-      context.beginPath();
-      context.roundRect(0, 0, size, size, size / 8);
-      context.clip();
-      context.fillStyle = '#171923';
-      context.fillRect(0, 0, size, size);
       const height = size * 324 / 344;
       context.drawImage(bitmap, 84, 90, 344, 324, 0, (size - height) / 2, size, height);
-      imageData[size] = context.getImageData(0, 0, size, size);
+      const pixels = context.getImageData(0, 0, size, size);
+      // The source logo includes a charcoal tile. Omit its neutral dark
+      // pixels in the toolbar so Chrome's own light/dark surface shows through.
+      // This runs once when preparing the tiny 16px and 32px action icons.
+      for (let i = 0; i < pixels.data.length; i += 4) {
+        const channels = pixels.data.subarray(i, i + 3);
+        const highest = Math.max(...channels), lowest = Math.min(...channels);
+        if (highest < 80 && highest - lowest < 32) pixels.data[i + 3] = 0;
+      }
+      imageData[size] = pixels;
     }
     await chrome.action.setIcon({ imageData });
     return imageData;

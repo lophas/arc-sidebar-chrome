@@ -1,9 +1,10 @@
+import { SEARCH_COMMAND } from '../shared/search-shortcut.js';
 import { activateTab, openSavedItem, openUrlTab } from './tab-actions.js';
 import { createStorageClient } from '../shared/storage-client.js';
 import { commitStorage } from './state-controller.js';
 const sidebarStorage = createStorageClient({ transact: commitStorage });
 chrome.commands.onCommand.addListener(async (command, tab) => {
-  if (command !== 'arc-command-bar-v3') return;
+  if (command !== SEARCH_COMMAND) return;
   try {
     const source = tab?.windowId != null ? await chrome.windows.get(tab.windowId) : await chrome.windows.getLastFocused({ windowTypes: ['normal'] });
     const sourceTabId = tab?.id ?? (await chrome.tabs.query({ active: true, windowId: source.id }))[0]?.id;
