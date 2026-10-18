@@ -76,7 +76,7 @@ New tabs opened from a Favorite are ungrouped and appear at the end of their Chr
 
 <img src="screenshots/sidebar-search.png" width="390" alt="Search popup inside the sidebar, filtering saved project links">
 
-Press **Option+T** on macOS or **Alt+T** on Windows/Linux to open the search popup, including when the sidebar is closed. The sidebar’s **Search or enter URL** control opens the same search inside the sidebar.
+Press **Option+T** on macOS or **Alt+T** on Windows/Linux to open the search popup, including when the sidebar is closed. Pressing the shortcut again focuses the existing search window and preserves your query and selection. The sidebar’s **Search or enter URL** control opens the same search inside the sidebar.
 
 With an empty query, search shows recently used open tabs, excluding the current tab. Press **⌥T / Alt+T → Enter** to switch to the previously used tab. Type to find open tabs across Chrome windows, Favorites, pinned links, folders and Spaces. Results show favicons and Space or Chrome group names, match all entered words and ignore differences in accents. A saved link with an open tab appears once; selecting it activates that tab, even if it has navigated to another page. Open-tab results include webpages, file URLs and Chrome pages such as `chrome://extensions/`; empty New Tab pages are omitted.
 

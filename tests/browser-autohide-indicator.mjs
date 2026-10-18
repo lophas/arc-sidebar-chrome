@@ -23,6 +23,33 @@ try {
   if (!worker) worker = await context.waitForEvent('serviceworker');
   let controls = await context.newPage();
   await controls.goto(`chrome-extension://${worker.url().split('/')[2]}/src/options/index.html`);
+  const searchWindowId = await controls.evaluate(async () => {
+    const { createSearchWindowController } = await import('../background/search-window.js');
+    const open = createSearchWindowController(), source = await chrome.tabs.getCurrent();
+    await Promise.all([open(source), open(source), open(source)]);
+    const search = (await chrome.windows.getAll({ populate: true, windowTypes: ['popup'] }))
+      .filter(window => window.tabs.some(tab => (tab.url || tab.pendingUrl || '').startsWith(chrome.runtime.getURL('src/sidepanel/command.html'))));
+    if (search.length !== 1) throw Error(`Expected one search window, found ${search.length}`);
+    return search[0].id;
+  });
+  let searchPage;
+  for (let attempt = 0; attempt < 100 && !searchPage; attempt++) {
+    searchPage = context.pages().find(page => page.url().includes('/src/sidepanel/command.html'));
+    if (!searchPage) await new Promise(done => setTimeout(done, 50));
+  }
+  assert.ok(searchPage, 'The single search page should finish opening');
+  await searchPage.locator('.command-input').fill('keep this query');
+  await controls.bringToFront();
+  await controls.evaluate(async () => {
+    // A fresh controller simulates a restarted service worker.
+    const { createSearchWindowController } = await import('../background/search-window.js');
+    await createSearchWindowController()(await chrome.tabs.getCurrent());
+  });
+  assert.equal(await searchPage.locator('.command-input').inputValue(), 'keep this query');
+  assert.equal(await controls.evaluate(id => chrome.windows.get(id).then(window => window.focused), searchWindowId), true);
+  await controls.evaluate(id => chrome.windows.remove(id), searchWindowId);
+  await controls.bringToFront();
+  console.log('PASS real Chrome: repeated search requests share one window and preserve the query after controller restart');
   // Chrome draws the native panel header from manifest icons, not action.setIcon.
   const manifestIcons = await controls.evaluate(async () => {
     const result = [];

@@ -2,6 +2,7 @@
 
 *Spaces, tabs & a little harmony.*
 
+- Keep a single search window: repeated Option+T / Alt+T focuses the existing window and preserves its query and selection, even across Chrome windows.
 - Keep the Classic palette truly black in both light and dark themes, with matching text, controls and preview.
 - Identify the selected palette by its own name, including Classic (black).
 - Restore transparent Favorites, pinned-link and search icons without grey plates or added outlines.
