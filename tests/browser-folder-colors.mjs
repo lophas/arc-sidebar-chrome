@@ -5,10 +5,19 @@ export async function checkFolderColors(page, poll, readModel) {
   const folder = () => page.locator('.folder[data-folder-node-id="folder"]');
   const savedFolder = async () => (await readModel()).spaces.find(space => space.id === 'work').children.find(node => node.id === 'folder');
   const editor = page.locator('.folder-dialog[open]');
+  await page.evaluate(() => {
+    window.__folderEditorEvents = [];
+    window.addEventListener('unhandledrejection', event => window.__folderEditorEvents.push(String(event.reason?.stack || event.reason)));
+    document.addEventListener('contextmenu', event => window.__folderEditorEvents.push({ target: event.target.className, folderId: event.target.closest('.folder-header')?.dataset.folderNodeId }), true);
+  });
   const edit = async () => {
-    await folder().locator('.managed-folder').waitFor();
-    await folder().locator('.folder-header').click({ button: 'right' });
-    await editor.waitFor();
+    await folder().locator(':scope > .folder-header.managed-folder').click({ button: 'right' });
+    try {
+      await poll(async () => await editor.count() === 1, 'Folder editor did not open');
+    } catch (error) {
+      console.error('Folder editor diagnostic:', await page.evaluate(async () => ({ events: window.__folderEditorEvents, state: (await chrome.storage.local.get('arcSidebarState')).arcSidebarState, dialogs: [...document.querySelectorAll('dialog')].map(el => ({ class: el.className, open: el.open, html: el.innerHTML.slice(0, 300) })) })));
+      throw error;
+    }
   };
   const rgb = color => 'rgb(' + [1, 3, 5].map(offset => parseInt(color.slice(offset, offset + 2), 16)).join(', ') + ')';
 
