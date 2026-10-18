@@ -30,6 +30,18 @@ export async function checkFolderColors(page, poll, readModel) {
   await poll(async () => (await savedFolder()).color === '#ff8800', 'Custom folder color did not save');
   await poll(async () => await folder().locator('.folder-header').evaluate(el => getComputedStyle(el).backgroundColor) === rgb(folderColorStyle('#ff8800')['--folder-heading']), 'Folder heading did not use the custom color');
   assert.equal(await folder().evaluate(el => getComputedStyle(el).overflow), 'visible', 'Close tooltips and drag indicators must not be clipped');
+  const checkActiveRow = async dark => {
+    const row = folder().locator('.row[data-saved-node-id="pin"]');
+    await row.evaluate(el => el.classList.add('active'));
+    try {
+      const active = await row.evaluate(el => getComputedStyle(el).backgroundColor);
+      assert.equal(active, rgb(folderColorStyle('#ff8800', dark)['--folder-selected']));
+      assert.notEqual(active, await folder().locator('.folder-header').evaluate(el => getComputedStyle(el).backgroundColor));
+      assert.notEqual(active, await folder().evaluate(el => getComputedStyle(el).backgroundColor));
+    } finally { await row.evaluate(el => el.classList.remove('active')); }
+  };
+  await checkActiveRow(false);
+
   await folder().locator('.folder-header').click();
   await page.locator('.folder.collapsed[data-folder-node-id="folder"]').waitFor();
   assert.equal(await folder().getAttribute('data-folder-color'), '#ff8800', 'Collapsing must preserve the folder color');
@@ -38,6 +50,7 @@ export async function checkFolderColors(page, poll, readModel) {
 
   await page.emulateMedia({ colorScheme: 'dark' });
   await poll(async () => await folder().locator('.folder-header').evaluate(el => getComputedStyle(el).backgroundColor) === rgb(folderColorStyle('#ff8800', true)['--folder-heading']), 'Folder color did not follow dark theme');
+  await checkActiveRow(true);
   await page.emulateMedia({ colorScheme: 'light' });
   await edit();
   await editor.locator('#folderColorMode').selectOption('space');

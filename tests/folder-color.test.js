@@ -55,3 +55,11 @@ test('folder colors survive backup JSON, palette migration and concurrent link e
   assert.equal(folder.children[0].color, '#56a58c');
   assert.equal(folder.children[1].url, 'https://a.test');
 });
+
+test('colored folders distinguish active rows from both header and body in both themes', () => {
+  for (const { color } of FOLDER_COLORS) for (const dark of [false, true]) {
+    const style = folderColorStyle(color, dark);
+    assert.notEqual(style['--folder-selected'], style['--folder-heading']);
+    assert.notEqual(style['--folder-selected'], style['--folder-background']);
+  }
+});

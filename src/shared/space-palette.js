@@ -91,6 +91,15 @@ const luminance = color => rgb(color).map(channel => channel / 255)
   .map(value => value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4)
   .reduce((total, value, index) => total + value * [0.2126, 0.7152, 0.0722][index], 0);
 const contrast = (a, b) => (Math.max(luminance(a), luminance(b)) + 0.05) / (Math.min(luminance(a), luminance(b)) + 0.05);
+export function selectedBackground(background, text, muted = text) {
+  // Match the default folder's 16% foreground tint, reducing it only when an
+  // extreme custom color would make the active row's text hard to read.
+  for (let percent = 16; percent >= 0; percent -= 2) {
+    const color = blend(text, background, percent / 100);
+    if (contrast(text, color) >= 4.5 && contrast(muted, color) >= 4.5) return color;
+  }
+  return background;
+}
 function readableBackground(color, dark, text) {
   const base = dark ? '#11141b' : '#e7e9ed', amount = dark ? 0.60 : 0.40;
   const background = blend(color, base, amount);

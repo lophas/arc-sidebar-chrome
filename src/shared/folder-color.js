@@ -1,4 +1,4 @@
-import { normalizeHex, paletteStyle } from './space-palette.js';
+import { normalizeHex, paletteStyle, selectedBackground } from './space-palette.js';
 
 export const FOLDER_COLORS = [
   { name: 'Amber', color: '#c98b52' },
@@ -23,7 +23,7 @@ export function folderColorStyle(value, dark = false) {
     '--folder-background': palette['--panel'],
     '--folder-foreground': palette['--text'],
     '--folder-muted': palette['--muted'],
-    '--folder-selected': palette['--bg'],
+    '--folder-selected': selectedBackground(palette['--panel'], palette['--text'], palette['--muted']),
     '--folder-border': `color-mix(in srgb, ${palette['--text']} 22%, ${palette['--panel']})`
   };
 }
