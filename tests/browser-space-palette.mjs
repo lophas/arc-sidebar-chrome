@@ -5,6 +5,7 @@ import {tmpdir} from 'node:os';
 import {createServer} from 'node:http';
 import {chromium} from 'playwright-core';
 import {paletteStyle,normalizeSpacePalette} from '../src/shared/space-palette.js';
+import {checkFolderColors} from './browser-folder-colors.mjs';
 const samePalette=(a,b)=>JSON.stringify(normalizeSpacePalette(a))===JSON.stringify(normalizeSpacePalette(b));
 const directory=await mkdtemp(join(tmpdir(),'arc-palette-extension-'));
 await cp('src',join(directory,'src'),{recursive:true});await cp('manifest.json',join(directory,'manifest.json'));
@@ -56,8 +57,9 @@ try{
  await poll(async()=>await background()===paletteStyle({kind:'preset',id:'blue'},false)['--space-background'],'Active Space background did not update');
  assert.equal(await page.locator('.search-wrap').evaluate(el=>getComputedStyle(el).backgroundColor),'rgba(0, 0, 0, 0)');
  assert.equal(await page.locator('.favorites-section').evaluate(el=>getComputedStyle(el).backgroundColor),'rgba(0, 0, 0, 0)');
+ await checkFolderColors(page,poll,readModel);
  const folder=page.locator('.folder[data-folder-node-id="folder"]');
- const clickFolderIcon=()=>folder.locator('.folder-header').click({position:{x:34,y:15}});
+ const clickFolderIcon=()=>folder.locator(':scope > .folder-header').click({position:{x:34,y:15}});
  // The decorative icon passes the pointer through to the clickable header.
  await clickFolderIcon();await page.locator('.folder.collapsed[data-folder-node-id="folder"]').waitFor();
  await clickFolderIcon();await page.locator('.folder:not(.collapsed)[data-folder-node-id="folder"]').waitFor();
@@ -140,12 +142,24 @@ try{
  await options.evaluate(()=>chrome.storage.local.set({arcSidebarEdgeTrigger:{height:100,offset:0,width:16},arcSidebarAutohideTimeout:800}));
  assert.deepEqual(backup.model.spaces.find(space=>space.id==='work').palette,custom);assert.deepEqual(backup.model.spaces.find(space=>space.id==='home').palette,{kind:'preset',id:'green'});
  assert.deepEqual(backup.model.spaces.find(space=>space.id==='classic').palette,{kind:'preset',id:'black'});
+ assert.equal(backup.model.spaces.find(space=>space.id==='work').children[0].color,'#c98b52');
+ assert.equal(backup.model.spaces.find(space=>space.id==='work').children[0].children.find(node=>node.id==='nested-colored').color,'#56a58c');
  await page.evaluate(async()=>{const {arcSidebarModel:model}=await chrome.storage.local.get('arcSidebarModel');model.spaces.find(space=>space.id==='work').palette={kind:'preset',id:'black'};await chrome.storage.local.set({arcSidebarModel:model});});
  await poll(()=>page.evaluate(async id=>{const tab=await chrome.tabs.get(id);return (await chrome.tabGroups.get(tab.groupId)).color==='grey';},live),'Existing Chrome group did not follow a palette change');
+ const legacy=structuredClone(backup);
+ const stripFolderColors=nodes=>{for(const node of nodes||[])if(node.type==='folder'){delete node.color;stripFolderColors(node.children);}};
+ for(const space of legacy.model.spaces){delete space.palette;stripFolderColors(space.children);}
+ for(const payload of [legacy,legacy.model]){
+  await options.locator('#restoreBackup').setInputFiles({name:'legacy-backup.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(payload))});
+  await poll(async()=>{const model=await readModel(),work=model.spaces.find(space=>space.id==='work');return work?.palette?.id==='black' && !Object.hasOwn(work.children[0],'color');},'Legacy backup without any color settings did not restore');
+  assert.equal((await readModel()).spaces.find(space=>space.id==='work').children[0].children.find(node=>node.id==='nested-colored').color,undefined);
+  assert.equal((await readModel()).favorites[0].id,backup.model.favorites[0].id);
+ }
  await options.locator('#restoreBackup').setInputFiles({name:'backup.json',mimeType:'application/json',buffer:Buffer.from(JSON.stringify(backup))});
  await poll(()=>page.evaluate(()=>document.documentElement.dataset.favoriteSize==='140'),'Backup did not restore Favorite size');
  await poll(async()=>await favoriteSlider.inputValue()==='140','Options did not reflect the restored Favorite size');
  await poll(async()=>samePalette((await readModel()).spaces.find(space=>space.id==='work').palette,custom),'Backup did not restore the custom gradient');
+ assert.equal((await readModel()).spaces.find(space=>space.id==='work').children[0].color,'#c98b52');
  await poll(()=>page.evaluate(async id=>{const tab=await chrome.tabs.get(id);return (await chrome.tabGroups.get(tab.groupId)).color==='blue';},live),'Chrome group did not follow the restored palette');
  assert.equal(await page.evaluate(async()=>(await chrome.storage.local.get('arcSidebarState')).arcSidebarState.collapsedFolders.folder),false);
  await poll(()=>page.evaluate(async expected=>JSON.stringify((await chrome.storage.local.get('arcSidebarEdgeTrigger')).arcSidebarEdgeTrigger)===JSON.stringify(expected),trigger),'Backup did not restore trigger geometry');
@@ -161,6 +175,8 @@ try{
  const encoded=Array.from({length:cloud.arcSidebarSyncMeta.chunks},(_,i)=>cloud['arcSidebarSyncChunk:'+i]).join('');const snapshot=JSON.parse(Buffer.from(encoded,'base64').toString('utf8'));
  assert.deepEqual(snapshot.spaces.find(space=>space.id==='work').palette,custom);
  assert.deepEqual(snapshot.spaces.find(space=>space.id==='classic').palette,{kind:'preset',id:'black'});
+ assert.equal(snapshot.spaces.find(space=>space.id==='work').children[0].color,'#c98b52');
+ assert.equal(snapshot.spaces.find(space=>space.id==='work').children[0].children.find(node=>node.id==='nested-colored').color,'#56a58c');
  assert.equal(Object.hasOwn(snapshot,'favoriteSizePercent'),false);
  const deviceSettings={arcSidebarFavoriteSizePercent:60,arcSidebarEdgeTrigger:{height:20,offset:10,width:22},arcSidebarAutohideTimeout:1200,arcSidebarMode:'native'};
  await options.evaluate(values=>chrome.storage.local.set(values),deviceSettings);
@@ -174,6 +190,7 @@ try{
  assert.deepEqual((await readModel()).spaces[0].palette,{kind:'preset',id:'black'});
  await options.locator('label.switch:has(#syncEnabled)').click();
  await poll(async()=>samePalette((await readModel()).spaces.find(space=>space.id==='work')?.palette,custom),'Sync did not restore the existing palette after reset');
+ assert.equal((await readModel()).spaces.find(space=>space.id==='work').children[0].color,'#c98b52');
  await poll(async()=>await options.locator('#triggerTop').inputValue()==='0' && await options.locator('#triggerBottom').inputValue()==='100' && await options.locator('#triggerWidth').inputValue()==='16' && await options.locator('#autohideTimeout').inputValue()==='800','Cloud restore must leave reset autohide defaults local');
  assert.equal(await page.evaluate(async()=>(await chrome.storage.local.get('arcSidebarMode')).arcSidebarMode??'overlay'),'overlay','Cloud restore must not restore the previous device’s Fixed mode');
  assert.deepEqual(await page.evaluate(()=>chrome.storage.sync.get(null)),cloud,'Reset and re-enabling Sync must not push the empty automatic palette');

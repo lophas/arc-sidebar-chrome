@@ -1,0 +1,60 @@
+/* Folder containers keep their own colors, including when nested. */
+.folder {
+  --folder-heading: color-mix(in srgb, var(--text) 10%, var(--bg));
+  --folder-background: color-mix(in srgb, var(--bg) 96%, var(--text));
+  --folder-foreground: var(--text);
+  --folder-muted: var(--muted);
+  --folder-selected: color-mix(in srgb, var(--text) 16%, var(--folder-background));
+  --folder-border: color-mix(in srgb, var(--text) 15%, var(--bg));
+  margin: 7px 0;
+  border: 1px solid var(--folder-border);
+  border-radius: 11px;
+  background: var(--folder-background);
+  color: var(--folder-foreground);
+}
+.folder > .folder-header {
+  margin: 0;
+  border: 0;
+  border-radius: 10px 10px 0 0;
+  padding: 7px 8px;
+  font-weight: 600;
+  background: var(--folder-heading);
+  color: var(--folder-foreground);
+}
+.folder > .folder-header:hover { background: var(--folder-heading); }
+.folder.collapsed > .folder-header { border-radius: 10px; }
+.folder > .folder-header .folder-icon,
+.folder > .folder-header .folder-caret { color: var(--folder-foreground); opacity: .8; }
+.folder > .folder-children {
+  margin: 0;
+  padding: 4px;
+  border-left: 0;
+  border-radius: 0 0 10px 10px;
+}
+.folder-children > .row { color: var(--folder-foreground); }
+.folder-children > .row .row-domain,
+.folder-children > .row .favicon-fallback { color: var(--folder-muted); }
+.folder-children > .row:hover { background: color-mix(in srgb, var(--folder-heading) 50%, var(--folder-background)); }
+.folder-children > .row.active { background: var(--folder-selected); }
+.folder-children > .folder { margin: 4px 2px; }
+.folder-header.managed-folder:hover::after { background: var(--folder-heading); color: var(--folder-foreground); }
+.folder-children > .row.managed-pinned:hover::after { background: var(--folder-background); color: var(--folder-muted); }
+.folder > .folder-header.drop-target-empty {
+  background: var(--folder-selected);
+  outline: 1px dashed var(--folder-foreground);
+  outline-offset: -2px;
+}
+.folder-color-editor { display: grid; gap: 10px; }
+.folder-color-presets { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 7px; }
+.folder-color-choice { min-width: 0; height: 30px; padding: 0; border: 2px solid transparent; border-radius: 7px; cursor: pointer; }
+.folder-color-choice[aria-pressed="true"] { border-color: var(--text); box-shadow: 0 0 0 1px var(--panel); }
+.folder-color-choice:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+.folder-color-preview { margin: 0; font-size: 12px; }
+.folder-color-preview .row { cursor: default; }
+.folder-color-editor [hidden] { display: none !important; }
+.folder-dialog { max-height: calc(100vh - 24px); overflow-y: auto; }
+@media (max-width: 240px) {
+  .folder > .folder-header { padding-left: 5px; padding-right: 5px; }
+  .folder > .folder-children { padding: 3px; }
+  .folder-color-presets { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}

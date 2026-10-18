@@ -3,6 +3,7 @@ import { prepareFirstSpace } from '../shared/first-space.js';
 import { isSidebarActive } from './lifecycle.js';
 import { sidebarTabAction } from './tab-actions.js';
 import { createStorageClient } from '../shared/storage-client.js';
+import { createFolderColorEditor } from './folder-color-editor.js';
 const sidebarStorage = createStorageClient({ isActive: isSidebarActive });
 const STORAGE_KEY = 'arcSidebarModel';
 const STATE_KEY = 'arcSidebarState';
@@ -14,6 +15,7 @@ const searchEl = document.querySelector('#search');
 const addFolderButton = document.querySelector('#addFolder');
 
 let folderDialog = null;
+let folderColorEditor = null;
 
 function uid() {
   return crypto.randomUUID ? crypto.randomUUID() : `local-folder-${Date.now()}-${Math.random().toString(16).slice(2)}`;
@@ -112,6 +114,7 @@ function ensureFolderDialog() {
       </div>
     </form>`;
   document.body.append(folderDialog);
+  folderColorEditor = createFolderColorEditor(folderDialog);
   folderDialog.querySelector('#folderCancel').addEventListener('click', () => folderDialog.close());
   folderDialog.addEventListener('cancel', event => {
     event.preventDefault();
@@ -143,6 +146,7 @@ async function openFolderEditor(folderId = null) {
   dialog.querySelector('#folderDialogTitle').textContent = folder ? 'Edit folder' : `Add folder · ${space.title}`;
   nameInput.value = folder?.title || '';
   nameInput.setCustomValidity('');
+  folderColorEditor.setValue(folder?.color);
 
   fillSpaceSelect(spaceSelect, model.spaces, { selectedId: space.id, allowFavorites: false });
 
@@ -157,6 +161,8 @@ async function openFolderEditor(folderId = null) {
       return;
     }
     nameInput.setCustomValidity('');
+    const color = folderColorEditor.getValue();
+    if (color === undefined) return;
 
     const targetSpace = model.spaces?.find(candidate => candidate.id === spaceSelect.value);
     if (!targetSpace) return;
@@ -164,12 +170,14 @@ async function openFolderEditor(folderId = null) {
 
     if (folder) {
       folder.title = title;
+      if (color) folder.color = color;
+      else delete folder.color;
       if (targetSpace.id !== space.id) {
         location.parent.splice(location.index, 1);
         targetSpace.children.push(folder);
       }
     } else {
-      targetSpace.children.push({ type: 'folder', id: uid(), title, children: [] });
+      targetSpace.children.push({ type: 'folder', id: uid(), title, children: [], ...(color ? { color } : {}) });
     }
 
     dialog.close();

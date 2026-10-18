@@ -44,6 +44,8 @@ Switching to a Space’s pinned or additional tab in Chrome’s tab bar also sel
 
 Click a folder heading to expand or collapse it. Right-click it to rename it or move the complete folder to another Space. Drag folders to reorder them within their Space. Removing a folder keeps its links.
 
+Right-click a folder to set its **Color**. Choose a ready-made shade or **Custom color** with a color picker or hex value. The preview shows the heading, content background and active link before saving. Choose **Space color** to follow the Space’s appearance again. Nested folders can have their own colors, and colors stay with folders when you move or reorder them. Chrome Sync and backup/restore preserve folder colors; older backups without colors remain compatible and use Space colors by default.
+
 Right-click a Space and choose **Close open tabs** to close every tab in all Chrome groups associated with it, including additional non-pinned tabs and tabs in other windows. The menu shows how many tabs will close. Saved links and folders remain available.
 
 The last Space cannot be deleted manually. Reset recreates the starting layout; import and restore replace the sidebar with the loaded contents.

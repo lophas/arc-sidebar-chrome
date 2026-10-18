@@ -1,5 +1,6 @@
 import { createFavicon } from '../shared/favicon.js';
 import { applyPaletteStyle, paletteColors } from '../shared/space-palette.js';
+import { applyFolderColor } from '../shared/folder-color.js';
 import { groupOpenTabs } from '../shared/open-tab-groups.js';
 import { spaceWorkflowTabs, spaceOpenState } from '../shared/space-tabs.js';
 import { isSidebarActive } from './lifecycle.js';
@@ -346,6 +347,7 @@ function renderNode(node, q) {
   const folder = document.createElement('div');
   folder.className = 'folder';
   folder.dataset.folderNodeId = node.id;
+  applyFolderColor(folder, node.color);
   if (state.collapsedFolders[node.id] && !q) folder.classList.add('collapsed');
 
   const header = document.createElement('div');

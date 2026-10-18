@@ -27,11 +27,14 @@ test('only intentional organization qualifies for uploading, not the generated d
 });
 test('custom palette settings travel through the actual chunked Sync encoder and restore on a fresh computer',async()=>{
  const remote=content();remote.spaces[0].palette={kind:'gradient',colors:['#073c99','#ff8800']};
+ remote.spaces[0].children=[{id:'folder',type:'folder',title:'Project',color:'#c98b52',children:[{id:'nested',type:'folder',title:'Research',color:'#9e79d1',children:[]}]}];
  const first=fixture(initial(),remote);assert.equal((await first.context.reconcileSidebarSync()).direction,'pull');assert.deepEqual(first.data.local.arcSidebarModel.spaces[0].palette,remote.spaces[0].palette);
  const changed=structuredClone(first.data.local.arcSidebarModel);changed.spaces[0].palette={kind:'solid',colors:['#823bb1']};
+ changed.spaces[0].children[0].children[0].color='#56a58c';
  await first.chrome.storage.local.set({arcSidebarModel:changed});await first.drain();
  const chunks=Array.from({length:first.data.sync.arcSidebarSyncMeta.chunks},(_,i)=>first.data.sync['arcSidebarSyncChunk:'+i]).join('');
  const cloud=JSON.parse(Buffer.from(chunks,'base64').toString('utf8'));assert.deepEqual(cloud.spaces[0].palette,changed.spaces[0].palette);
+ assert.deepEqual(cloud.spaces[0].children,changed.spaces[0].children);
  const second=fixture(initial(),cloud,999999,first.data.sync.arcSidebarSyncMeta.updatedAt);assert.equal((await second.context.reconcileSidebarSync()).direction,'pull');assert.deepEqual(second.data.local.arcSidebarModel,cloud);assert.equal(second.snapshotWrites().length,0);
 });
 test('legacy cloud snapshots acquire default palettes on pull without replacing saved data',async()=>{

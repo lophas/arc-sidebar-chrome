@@ -57,6 +57,8 @@ If a website needs Auto PiP permission, the extension guides you through enablin
 
 Give each Space a distinct palette: Classic black, a ready-made color combination, a custom solid color or a two-color gradient. The whole sidebar follows the Space, including Favorites, search, scrollbars and the switcher. Chrome groups follow its primary color. Light and dark appearances are supported.
 
+Give folders their own colors too. A colored heading and a matching background keep each folder’s links together visually, including nested folders. Choose a ready-made shade or a custom color, or let the folder follow its Space. Folder colors travel with Chrome Sync and backups.
+
 ![Three current Space appearances: blue Work, light green Personal and purple Reading](docs/screenshots/space-palettes.png)
 
 ### Bring your Arc Browser setup with you
@@ -73,7 +75,7 @@ Chrome Sync keeps your organization available across computers. Portable backups
 
 | Area | What you can do |
 | --- | --- |
-| **Spaces and folders** | Create, rename and reorder Spaces; organize links in expandable folders; move complete folders between Spaces. At least one Space always remains. |
+| **Spaces and folders** | Create, rename and reorder Spaces; organize links in expandable, color-coded folders; choose preset or custom folder colors; move complete folders between Spaces. At least one Space always remains. |
 | **Favorites and saved links** | Reorder by dragging; move links between Favorites, Spaces and folders; edit titles and URLs; use site favicons, uploaded images or Space emojis. Leave a link title blank to refresh it from the page. |
 | **Live tab navigation** | Reuse a saved link’s existing tab across navigation and browser restarts. Tabs opened from Favorites appear ungrouped at the end of the tab bar; closing an active child returns to its opener. Space links open new tabs inside their Space’s Chrome group. |
 | **Native Chrome groups** | Keep Favorites first, followed by Spaces in sidebar order. Group colors follow Space palettes. Focus changes expand the active managed group; between focus changes you can open and close groups manually. |
@@ -84,7 +86,7 @@ Chrome Sync keeps your organization available across computers. Portable backups
 | **Fixed or Autohide** | Switch beside search. Autohide follows Chrome’s side-panel position; choose the close delay and the edge trigger’s top, bottom and width. Click outside to hide it; unsaved editor fields are kept. |
 | **Right-click pinning** | Save the current webpage or a link directly to Favorites or a Space from Chrome’s context menu. All destination selectors list Favorites first. |
 | **Chrome Sync** | Sync Spaces, palettes, Favorites, folders, links, icons and order. On a fresh installation, restore the existing cloud setup before uploading any new organization. |
-| **Backup and restore** | Save a portable JSON copy including custom icons, palettes, expanded/collapsed folders, sidebar mode, timeout, trigger settings, Favorite size, width and automatic PiP preference. |
+| **Backup and restore** | Save a portable JSON copy including custom icons, palettes, folder colors, expanded/collapsed folders, sidebar mode, timeout, trigger settings, Favorite size, width and automatic PiP preference. Older backups without color settings still restore. |
 
 ### Fit the sidebar to the way you browse
 
