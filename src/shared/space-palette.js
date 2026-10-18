@@ -92,7 +92,7 @@ const luminance = color => rgb(color).map(channel => channel / 255)
   .reduce((total, value, index) => total + value * [0.2126, 0.7152, 0.0722][index], 0);
 const contrast = (a, b) => (Math.max(luminance(a), luminance(b)) + 0.05) / (Math.min(luminance(a), luminance(b)) + 0.05);
 function readableBackground(color, dark, text) {
-  const base = dark ? '#11141b' : '#ffffff', amount = dark ? 0.60 : 0.40;
+  const base = dark ? '#11141b' : '#e7e9ed', amount = dark ? 0.60 : 0.40;
   const background = blend(color, base, amount);
   if (contrast(text, background) >= 4.5) return background;
   // Keep vivid presets while limiting exceptionally bright/dark custom colors.
@@ -109,18 +109,18 @@ export const PALETTE_VARIABLES = ['--space-background', '--bg', '--panel', '--te
 export function paletteStyle(value, dark = false) {
   const palette = normalizeSpacePalette(value) || DEFAULT_SPACE_PALETTE;
   if (palette.kind === 'preset' && palette.id === 'black') return {
-    '--space-background': dark ? '#18181a' : '#f6f6f7',
-    '--bg': dark ? '#18181a' : '#f6f6f7',
-    '--panel': dark ? '#202023' : '#ffffff',
+    '--space-background': dark ? '#18181a' : '#e7e9ed',
+    '--bg': dark ? '#18181a' : '#e7e9ed',
+    '--panel': dark ? '#202023' : '#eef0f3',
     '--text': dark ? '#f4f4f5' : '#171717',
-    '--muted': dark ? '#a0a0a6' : '#6e6e73',
+    '--muted': dark ? '#a0a0a6' : '#62666f',
     '--border': dark ? 'rgba(255,255,255,.10)' : 'rgba(0,0,0,.09)',
     '--hover': dark ? 'rgba(255,255,255,.065)' : 'rgba(0,0,0,.055)',
     '--active': dark ? 'rgba(255,255,255,.12)' : 'rgba(0,0,0,.10)',
     '--space-accent': dark ? '#a0a0a6' : '#6e6e73',
-    '--favorite-background': dark ? 'rgba(255,255,255,.16)' : 'rgba(255,255,255,.65)',
+    '--favorite-background': dark ? 'rgba(255,255,255,.16)' : 'rgba(88,101,121,.14)',
     '--favorite-border': dark ? 'rgba(255,255,255,.28)' : 'rgba(0,0,0,.18)',
-    '--favorite-hover': dark ? 'rgba(255,255,255,.23)' : 'rgba(255,255,255,.82)'
+    '--favorite-hover': dark ? 'rgba(255,255,255,.23)' : 'rgba(88,101,121,.22)'
   };
   const colors = paletteColors(value);
   const muted = dark ? '#edf2fa' : '#374151';
@@ -129,16 +129,16 @@ export function paletteStyle(value, dark = false) {
   return {
     '--space-background': backgrounds.length === 1 ? backgrounds[0] : `linear-gradient(155deg, ${backgrounds[0]}, ${backgrounds[1]})`,
     '--bg': backgrounds[0],
-    '--panel': blend(primary, dark ? '#191d25' : '#ffffff', dark ? 0.28 : 0.12),
+    '--panel': blend(primary, dark ? '#191d25' : '#eef0f3', dark ? 0.28 : 0.12),
     '--text': dark ? '#f4f6fb' : '#18202a',
     '--muted': muted,
     '--border': dark ? 'rgba(255,255,255,.20)' : 'rgba(0,0,0,.16)',
     '--hover': dark ? 'rgba(255,255,255,.12)' : 'rgba(0,0,0,.065)',
     '--active': dark ? 'rgba(255,255,255,.18)' : 'rgba(0,0,0,.11)',
     '--space-accent': blend(primary, dark ? '#ffffff' : '#18202a', 0.55),
-    '--favorite-background': dark ? 'rgba(255,255,255,.16)' : 'rgba(255,255,255,.65)',
+    '--favorite-background': dark ? 'rgba(255,255,255,.16)' : 'rgba(88,101,121,.14)',
     '--favorite-border': dark ? 'rgba(255,255,255,.28)' : 'rgba(0,0,0,.18)',
-    '--favorite-hover': dark ? 'rgba(255,255,255,.23)' : 'rgba(255,255,255,.82)'
+    '--favorite-hover': dark ? 'rgba(255,255,255,.23)' : 'rgba(88,101,121,.22)'
   };
 }
 

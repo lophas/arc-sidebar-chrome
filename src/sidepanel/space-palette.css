@@ -8,10 +8,10 @@ body { background: var(--space-background, var(--bg)); }
 :root[data-space-palette] .spaces { background: color-mix(in srgb, var(--bg) 72%, transparent); }
 .favorite-tile {
   border: 1px solid var(--favorite-border, var(--border));
-  background: var(--favorite-background, color-mix(in srgb, var(--panel) 90%, var(--active)));
+  background: var(--favorite-background, light-dark(rgba(88,101,121,.14), rgba(255,255,255,.16)));
   box-shadow: 0 2px 7px rgba(0,0,0,.09), inset 0 1px 0 rgba(255,255,255,.025);
 }
-.favorite-tile:hover { background: var(--favorite-hover, var(--hover)); }
+.favorite-tile:hover { background: var(--favorite-hover, light-dark(rgba(88,101,121,.22), rgba(255,255,255,.23))); }
 .favorite-tile.active {
   background: color-mix(in srgb, var(--text) 35%, transparent);
   border-color: transparent;

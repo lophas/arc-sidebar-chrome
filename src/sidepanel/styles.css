@@ -1,10 +1,10 @@
 :root {
   color-scheme: light dark;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --bg: #f6f6f7;
-  --panel: #ffffff;
+  --bg: #e7e9ed;
+  --panel: #eef0f3;
   --text: #171717;
-  --muted: #6e6e73;
+  --muted: #62666f;
   --border: rgba(0,0,0,.09);
   --hover: rgba(0,0,0,.055);
   --active: rgba(0,0,0,.10);
@@ -24,10 +24,10 @@
 
 :root[data-theme="light"] {
   color-scheme: light;
-  --bg: #f6f6f7;
-  --panel: #ffffff;
+  --bg: #e7e9ed;
+  --panel: #eef0f3;
   --text: #171717;
-  --muted: #6e6e73;
+  --muted: #62666f;
   --border: rgba(0,0,0,.09);
   --hover: rgba(0,0,0,.055);
   --active: rgba(0,0,0,.10);
@@ -270,6 +270,18 @@ section { margin-bottom: 15px; }
   place-items: center;
   color: var(--muted);
   font-size: 12px;
+}
+
+/* Keep transparent artwork readable; outlines stay outside its original dimensions. */
+.row .favicon,
+.row img.item-custom-icon,
+.command-icon img,
+.favorite-tile > img {
+  --icon-surface: light-dark(#858b95, transparent);
+  background: var(--icon-surface);
+  box-shadow: 0 0 0 1px var(--icon-surface);
+  outline: 1px solid light-dark(rgba(20,25,30,.22), transparent);
+  outline-offset: 1px;
 }
 
 .row-title {

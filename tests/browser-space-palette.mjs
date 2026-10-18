@@ -6,6 +6,7 @@ import {createServer} from 'node:http';
 import {chromium} from 'playwright-core';
 import {paletteStyle,normalizeSpacePalette} from '../src/shared/space-palette.js';
 import {checkFolderColors} from './browser-folder-colors.mjs';
+import {checkIconSurfaces} from './browser-icon-surfaces.mjs';
 const samePalette=(a,b)=>JSON.stringify(normalizeSpacePalette(a))===JSON.stringify(normalizeSpacePalette(b));
 const directory=await mkdtemp(join(tmpdir(),'arc-palette-extension-'));
 await cp('src',join(directory,'src'),{recursive:true});await cp('manifest.json',join(directory,'manifest.json'));
@@ -21,7 +22,7 @@ try{
  await page.emulateMedia({colorScheme:'dark'});
  await page.waitForFunction(()=>getComputedStyle(document.body).backgroundColor==='rgb(24, 24, 26)');
  await page.emulateMedia({colorScheme:'light'});
- await page.waitForFunction(()=>getComputedStyle(document.body).backgroundColor==='rgb(246, 246, 247)');
+ await page.waitForFunction(()=>getComputedStyle(document.body).backgroundColor==='rgb(231, 233, 237)');
  const poll=async(predicate,message)=>{for(let i=0;i<160;i++){if(await predicate())return;await new Promise(done=>setTimeout(done,50));}console.error('Palette test state:',JSON.stringify(await page.evaluate(async()=>({model:(await chrome.storage.local.get('arcSidebarModel')).arcSidebarModel,dialog:document.querySelector('.space-dialog')?.open,name:document.querySelector('#spaceName')?.value,kind:document.querySelector('#spacePaletteKind')?.value,hex1:document.querySelector('#spacePaletteHex1')?.value,hex2:document.querySelector('#spacePaletteHex2')?.value,error:document.querySelector('#sidebarSaveError')?.textContent}))));assert.fail(message);};
  const readModel=()=>page.evaluate(async()=>(await chrome.storage.local.get('arcSidebarModel')).arcSidebarModel);
  const url=`http://127.0.0.1:${server.address().port}/tab`;
@@ -64,7 +65,8 @@ try{
  await clickFolderIcon();await page.locator('.folder.collapsed[data-folder-node-id="folder"]').waitFor();
  await clickFolderIcon();await page.locator('.folder:not(.collapsed)[data-folder-node-id="folder"]').waitFor();
  assert.equal(await page.locator('.space-palette-mark').count(),0);
- await poll(async()=>await page.locator('.favorite-tile').evaluate(el=>{const css=getComputedStyle(el);return el.isConnected && css.borderTopWidth==='1px' && css.borderTopStyle==='solid' && css.backgroundColor==='rgba(255, 255, 255, 0.65)';}),'Light Favorite style was not applied');
+ await poll(async()=>await page.locator('.favorite-tile').evaluate(el=>{const css=getComputedStyle(el);return el.isConnected && css.borderTopWidth==='1px' && css.borderTopStyle==='solid' && css.backgroundColor==='rgba(88, 101, 121, 0.14)';}),'Light Favorite style was not applied');
+ await checkIconSurfaces(page,poll);
  await page.emulateMedia({colorScheme:'dark'});await poll(async()=>await background()===paletteStyle({kind:'preset',id:'blue'},true)['--space-background'],'Vivid preset did not follow dark theme');
  await poll(async()=>await page.locator('.favorite-tile').evaluate(el=>{const css=getComputedStyle(el);return el.isConnected && css.borderTopWidth==='1px' && css.borderTopColor==='rgba(255, 255, 255, 0.28)' && css.backgroundColor==='rgba(255, 255, 255, 0.16)';}),'Dark Favorite style was not applied');
  if(process.env.ARC_PALETTE_SCREENSHOTS){
@@ -104,6 +106,9 @@ try{
  assert.deepEqual((await readModel()).spaces.find(space=>space.id==='work').palette,custom);
  console.log('PASS real extension: automatic palettes, full sidebar surfaces, custom preview/Cancel/Save, neutral Open tabs, light/dark themes, stable reordering and matching Chrome group');
  const options=await context.newPage();options.on('pageerror',error=>errors.push(error.message));await options.goto(origin+'/src/options/index.html');
+ await options.emulateMedia({colorScheme:'light'});
+ assert.equal(await options.locator('body').evaluate(el=>getComputedStyle(el).backgroundColor),'rgb(231, 233, 237)');
+ assert.equal(await options.locator('.card').first().evaluate(el=>getComputedStyle(el).backgroundColor),'rgb(238, 240, 243)');
  const favoriteSlider=options.locator('#favoriteSize');
  await favoriteSlider.focus();await options.keyboard.press('Home');
  await poll(()=>page.evaluate(()=>document.documentElement.dataset.favoriteSize==='50'),'Minimum Favorite size did not apply to the sidebar');
