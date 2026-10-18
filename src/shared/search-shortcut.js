@@ -12,7 +12,7 @@ export async function getSearchShortcut(commands = globalThis.chrome?.commands) 
 }
 
 export function isDefaultSearchShortcut(event, shortcut) {
-  return /^(?:Alt\+K|Option\+K|⌥K)$/i.test(shortcut || '') &&
+  return /^(?:Alt\+T|Option\+T|⌥T)$/i.test(shortcut || '') &&
     event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey &&
-    !event.isComposing && !event.repeat && event.code === 'KeyK';
+    !event.isComposing && !event.repeat && event.code === 'KeyT';
 }

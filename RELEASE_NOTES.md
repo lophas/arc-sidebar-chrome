@@ -2,7 +2,7 @@
 
 *Spaces, tabs & a little harmony.*
 
-- Open search with **Option+K on macOS / Alt+K on Windows and Linux**. Command+K / Ctrl+K stays available to websites such as ChatGPT.
+- Open search with **Option+T on macOS / Alt+T on Windows and Linux**. Command+K / Ctrl+K stays available to websites such as ChatGPT.
 - Register the new shortcut independently of the retired binding when updating. The search button now shows the actual assigned shortcut, including custom bindings, and identifies an unassigned shortcut.
 - Give the toolbar icon a transparent background while preserving its large colored arch.
 - Includes 4.1.1’s softer grey light-theme surfaces and improved transparent icon contrast.

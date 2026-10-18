@@ -76,9 +76,9 @@ New tabs opened from a Favorite are ungrouped and appear at the end of their Chr
 
 <img src="screenshots/sidebar-search.png" width="390" alt="Search popup inside the sidebar, filtering saved project links">
 
-Press **Option+K** on macOS or **Alt+K** on Windows/Linux to open the search popup, including when the sidebar is closed. The sidebar’s **Search or enter URL** control opens the same search inside the sidebar.
+Press **Option+T** on macOS or **Alt+T** on Windows/Linux to open the search popup, including when the sidebar is closed. The sidebar’s **Search or enter URL** control opens the same search inside the sidebar.
 
-With an empty query, search shows recently used open tabs, excluding the current tab. Press **⌥K / Alt+K → Enter** to switch to the previously used tab. Type to find open tabs across Chrome windows, Favorites, pinned links, folders and Spaces. Results show favicons and Space or Chrome group names, match all entered words and ignore differences in accents. A saved link with an open tab appears once; selecting it activates that tab, even if it has navigated to another page. Open-tab results include webpages, file URLs and Chrome pages such as `chrome://extensions/`; empty New Tab pages are omitted.
+With an empty query, search shows recently used open tabs, excluding the current tab. Press **⌥T / Alt+T → Enter** to switch to the previously used tab. Type to find open tabs across Chrome windows, Favorites, pinned links, folders and Spaces. Results show favicons and Space or Chrome group names, match all entered words and ignore differences in accents. A saved link with an open tab appears once; selecting it activates that tab, even if it has navigated to another page. Open-tab results include webpages, file URLs and Chrome pages such as `chrome://extensions/`; empty New Tab pages are omitted.
 
 Enter a URL to open it, or choose a Google search. If that URL is already open, the first result switches to its existing tab. Use **↑ / ↓** to select a result, **Enter** to open it and **Escape** to dismiss search. The search button shows your actual assigned shortcut, or **Set shortcut** if none is assigned. Change it at `chrome://extensions/shortcuts`. Command+K / Ctrl+K remains available to webpages such as ChatGPT.
 

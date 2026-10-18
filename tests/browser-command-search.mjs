@@ -25,7 +25,7 @@ try {
     const tabs = [{ id: 1, windowId: 1, groupId: 9, active: true, url: 'https://navigated.test', title: 'Current pinned page', lastAccessed: 400 }, { id: 2, windowId: 1, groupId: -1, active: false, url: 'https://free.test', title: 'Previous ungrouped tab', lastAccessed: 300 }, { id: 3, windowId: 1, groupId: -1, url: 'chrome://extensions/', title: 'Extensions', lastAccessed: 200 }, { id: 4, windowId: 2, groupId: 10, active: true, url: 'https://mail.test', title: 'Inbox', lastAccessed: 100 }, { id: 5, windowId: 1, groupId: -1, url: 'chrome://newtab/', title: 'New Tab', lastAccessed: 500 }, { id: 6, windowId: 1, groupId: -1, url: 'https://readonly.test', title: 'Chrome pinned', pinned: true, lastAccessed: 600 }];
     let gate = null, release, clock = 1000;
     const get = async keys => { await gate; return structuredClone(Object.fromEntries((Array.isArray(keys) ? keys : [keys]).filter(key => key in data).map(key => [key, data[key]]))); };
-    const fixture = window.fixture = { data, tabs, calls: [], shortcut: 'Alt+K', hold() { gate = new Promise(done => release = done); }, release() { gate = null; release(); }, closed: 0 };
+    const fixture = window.fixture = { data, tabs, calls: [], shortcut: 'Alt+T', hold() { gate = new Promise(done => release = done); }, release() { gate = null; release(); }, closed: 0 };
     window.close = () => fixture.closed++;
     const chrome = window.chrome = { commands: { getAll: async () => [{ name: 'arc-command-bar-v4', shortcut: fixture.shortcut }] }, storage: { local: { get }, session: { get }, onChanged: event() },
       tabs: { query: async query => structuredClone(tabs.filter(tab => (query.windowId == null || tab.windowId === query.windowId) && (!query.active || tab.active))), onCreated: event(), onRemoved: event(), onUpdated: event(), onActivated: event() },
@@ -38,7 +38,7 @@ try {
   const base = `http://127.0.0.1:${server.address().port}/src/sidepanel/`;
   await page.goto(base + 'search-test.html');
   const rows = page.locator('.command-result'), input = page.locator('.command-input');
-  await page.waitForFunction(() => document.querySelector('#openCommandBar span').textContent === 'Alt+K');
+  await page.waitForFunction(() => document.querySelector('#openCommandBar span').textContent === 'Alt+T');
   await page.keyboard.press('Control+k');
   await page.keyboard.press('Meta+k');
   assert.equal(await page.locator('dialog').evaluate(el => el.open), false, 'Leave Command/Ctrl+K available to the page');
@@ -61,43 +61,43 @@ try {
   await page.evaluate(() => fixture.release());
   await page.waitForFunction(() => fixture.calls.at(-1)?.item?.tabId === 2 && !document.querySelector('dialog').open);
   await page.evaluate(() => fixture.hold());
-  await page.keyboard.press('Alt+k'); await input.press('Enter');
+  await page.keyboard.press('Alt+t'); await input.press('Enter');
   await page.evaluate(() => fixture.release());
   await page.waitForFunction(() => fixture.calls.at(-1)?.item?.tabId === 1 && !document.querySelector('dialog').open);
   await page.evaluate(() => fixture.hold());
-  await page.keyboard.press('Alt+k'); await input.press('Enter'); await input.press('Escape');
+  await page.keyboard.press('Alt+t'); await input.press('Enter'); await input.press('Escape');
   await page.evaluate(() => fixture.release());
   await page.waitForTimeout(100);
   assert.equal(await page.evaluate(() => fixture.calls.length), 2, 'Escape cancels a queued Enter without activating a tab');
-  console.log('PASS real Chrome: shared search Alt+K → Enter toggles between a pinned and ungrouped tab, including delayed data');
-  await page.keyboard.press('Alt+k'); await rows.first().waitFor();
+  console.log('PASS real Chrome: shared search Alt+T → Enter toggles between a pinned and ungrouped tab, including delayed data');
+  await page.keyboard.press('Alt+t'); await rows.first().waitFor();
   await input.fill('chrome://extensions');
   assert.equal(await rows.first().locator('strong').textContent(), 'Extensions');
   assert.equal(await rows.filter({ hasText: 'Open chrome://' }).count(), 0);
   await input.press('Enter');
   await page.waitForFunction(() => fixture.calls.at(-1)?.item?.tabId === 3 && !document.querySelector('dialog').open);
   assert.equal(await page.evaluate(() => fixture.calls.at(-1).windowId), 1);
-  await page.keyboard.press('Alt+k'); await rows.first().waitFor();
+  await page.keyboard.press('Alt+t'); await rows.first().waitFor();
   await input.fill('Closed saved link'); await input.press('Enter');
   await page.waitForFunction(() => fixture.calls.at(-1)?.item?.kind === 'Pinned');
   console.log('PASS real Chrome: internal Chrome tab activation, bound-link deduplication and closed saved links');
   await page.waitForFunction(() => !document.querySelector('dialog').open);
   await page.evaluate(() => { fixture.shortcut = ''; window.dispatchEvent(new Event('focus')); });
   await page.waitForFunction(() => document.querySelector('#openCommandBar span').textContent === 'Set shortcut');
-  await page.keyboard.press('Alt+k');
+  await page.keyboard.press('Alt+t');
   assert.equal(await page.locator('dialog').evaluate(el => el.open), false, 'Do not intercept a deliberately unassigned shortcut');
   assert.ok((await page.locator('#openCommandBar').getAttribute('title')).includes('chrome://extensions/shortcuts'));
   await page.evaluate(() => { fixture.shortcut = 'Ctrl+Shift+Y'; window.dispatchEvent(new Event('focus')); });
   await page.waitForFunction(() => document.querySelector('#openCommandBar span').textContent === 'Ctrl+Shift+Y');
-  await page.keyboard.press('Alt+k');
+  await page.keyboard.press('Alt+t');
   assert.equal(await page.locator('dialog').evaluate(el => el.open), false, 'Respect customized shortcuts');
-  await page.evaluate(() => { fixture.shortcut = '⌥K'; window.dispatchEvent(new Event('focus')); });
-  await page.waitForFunction(() => document.querySelector('#openCommandBar span').textContent === '⌥K');
-  await page.evaluate(() => document.dispatchEvent(new KeyboardEvent('keydown', { key: '˚', code: 'KeyK', altKey: true, bubbles: true })));
+  await page.evaluate(() => { fixture.shortcut = '⌥T'; window.dispatchEvent(new Event('focus')); });
+  await page.waitForFunction(() => document.querySelector('#openCommandBar span').textContent === '⌥T');
+  await page.evaluate(() => document.dispatchEvent(new KeyboardEvent('keydown', { key: '†', code: 'KeyT', altKey: true, bubbles: true })));
   await rows.first().waitFor();
-  assert.equal(await page.locator('dialog').evaluate(el => el.open), true, 'Option+K uses the physical key, not the generated character');
+  assert.equal(await page.locator('dialog').evaluate(el => el.open), true, 'Option+T uses the physical key, not the generated character');
   await input.press('Escape');
-  console.log('PASS real Chrome: actual shortcut hints, unassigned/custom bindings, native Cmd/Ctrl+K and macOS Option+K');
+  console.log('PASS real Chrome: actual shortcut hints, unassigned/custom bindings, native Cmd/Ctrl+K and macOS Option+T');
   // The standalone window keeps its original source tab/window instead of its own popup.
   await page.goto(base + 'command.html?windowId=1&sourceTabId=1');
   await rows.first().waitFor();
@@ -107,5 +107,5 @@ try {
   assert.equal(await page.evaluate(() => fixture.calls.at(-1).windowId), 1);
   assert.equal(await page.evaluate(() => fixture.calls.at(-1).item.tabId), 2);
   assert.deepEqual(errors, []);
-  console.log('PASS real Chrome: standalone Alt+K popup uses captured source and activates the existing tab in the source window');
+  console.log('PASS real Chrome: standalone Alt+T popup uses captured source and activates the existing tab in the source window');
 } finally { await browser.close(); await new Promise(done => server.close(done)); }

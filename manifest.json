@@ -83,8 +83,8 @@
   "commands": {
     "arc-command-bar-v4": {
       "suggested_key": {
-        "default": "Alt+K",
-        "mac": "Alt+K"
+        "default": "Alt+T",
+        "mac": "Alt+T"
       },
       "description": "Open Arc Side of the Chrome search"
     }

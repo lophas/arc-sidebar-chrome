@@ -15,7 +15,7 @@ Make Chrome a calmer place to work. Give every project its own Space, keep every
 - **Work by project, not by a growing pile of tabs.** Spaces bring your saved links, folders and live work together.
 - **Keep Chrome’s native tab bar useful.** Its groups, tabs and focus stay in step with your Spaces, whichever way you navigate.
 - **Save your place, then close the tab.** Favorites and pinned links remain ready for the next visit.
-- **Find the next thing with ⌥K / Alt+K.** Search saved links and open tabs together, or jump straight back to your previous tab.
+- **Find the next thing with ⌥T / Alt+T.** Search saved links and open tabs together, or jump straight back to your previous tab.
 - **Keep watching while you work.** Playing videos move into an automatic floating mini player when you switch tabs.
 - **Move in with your existing organization.** Import all your Arc Browser Spaces, Favorites, folders and icons, then keep your setup available with Chrome Sync and backups.
 
@@ -39,9 +39,9 @@ Additional project tabs appear below the pinned links. Drag a useful one into yo
 
 ### Find any tab without breaking your flow
 
-Press **⌥K / Alt+K** for recent open tabs, Favorites, pinned links, folders and Spaces. Search across Chrome windows, open a URL or search Google. A saved link and its live tab appear as one result.
+Press **Option+T (⌥T) on macOS / Alt+T on Windows and Linux** for recent open tabs, Favorites, pinned links, folders and Spaces. Search across Chrome windows, open a URL or search Google. A saved link and its live tab appear as one result.
 
-**⌥K / Alt+K → Enter** takes you back to your previously used tab. Internal Chrome pages such as `chrome://extensions/` are searchable too.
+**⌥T / Alt+T → Enter** takes you back to your previously used tab. Internal Chrome pages such as `chrome://extensions/` are searchable too.
 
 ![Keyboard search with recent open tabs, website icons and their Space or Chrome group](docs/screenshots/search-popup.png)
 
@@ -114,7 +114,7 @@ For step-by-step controls, permissions, import file paths and exact Sync/backup 
 1. **Open your sidebar.** Pin the toolbar icon. Click it for Fixed mode, or move to the page edge for Autohide. Start with **🚀 My Space** and an empty Favorites collection.
 2. **Save your everyday sites.** Use **+** beside search for Favorites. Use **+** or the folder button above the pinned list for links and folders. You can also right-click a webpage or link and choose **Pin to Arc Side of the Chrome**.
 3. **Give each project a home.** Add Spaces with the bottom switcher. Right-click a Space to change its name, icon and palette.
-4. **Navigate naturally.** Use the sidebar, Chrome’s tab bar or **⌥K / Alt+K**. Drag an additional open tab into the pinned list when you want to keep it.
+4. **Navigate naturally.** Use the sidebar, Chrome’s tab bar or **⌥T / Alt+T**. Drag an additional open tab into the pinned list when you want to keep it.
 5. **Bring in an existing setup.** Open **Extension options** in the footer to import Arc Browser data, restore a backup or enable Chrome Sync.
 
 ## Best practices
@@ -122,7 +122,7 @@ For step-by-step controls, permissions, import file paths and exact Sync/backup 
 - **Use one Space per project or activity.** Keep Work, Personal and Reading separate, then add folders for related references within each.
 - **Keep Favorites for genuinely shared sites.** Mail, calendar and other daily tools stay available in every Space.
 - **Save links you need again; close tabs you have finished with.** Use **Close open tabs** on a Space to finish a session while keeping its saved structure ready for next time.
-- **Make the previous-tab shortcut a habit.** **⌥K / Alt+K → Enter** is a quick way to alternate between a project tab and an ungrouped page.
+- **Make the previous-tab shortcut a habit.** **⌥T / Alt+T → Enter** is a quick way to alternate between a project tab and an ungrouped page.
 - **Give Spaces distinct colors.** Use the same visual cues in the sidebar and Chrome’s groups to recognize your current context.
 - **Set the trigger around your page’s controls.** Shorten or move the Autohide trigger if it overlaps a scrollbar you drag often.
 - **Back up before replacing data.** Import and restore overwrite the current organization. On a new computer, enable Sync first if you want to recover your existing cloud setup.

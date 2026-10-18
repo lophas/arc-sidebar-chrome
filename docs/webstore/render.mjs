@@ -28,7 +28,7 @@ export async function buildWebStoreAssets(context, source, version) {
   await render('02-search-every-tab.jpg', 1280, 800, `
     <div class="heading"><div class="eyebrow">FIND YOUR NEXT TAB</div><h1>One shortcut. Every open tab.</h1><p>Search Favorites, pinned links and open tabs across Chrome windows.</p></div>
     <img class="capture" src="${search}" style="position:absolute;left:260px;top:197px;width:760px;height:520px">
-    <div class="footer">Arc Side of the Chrome · ⌥K on macOS / Alt+K on Windows and Linux</div>`);
+    <div class="footer">Arc Side of the Chrome · ⌥T on macOS / Alt+T on Windows and Linux</div>`);
   await copyFile(join(source, 'mini-player.jpg'), join(output, '03-video-mini-player.jpg'));
   await render('04-space-palettes.jpg', 1280, 800, `
     <div class="heading"><div class="eyebrow">A PLACE FOR EACH PART OF YOUR DAY</div><h1>Recognize your Space at a glance.</h1></div>

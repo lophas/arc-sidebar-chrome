@@ -39,7 +39,7 @@ Manual Chrome regression checklist:
 
 - Edge hover on ordinary pages and long-running Gmail/Facebook pages; hide/show tabs and remove/rebuild the overlay host.
 - Native/overlay mode switching, resizing and native-panel reload handling.
-- Option+K/Alt+K, recent tabs, favicon results, URL/search, keyboard navigation, New Tab filtering and pinned Space reveal.
+- Option+T/Alt+T, recent tabs, favicon results, URL/search, keyboard navigation, New Tab filtering and pinned Space reveal.
 - Two webpage sidebars: switch Spaces, collapse folders and edit separate items; confirm consistent state. Edit the same field and verify a visible conflict instead of data loss.
 - Favorites/add button/tile sizes, uploaded item and Space icons, emoji picker.
 - All drag paths: reorder Spaces/Favorites/folders/items; folder/root/cross-Space item moves; folder-editor Space moves.

@@ -74,9 +74,9 @@ try {
   await writeFile(join(directory, 'manifest.json'), JSON.stringify(currentManifest));
   await reloadExtension();
   const commands = await controls.evaluate(() => chrome.commands.getAll());
-  assert.equal(commands.find(command => command.name === 'arc-command-bar-v4')?.shortcut, 'Alt+K');
+  assert.equal(commands.find(command => command.name === 'arc-command-bar-v4')?.shortcut, 'Alt+T');
   assert.equal(commands.some(command => command.name === 'arc-command-bar-v3'), false);
-  console.log('PASS real Chrome: updating the existing extension retires Ctrl+K and registers Alt+K');
+  console.log('PASS real Chrome: updating the existing extension retires Ctrl+K and registers Alt+T');
   await poll(ids.protected, '!'); await poll(secondProtected.id, '!'); await poll(ids.regular, '');
   assert.equal(await controls.evaluate(async () => (await chrome.storage.local.get('arcSidebarMode')).arcSidebarMode), 'overlay');
   assert.match(await controls.evaluate(id => chrome.action.getTitle({ tabId: id }), ids.protected), /Click to open the fixed sidebar/);

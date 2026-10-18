@@ -65,7 +65,7 @@ function open() {
   refresh();
 }
 async function executeSelected() {
-  // A quick Alt+K → Enter must wait for this opening's data, never use stale
+  // A quick Alt+T → Enter must wait for this opening's data, never use stale
   // results from the last time the shared search dialog was opened.
   const context = openContext;
   while (pendingRefresh && dialog.open && openContext === context) await pendingRefresh;
@@ -110,7 +110,7 @@ async function refreshShortcut() {
 refreshShortcut();
 window.addEventListener('focus', refreshShortcut);
 // Custom bindings are handled by Chrome. This local fallback applies only to
-// the registered default, including Option+K's non-letter key on macOS.
+// the registered default, including Option+T's non-letter key on macOS.
 document.addEventListener('keydown', event => {
   if (isDefaultSearchShortcut(event, shortcut)) { event.preventDefault(); open(); }
 });
