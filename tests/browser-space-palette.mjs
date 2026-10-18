@@ -26,7 +26,8 @@ try{
  await page.emulateMedia({colorScheme:'dark'});
  await page.waitForFunction(()=>getComputedStyle(document.body).backgroundColor==='rgb(24, 24, 26)');
  await page.emulateMedia({colorScheme:'light'});
- await page.waitForFunction(()=>getComputedStyle(document.body).backgroundColor==='rgb(231, 233, 237)');
+ await page.waitForFunction(()=>getComputedStyle(document.body).backgroundColor==='rgb(24, 24, 26)');
+ assert.equal(await page.evaluate(()=>getComputedStyle(document.documentElement).colorScheme),'dark','Classic stays black with dark controls in a light browser');
  const poll=async(predicate,message)=>{for(let i=0;i<160;i++){if(await predicate())return;await new Promise(done=>setTimeout(done,50));}console.error('Palette test state:',JSON.stringify(await page.evaluate(async()=>({model:(await chrome.storage.local.get('arcSidebarModel')).arcSidebarModel,dialog:document.querySelector('.space-dialog')?.open,name:document.querySelector('#spaceName')?.value,kind:document.querySelector('#spacePaletteKind')?.value,hex1:document.querySelector('#spacePaletteHex1')?.value,hex2:document.querySelector('#spacePaletteHex2')?.value,error:document.querySelector('#sidebarSaveError')?.textContent}))));assert.fail(message);};
  const readModel=()=>page.evaluate(async()=>(await chrome.storage.local.get('arcSidebarModel')).arcSidebarModel);
  const url=`http://127.0.0.1:${server.address().port}/tab`;
@@ -56,6 +57,8 @@ try{
  await page.locator('.space-button[data-space-id="work"]').click({button:'right'});await page.getByRole('button',{name:'Edit Space…',exact:true}).click();
  assert.equal(await editor.locator('.space-palette-choice').first().getAttribute('data-palette-id'),'black');
  assert.equal(await editor.locator('[data-palette-id="black"]').getAttribute('aria-pressed'),'true');
+ assert.equal(await editor.locator('.space-palette-group-color').textContent(),'Palette: Classic (black)');
+ assert.equal(await editor.locator('.space-palette-preview').evaluate(el=>getComputedStyle(el).backgroundColor),'rgb(24, 24, 26)');
  assert.equal(await editor.locator('[data-palette-id="black"]').evaluate(el=>getComputedStyle(el).backgroundColor),'rgb(24, 24, 26)');
  await editor.locator('[data-palette-id="blue"]').click();await editor.locator('#spaceSave').click();
  await poll(async()=>samePalette((await readModel()).spaces[0].palette,{kind:'preset',id:'blue'}),'Selected vivid palette was not saved');
@@ -83,6 +86,7 @@ try{
  await page.emulateMedia({colorScheme:'light'});await poll(async()=>await background()===paletteStyle({kind:'preset',id:'blue'},false)['--space-background'],'Vivid preset did not return to light theme');
  await page.locator('.space-button[data-space-id="home"]').click();await poll(async()=>await background()===paletteStyle({kind:'preset',id:'green'},false)['--space-background'],'Space switch did not change palette');
  await page.locator('.space-button[data-space-id="__open_tabs__"]').click();await poll(async()=>await background()==='','Open tabs did not apply its neutral appearance');
+ assert.equal(await page.evaluate(()=>getComputedStyle(document.documentElement).colorScheme),'light','Open tabs restores the browser theme');
  await page.locator('.space-button[data-space-id="work"]').click();
  const custom={kind:'gradient',colors:['#073c99','#ff8800']};
  const editGradient=async()=>{

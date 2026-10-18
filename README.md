@@ -55,7 +55,7 @@ If a website needs Auto PiP permission, the extension guides you through enablin
 
 ### Recognize your workspace at a glance
 
-Give each Space a distinct palette: Classic black, a ready-made color combination, a custom solid color or a two-color gradient. The whole sidebar follows the Space, including Favorites, search, scrollbars and the switcher. Chrome groups follow its primary color. Light and dark appearances are supported.
+Give each Space a distinct palette: Classic black, a ready-made color combination, a custom solid color or a two-color gradient. The whole sidebar follows the Space, including Favorites, search, scrollbars and the switcher. Chrome groups follow its primary color. Classic stays black in both themes; the other palettes support light and dark appearances.
 
 Give folders their own colors too. A colored heading and a matching background keep each folder’s links together visually, including nested folders. Choose a ready-made shade or a custom color, or let the folder follow its Space. Folder colors travel with Chrome Sync and backups.
 

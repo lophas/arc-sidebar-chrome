@@ -54,7 +54,7 @@ The last Space cannot be deleted manually. Reset recreates the starting layout; 
 
 New Spaces start with **Classic (black)**, the first ready-made palette. Right-click a Space’s icon, choose **Edit Space…**, and use **Palette** to choose another ready-made palette, a custom color or a two-color gradient. The preview updates while you edit; choose **Save** to apply it or **Cancel** to keep the previous colors.
 
-The palette colors the whole sidebar, including Favorites, search and the bottom Space switcher. Vivid gradients distinguish Spaces, while subtly outlined Favorite buttons stand out from the background. Light and dark appearances follow the sidebar’s theme, and the active Space is highlighted in the switcher. **Open tabs** uses a neutral appearance.
+The palette colors the whole sidebar, including Favorites, search and the bottom Space switcher. Vivid gradients distinguish Spaces, while subtly outlined Favorite buttons stand out from the background. Classic stays black in both light and dark themes. Other palettes follow the sidebar’s theme, and the active Space is highlighted in the switcher. **Open tabs** uses a neutral appearance.
 
 A Space’s Chrome groups follow its palette’s primary color. The Favorites group stays grey. Reordering Spaces keeps their palettes, and Chrome Sync and backup/restore include all palette settings.
 

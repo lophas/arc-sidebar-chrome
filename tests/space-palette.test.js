@@ -54,3 +54,11 @@ test('automatic My Space palette cannot upload an empty profile; an intentional 
  const empty=withSpacePalettes({favorites:[],spaces:[{id:'__my_space__',title:'My Space',emoji:'🚀',children:[]}]});assert.equal(hasSyncContent(empty),false);
  empty.spaces[0].palette={kind:'preset',id:'green'};assert.equal(hasSyncContent(empty),true);
 });
+
+test('Classic is black with a complete dark scheme even in a light browser',()=>{
+ const palette={kind:'preset',id:'black'};
+ assert.deepEqual(paletteStyle(palette,false),paletteStyle(palette,true));
+ assert.equal(paletteStyle(palette,false)['--bg'],'#18181a');
+ assert.equal(paletteStyle(palette,false)['color-scheme'],'dark');
+ assert.equal(paletteStyle({kind:'preset',id:'blue'},false)['color-scheme'],'light');
+});

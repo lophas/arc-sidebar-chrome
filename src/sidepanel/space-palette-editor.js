@@ -26,8 +26,10 @@ export function createSpacePaletteEditor(dialog) {
     section.querySelector('.space-palette-second').hidden = kind.value !== 'gradient';
     grid.querySelectorAll('button').forEach(button => button.setAttribute('aria-pressed', String(value?.id === button.dataset.paletteId && !custom)));
     applyPaletteStyle(section.querySelector('.space-palette-preview'), value, dark());
-    const group = paletteGroupColor(value);
-    section.querySelector('.space-palette-group-color').textContent = `Chrome group: ${group[0].toUpperCase() + group.slice(1)}`;
+    const name = value?.kind === 'preset'
+      ? SPACE_PALETTES.find(preset => preset.id === value.id)?.name
+      : kind.value === 'gradient' ? 'Two-color gradient' : 'Custom color';
+    section.querySelector('.space-palette-group-color').textContent = `Palette: ${name || 'Classic (black)'}`;
   };
   const setColors = colors => colorFields.forEach((input, index) => {
     input.value = hexFields[index].value = colors[index] || colors[0];

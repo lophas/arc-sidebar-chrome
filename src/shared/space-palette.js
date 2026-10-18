@@ -105,28 +105,30 @@ function readableBackground(color, dark, text) {
   return blend(color, base, low);
 }
 
-export const PALETTE_VARIABLES = ['--space-background', '--bg', '--panel', '--text', '--muted', '--border', '--hover', '--active', '--space-accent', '--favorite-background', '--favorite-border', '--favorite-hover'];
+export const PALETTE_VARIABLES = ['color-scheme', '--space-background', '--bg', '--panel', '--text', '--muted', '--border', '--hover', '--active', '--space-accent', '--favorite-background', '--favorite-border', '--favorite-hover'];
 export function paletteStyle(value, dark = false) {
   const palette = normalizeSpacePalette(value) || DEFAULT_SPACE_PALETTE;
   if (palette.kind === 'preset' && palette.id === 'black') return {
-    '--space-background': dark ? '#18181a' : '#e7e9ed',
-    '--bg': dark ? '#18181a' : '#e7e9ed',
-    '--panel': dark ? '#202023' : '#eef0f3',
-    '--text': dark ? '#f4f4f5' : '#171717',
-    '--muted': dark ? '#a0a0a6' : '#62666f',
-    '--border': dark ? 'rgba(255,255,255,.10)' : 'rgba(0,0,0,.09)',
-    '--hover': dark ? 'rgba(255,255,255,.065)' : 'rgba(0,0,0,.055)',
-    '--active': dark ? 'rgba(255,255,255,.12)' : 'rgba(0,0,0,.10)',
-    '--space-accent': dark ? '#a0a0a6' : '#6e6e73',
-    '--favorite-background': dark ? 'rgba(255,255,255,.16)' : 'rgba(88,101,121,.14)',
-    '--favorite-border': dark ? 'rgba(255,255,255,.28)' : 'rgba(0,0,0,.18)',
-    '--favorite-hover': dark ? 'rgba(255,255,255,.23)' : 'rgba(88,101,121,.22)'
+    'color-scheme': 'dark',
+    '--space-background': '#18181a',
+    '--bg': '#18181a',
+    '--panel': '#202023',
+    '--text': '#f4f4f5',
+    '--muted': '#a0a0a6',
+    '--border': 'rgba(255,255,255,.10)',
+    '--hover': 'rgba(255,255,255,.065)',
+    '--active': 'rgba(255,255,255,.12)',
+    '--space-accent': '#a0a0a6',
+    '--favorite-background': 'rgba(255,255,255,.16)',
+    '--favorite-border': 'rgba(255,255,255,.28)',
+    '--favorite-hover': 'rgba(255,255,255,.23)'
   };
   const colors = paletteColors(value);
   const muted = dark ? '#edf2fa' : '#374151';
   const backgrounds = colors.map(color => readableBackground(color, dark, muted));
   const primary = colors[0];
   return {
+    'color-scheme': dark ? 'dark' : 'light',
     '--space-background': backgrounds.length === 1 ? backgrounds[0] : `linear-gradient(155deg, ${backgrounds[0]}, ${backgrounds[1]})`,
     '--bg': backgrounds[0],
     '--panel': blend(primary, dark ? '#191d25' : '#eef0f3', dark ? 0.28 : 0.12),

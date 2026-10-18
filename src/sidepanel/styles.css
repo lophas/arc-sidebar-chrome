@@ -272,18 +272,6 @@ section { margin-bottom: 15px; }
   font-size: 12px;
 }
 
-/* Keep transparent artwork readable; outlines stay outside its original dimensions. */
-.row .favicon,
-.row img.item-custom-icon,
-.command-icon img,
-.favorite-tile > img {
-  --icon-surface: light-dark(#858b95, transparent);
-  background: var(--icon-surface);
-  box-shadow: 0 0 0 1px var(--icon-surface);
-  outline: 1px solid light-dark(rgba(20,25,30,.22), transparent);
-  outline-offset: 1px;
-}
-
 .row-title {
   flex: 1;
   overflow: hidden;

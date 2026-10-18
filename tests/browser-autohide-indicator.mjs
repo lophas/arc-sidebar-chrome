@@ -23,6 +23,19 @@ try {
   if (!worker) worker = await context.waitForEvent('serviceworker');
   let controls = await context.newPage();
   await controls.goto(`chrome-extension://${worker.url().split('/')[2]}/src/options/index.html`);
+  // Chrome draws the native panel header from manifest icons, not action.setIcon.
+  const manifestIcons = await controls.evaluate(async () => {
+    const result = [];
+    for (const path of Object.values(chrome.runtime.getManifest().icons)) {
+      const image = await createImageBitmap(await (await fetch(chrome.runtime.getURL(path))).blob());
+      const canvas = new OffscreenCanvas(image.width, image.height), ctx = canvas.getContext('2d');
+      ctx.drawImage(image, 0, 0);
+      const center = ctx.getImageData(Math.floor(image.width / 2), Math.floor(image.height / 2), 1, 1).data;
+      result.push({ path, alpha: center[3] }); image.close();
+    }
+    return result;
+  });
+  for (const icon of manifestIcons) assert.equal(icon.alpha, 0, `Native panel icon must have a transparent arch opening: ${icon.path}`);
   // Exercise the real service-worker-compatible canvas and action.setIcon API.
   const coverage = await controls.evaluate(async () => {
     const { enlargeToolbarIcon } = await import('../background/toolbar-icon.js');

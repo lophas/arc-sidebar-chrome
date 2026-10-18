@@ -16,13 +16,13 @@ export async function checkIconSurfaces(page, poll) {
     await poll(async () => await favorite.locator('img').getAttribute('src') === white, 'Transparent white Favorite icon did not load');
     await page.mouse.move(1, 500);
     assert.equal(await favorite.evaluate(el => getComputedStyle(el).backgroundColor), 'rgba(88, 101, 121, 0.14)');
-    assert.equal(await favorite.locator('img').evaluate(el => getComputedStyle(el).backgroundColor), 'rgb(133, 139, 149)');
+    assert.equal(await favorite.locator('img').evaluate(el => getComputedStyle(el).backgroundColor), 'rgba(0, 0, 0, 0)');
     await favorite.hover();
     const hover = await favorite.evaluate(el => getComputedStyle(el).backgroundColor);
     assert.equal(hover, 'rgba(88, 101, 121, 0.22)');
     await favorite.evaluate(el => el.classList.add('active'));
     assert.notEqual(await favorite.evaluate(el => getComputedStyle(el).backgroundColor), hover);
-    assert.equal(await favorite.locator('img').evaluate(el => getComputedStyle(el).backgroundColor), 'rgb(133, 139, 149)');
+    assert.equal(await favorite.locator('img').evaluate(el => getComputedStyle(el).backgroundColor), 'rgba(0, 0, 0, 0)');
     await favorite.evaluate(el => el.classList.remove('active'));
     await page.mouse.move(1, 500);
     const pin = page.locator('#pinned .row[data-saved-node-id="pin"] img');
@@ -31,15 +31,15 @@ export async function checkIconSurfaces(page, poll) {
       const style = getComputedStyle(el);
       return { background: style.backgroundColor, outline: style.outlineWidth, filter: style.filter, width: el.getBoundingClientRect().width };
     });
-    assert.equal(size.background, 'rgb(133, 139, 149)');
-    assert.equal(size.outline, '1px');
+    assert.equal(size.background, 'rgba(0, 0, 0, 0)');
+    assert.equal(size.outline, '0px');
     assert.equal(size.filter, 'none');
-    assert.equal(size.width, 20, 'The plate must not shrink uploaded pinned icons');
+    assert.equal(size.width, 20, 'Transparent rendering must not shrink uploaded pinned icons');
     if (process.env.ARC_PALETTE_SCREENSHOTS) console.log('ICON_SURFACES_LIGHT_PNG=' + (await page.screenshot()).toString('base64'));
     await page.emulateMedia({ colorScheme: 'dark' });
     await poll(async () => await pin.evaluate(el => getComputedStyle(el).backgroundColor) === 'rgba(0, 0, 0, 0)', 'Dark icons must keep their existing appearance');
     await page.emulateMedia({ colorScheme: 'light' });
-    console.log('PASS transparent icons: white and black Favorites, hover/active contrast, pinned icon backing, thin border and original artwork/size');
+    console.log('PASS transparent icons: Favorites and pinned icons retain transparency, original artwork and size through hover, selection and theme changes');
   } finally {
     await page.evaluate(model => chrome.storage.local.set({ arcSidebarModel: model }), original);
     await page.locator('.favorite-tile[data-favorite-id="black-icon"]').waitFor({ state: 'detached' });
