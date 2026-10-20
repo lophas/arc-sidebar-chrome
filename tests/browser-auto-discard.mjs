@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { cp, mkdtemp, rm, readFile } from 'node:fs/promises';
+import { cp, mkdtemp, rm, readFile, appendFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { createServer } from 'node:http';
@@ -24,6 +24,7 @@ const directory = await mkdtemp(join(tmpdir(), 'arc-discard-extension-'));
 let context;
 try {
   await cp('src', join(directory, 'src'), { recursive: true }); await cp('manifest.json', join(directory, 'manifest.json'));
+  await appendFile(join(directory, 'src/background/service-worker.js'), "\nimport { createDiscardController as discardTestFactory } from './discard-controller.js'; globalThis.discardTestFactory = discardTestFactory;\n");
   context = await chromium.launchPersistentContext('', { channel: 'chromium', headless: false, acceptDownloads: true, ignoreDefaultArgs: ['--disable-extensions'], args: ['--no-sandbox', '--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream', `--disable-extensions-except=${directory}`, `--load-extension=${directory}`] });
   let [worker] = context.serviceWorkers(); if (!worker) worker = await context.waitForEvent('serviceworker');
   const extensionOrigin = 'chrome-extension://' + worker.url().split('/')[2];
@@ -83,16 +84,17 @@ try {
     return { ...ids, groupId };
   }, origin);
   await worker.evaluate(async () => {
-    const { createDiscardController } = await import('./discard-controller.js');
     let time = Date.now(), session = {}, alarms = new Map();
-    const api = { runtime: chrome.runtime, tabs: chrome.tabs, scripting: chrome.scripting,
+    self.discardTrace = [];
+    const api = { runtime: chrome.runtime, tabs: { query: query => chrome.tabs.query(query), get: id => chrome.tabs.get(id),
+      discard: async id => { discardTrace.push({ id, url: (await chrome.tabs.get(id)).url }); return chrome.tabs.discard(id); } }, scripting: chrome.scripting,
       storage: { local: chrome.storage.local, session: {
         get: async key => ({ [key]: session[key] }), set: async values => Object.assign(session, structuredClone(values))
       } }, alarms: { get: async name => alarms.get(name), clear: async name => alarms.delete(name), create: async (name, info) => alarms.set(name, { scheduledTime: info.when }) } };
-    self.discardTest = { controller: createDiscardController(api, () => time), advance: ms => time += ms, session, alarms };
+    self.discardTest = { controller: discardTestFactory(api, () => time), advance: ms => time += ms, session, alarms };
     await discardTest.controller.start();
   });
-  await worker.evaluate(async () => { discardTest.advance(5 * 60000); await discardTest.controller.alarm(); });
+  console.log('Discarded via real worker:', JSON.stringify(await worker.evaluate(async () => { discardTest.advance(5 * 60000); await discardTest.controller.alarm(); return discardTrace; })));
   const states = await options.evaluate(async ids => Object.fromEntries(await Promise.all(Object.entries(ids).filter(([key]) => key !== 'groupId').map(async ([key, id]) => [key, (await chrome.tabs.get(id)).discarded]))), ids);
   assert.equal(states.ordinary, true, 'The eligible idle tab must really be unloaded by Chrome');
   for (const path of ['edited', 'protected', 'pinned', 'video', 'pip', 'capture', 'framed', 'legacy']) assert.equal(states[path], false, path + ' must be protected');
