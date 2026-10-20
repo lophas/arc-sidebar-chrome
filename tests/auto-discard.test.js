@@ -7,7 +7,7 @@ function fixture(values = [{ id: 1, active: true }, { id: 2, active: false }]) {
   let time = 1000000;
   const tabs = new Map(values.map(tab => [tab.id, { windowId: 7, url: `https://tab${tab.id}.test/`, status: 'complete', autoDiscardable: true, ...tab }]));
   const local = { arcSidebarAutoDiscardMinutes: 5, arcSidebarModel: { favorites: [], spaces: [{ id: 'work' }] } }, session = {}, alarms = new Map();
-  const discarded = [], probes = [], protections = new Map();
+  const discarded = [], probes = [], protections = new Map(), preparations = new Map();
   const area = data => ({ get: async keys => structuredClone(Object.fromEntries((Array.isArray(keys) ? keys : [keys]).filter(key => key in data).map(key => [key, data[key]]))), set: async values => Object.assign(data, structuredClone(values)) });
   const api = {
     runtime: { getURL: path => 'chrome-extension://fixture/' + path },
@@ -15,9 +15,15 @@ function fixture(values = [{ id: 1, active: true }, { id: 2, active: false }]) {
     tabs: { query: async () => structuredClone([...tabs.values()]), get: async id => { if (!tabs.has(id)) throw Error('Closed'); return structuredClone(tabs.get(id)); },
       discard: async id => { const tab = tabs.get(id); if (tab.active) throw Error('Active'); tab.discarded = true; discarded.push(id); return structuredClone(tab); } },
     alarms: { get: async name => alarms.get(name), clear: async name => alarms.delete(name), create: async (name, info) => alarms.set(name, { scheduledTime: info.when }) },
-    scripting: { executeScript: async ({ target }) => { probes.push(target.tabId); const result = protections.get(target.tabId); if (result instanceof Error) throw result; return [{ frameId: 0, result: result || { safe: true } }]; } }
+    scripting: { executeScript: async ({ target, world }) => {
+      if (!world) return [{ result: preparations.get(target.tabId) ?? true }];
+      if (!target.allFrames) probes.push(target.tabId);
+      const result = protections.get(target.tabId); if (result instanceof Error) throw result;
+      return [{ frameId: 0, result: result || { safe: true } }];
+    } }
+
   };
-  return { api, local, session, tabs, alarms, discarded, probes, protections, advance: ms => time += ms, now: () => time, controller: () => createDiscardController(api, () => time) };
+  return { api, local, session, tabs, alarms, discarded, probes, protections, preparations, advance: ms => time += ms, now: () => time, controller: () => createDiscardController(api, () => time) };
 }
 test('exact slider values, safe defaults and hostname exception boundaries', () => {
   for (let value = 0; value <= 120; value += 5) assert.equal(discardMinutes(value), value);
@@ -92,4 +98,10 @@ test('refreshing a previously unknown page restores eligibility and closing it r
 test('candidate filtering does not confuse saved sidebar links with native Chrome pinned tabs', () => {
   assert.equal(discardCandidate({ id: 1, active: false, url: 'https://saved.test/', pinned: false }), true);
   assert.equal(discardCandidate({ id: 1, active: false, url: 'https://saved.test/', pinned: true }), false);
+});
+
+test('a preserved sidebar editor vetoes preparation before its host page is discarded',async()=>{
+ const f=fixture(),controller=f.controller();f.preparations.set(2,false);
+ await controller.start();f.advance(5*MINUTE);await controller.alarm();
+ assert.deepEqual(f.discarded,[]);assert.equal(f.alarms.get(DISCARD_ALARM).scheduledTime,f.now()+5*MINUTE);
 });

@@ -26,6 +26,7 @@
 
   let contextInvalid = false;
   let disposeOverlay = () => {};
+  let canDiscardOverlay = () => true;
   const listeners = [];
   const listen = (target, event, callback, options) => {
     target.addEventListener(event, callback, options);
@@ -240,6 +241,7 @@
     let nativePanelOpen = false;
     let editorActive = false;
     let preservedEditor = false;
+    canDiscardOverlay = () => !editorActive && !preservedEditor;
     let currentWidth = DEFAULT_PANEL_WIDTH;
     let sidebarMode = OVERLAY_MODE;
     let edgeSide = 'right';
@@ -620,7 +622,8 @@
   listen(document, 'visibilitychange', () => {
     if (document.visibilityState === 'visible') refreshMode();
   });
-  globalThis[CONTROLLER_KEY] = { version: VERSION, active: () => !contextInvalid && Boolean(chrome.runtime.id), refresh: refreshMode, dispose: stopInvalidContext };
+  globalThis[CONTROLLER_KEY] = { version: VERSION, active: () => !contextInvalid && Boolean(chrome.runtime.id), refresh: refreshMode, dispose: stopInvalidContext,
+    prepareDiscard: () => { if (document.visibilityState !== 'hidden' || !canDiscardOverlay()) return false; stopInvalidContext(); return true; } };
   listenChrome(chrome.runtime.onMessage, (message, _sender, respond) => {
     if (message?.type === 'arc-sidebar-apply-mode' && !contextInvalid) {
       ++modeRequest;

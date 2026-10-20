@@ -1,8 +1,9 @@
 // Runs only when an otherwise eligible tab reaches its idle deadline. No page
 // timers or continuous DOM scans are needed.
 export async function probeDiscardSafety(extensionOrigin) {
-  // The extension's own embedded sidebar is UI, not page content to protect.
-  if (extensionOrigin && location.origin === extensionOrigin) return { safe: true };
+  // Managed sidebar frames are detached before the all-frame check. Any own
+  // UI still present may contain an editor; do not discard its host tab.
+  if (extensionOrigin && location.origin === extensionOrigin) return { safe: false, reason: 'editing' };
   const guard = globalThis.__arcSidebarDiscardGuard?.state();
   if (!guard?.verified) return { safe: false, reason: 'unverified' };
   if (guard.capturing) return { safe: false, reason: 'capture' };

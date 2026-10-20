@@ -46,7 +46,19 @@ export function createDiscardController(api, now = Date.now) {
   }
   async function inspect(tab) {
     try {
-      const results = await api.scripting.executeScript({ target: { tabId: tab.id, allFrames: true }, world: 'MAIN', func: probeDiscardSafety, args: [api.runtime.getURL('').replace(/\/$/, '')] });
+      const origin = api.runtime.getURL('').replace(/\/$/, '');
+      const top = await api.scripting.executeScript({ target: { tabId: tab.id }, world: 'MAIN', func: probeDiscardSafety, args: [origin] });
+      if (!top?.[0]?.result?.safe) return top?.[0]?.result || { safe: false, reason: 'unverified' };
+      // Destroy extension-owned child contexts BEFORE Chrome discards the host
+      // renderer. A preserved editor vetoes this; focus reinjects a disposed
+      // controller if a later page check prevents the actual discard.
+      const prepared = await api.scripting.executeScript({ target: { tabId: tab.id }, func: () => {
+        if (document.visibilityState !== 'hidden') return false;
+        const controller = globalThis.__arcSidebarOverlayController;
+        return !controller || typeof controller.prepareDiscard === 'function' && controller.prepareDiscard();
+      } });
+      if (prepared?.[0]?.result !== true) return { safe: false, reason: 'editing' };
+      const results = await api.scripting.executeScript({ target: { tabId: tab.id, allFrames: true }, world: 'MAIN', func: probeDiscardSafety, args: [origin] });
       if (!results?.length) return { safe: false, reason: 'unverified' };
       return results.map(frame => frame.result || { safe: false, reason: 'unverified' }).find(result => !result.safe) || { safe: true };
     } catch { return { safe: false, reason: 'unverified' }; }
@@ -106,7 +118,7 @@ export function createDiscardController(api, now = Date.now) {
           const latest = discardPreferences(await api.storage.local.get([DISCARD_MINUTES_KEY, DISCARD_EXCEPTIONS_KEY]));
           const current = await api.tabs.get(tab.id);
           tabs.set(tab.id, snapshot(current));
-          if (!latest.minutes || !discardCandidate(current, latest.exceptions) || current.url !== tab.url ||
+          if (!latest.minutes || !discardCandidate(current, latest.exceptions) || current.url !== tab.url || current.pendingUrl !== tab.pendingUrl ||
               idle[tab.id].since + latest.minutes * MINUTE > now()) continue;
           const discarded = await api.tabs.discard(tab.id);
           if (discarded?.discarded) { tabs.set(tab.id, snapshot(discarded)); delete idle[tab.id]; }
