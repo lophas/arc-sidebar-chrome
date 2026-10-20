@@ -122,7 +122,7 @@ export function createDiscardController(api, now = Date.now) {
           if (!latest.minutes || !discardCandidate(current, latest.exceptions) || current.url !== tab.url || current.pendingUrl !== tab.pendingUrl ||
               idle[tab.id].since + latest.minutes * MINUTE > now()) continue;
           const discarded = await api.tabs.discard(tab.id);
-          if (discarded?.discarded) { tabs.set(tab.id, snapshot(discarded)); delete idle[tab.id]; }
+          if (discarded?.discarded) { tabs.delete(tab.id); tabs.set(discarded.id, snapshot(discarded)); delete idle[tab.id]; }
           else idle[tab.id].retry = now() + RETRY;
         } catch { if (idle[tab.id]) idle[tab.id].retry = now() + RETRY; }
       }

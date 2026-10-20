@@ -65,15 +65,18 @@ try {
   await pages.capture.evaluate(async () => { window.stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true }); });
   await pages.framed.frameLocator('iframe').locator('#draft').fill('iframe draft');
   await pages.legacy.evaluate(() => { delete window.__arcSidebarDiscardGuard; });
-  await pages.sidebar.evaluate(url => new Promise(done => {
-    const frame = document.createElement('iframe'); frame.src = url; frame.onload = done;
-    frame.style.cssText = 'width:390px;height:500px'; document.body.append(frame);
-  }), extensionOrigin + '/src/sidepanel/index.html?overlay=1');
   await options.evaluate(() => chrome.storage.local.set({ arcSidebarMode: 'overlay' }));
   await pages.ordinary.bringToFront();
   await pages.ordinary.mouse.move(400, 200);
   await pages.ordinary.mouse.move((await pages.ordinary.evaluate(() => innerWidth)) - 1, 200, { steps: 8 });
   await poll(() => Promise.resolve(pages.ordinary.frames().some(frame => frame.url().includes('/src/sidepanel/index.html'))), 'Load the real edge-hover sidebar before discarding its host');
+  await pages.sidebar.bringToFront();
+  await pages.sidebar.mouse.move(400, 200);
+  await pages.sidebar.mouse.move((await pages.sidebar.evaluate(() => innerWidth)) - 1, 200, { steps: 8 });
+  await poll(() => Promise.resolve(pages.sidebar.frames().some(frame => frame.url().includes('/src/sidepanel/index.html'))), 'Open a real sidebar editor');
+  const sidebarFrame = pages.sidebar.frames().find(frame => frame.url().includes('/src/sidepanel/index.html'));
+  await sidebarFrame.locator('#addFolder').click();
+  await sidebarFrame.locator('#folderName').fill('Unsaved folder');
   await options.bringToFront();
   const ids = await options.evaluate(async origin => {
     const tabs = await chrome.tabs.query({});
@@ -95,7 +98,7 @@ try {
     let time = Date.now(), session = {}, alarms = new Map();
     self.discardTrace = [];
     const api = { runtime: chrome.runtime, tabs: { query: query => chrome.tabs.query(query), get: id => chrome.tabs.get(id),
-      discard: async id => { discardTrace.push({ id, url: (await chrome.tabs.get(id)).url }); return chrome.tabs.discard(id); } }, scripting: { executeScript: async details => {
+      discard: async id => { const result = await chrome.tabs.discard(id); discardTrace.push({ discardedFrom: id, result }); return result; } }, scripting: { executeScript: async details => {
         if (!details.world) discardTrace.push({ documentState: await chrome.scripting.executeScript({ target: details.target,
           func: () => ({ visibility: document.visibilityState, focused: document.hasFocus(), prepare: typeof globalThis.__arcSidebarOverlayController?.prepareDiscard }) }) });
         const result = await chrome.scripting.executeScript(details);
@@ -110,16 +113,22 @@ try {
   });
   console.log('Tab state before alarm:', JSON.stringify(await worker.evaluate(async () => (await chrome.tabs.query({})).map(({id,url,active,pinned,discarded})=>({id,url,active,pinned,discarded})))));
   console.log('Discarded via real worker:', JSON.stringify(await worker.evaluate(async () => { discardTest.advance(5 * 60000); await discardTest.controller.alarm(); return discardTrace; })));
+  const afterDiscard = await options.evaluate(() => chrome.tabs.query({}));
+  console.log('Tabs after discard:', JSON.stringify(afterDiscard.map(({id,url,discarded}) => ({id,url,discarded}))));
+  const originalId = ids.ordinary;
+  ids.ordinary = afterDiscard.find(tab => tab.url === origin + '/ordinary')?.id;
+  assert.ok(ids.ordinary, 'Discard must preserve the tab in the tab strip');
   const states = await options.evaluate(async ids => Object.fromEntries(await Promise.all(Object.entries(ids).filter(([key]) => key !== 'groupId').map(async ([key, id]) => [key, (await chrome.tabs.get(id)).discarded]))), ids);
   assert.equal(states.ordinary, true, 'The eligible idle tab must really be unloaded by Chrome');
   for (const path of ['edited', 'protected', 'pinned', 'video', 'pip', 'capture', 'framed', 'legacy', 'sidebar']) assert.equal(states[path], false, path + ' must be protected');
   assert.equal(await options.evaluate(id => chrome.tabs.get(id).then(tab => tab.groupId), ids.ordinary), ids.groupId);
-  assert.equal(await options.evaluate(async () => (await chrome.storage.session.get('arcSidebarBindings')).arcSidebarBindings.ordinary), ids.ordinary);
+  await poll(() => options.evaluate(async id => (await chrome.storage.session.get('arcSidebarBindings')).arcSidebarBindings.ordinary === id, ids.ordinary), 'Saved binding must follow a replaced tab ID');
+  console.log('Discard tab IDs:', { before: originalId, after: ids.ordinary });
   const before = loads.get('/ordinary');
   await options.evaluate(id => chrome.tabs.update(id, { active: true }), ids.ordinary);
   await poll(() => options.evaluate(id => chrome.tabs.get(id).then(tab => !tab.discarded && tab.status === 'complete'), ids.ordinary), 'Activating must reload the existing tab');
   assert.ok(loads.get('/ordinary') > before);
-  console.log('PASS real Chrome: actual idle discard/reload keeps tab ID, native group and saved binding; edits, iframe edits, media, native PiP, live camera/microphone, native pinned and manual protection survive');
+  console.log('PASS real Chrome: actual idle discard/reload keeps native group and saved binding; edits, iframe edits, media, native PiP, live camera/microphone, native pinned and manual protection survive');
 
   await options.bringToFront();
   const downloadPromise = options.waitForEvent('download'); await options.locator('#downloadBackup').click();

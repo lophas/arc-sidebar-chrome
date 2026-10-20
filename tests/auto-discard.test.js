@@ -105,3 +105,15 @@ test('a preserved sidebar editor vetoes preparation before its host page is disc
  await controller.start();f.advance(5*MINUTE);await controller.alarm();
  assert.deepEqual(f.discarded,[]);assert.equal(f.alarms.get(DISCARD_ALARM).scheduledTime,f.now()+5*MINUTE);
 });
+
+test('native discard replacement IDs remove the old idle record', async () => {
+  const f = fixture(), controller = f.controller();
+  f.api.tabs.discard = async id => {
+    const replacement = { ...f.tabs.get(id), id: 22, discarded: true };
+    f.tabs.delete(id); f.tabs.set(22, replacement); f.discarded.push(id); return replacement;
+  };
+  await controller.start(); f.advance(5 * MINUTE); await controller.alarm();
+  assert.deepEqual(f.discarded, [2]);
+  assert.equal(f.session[DISCARD_IDLE_KEY][2], undefined);
+  assert.equal(f.alarms.size, 0);
+});
