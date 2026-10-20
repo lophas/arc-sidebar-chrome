@@ -33,6 +33,7 @@
   }, { capture: true, passive: true });
   globalThis.__arcSidebarDiscardGuard = {
     state: () => {
+      for (const track of tracks) if (track.readyState !== 'live') tracks.delete(track);
       for (const edit of edits) {
         const field = edit.ref.deref();
         if (!field?.isConnected || fingerprint(valueOf(field)) === edit.baseline) {

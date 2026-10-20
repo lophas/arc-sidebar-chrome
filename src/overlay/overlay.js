@@ -623,7 +623,7 @@
     if (document.visibilityState === 'visible') refreshMode();
   });
   globalThis[CONTROLLER_KEY] = { version: VERSION, active: () => !contextInvalid && Boolean(chrome.runtime.id), refresh: refreshMode, dispose: stopInvalidContext,
-    prepareDiscard: () => { if (document.visibilityState !== 'hidden' || !canDiscardOverlay()) return false; stopInvalidContext(); return true; } };
+    prepareDiscard: () => { if (!canDiscardOverlay()) return false; stopInvalidContext(); return true; } };
   listenChrome(chrome.runtime.onMessage, (message, _sender, respond) => {
     if (message?.type === 'arc-sidebar-apply-mode' && !contextInvalid) {
       ++modeRequest;

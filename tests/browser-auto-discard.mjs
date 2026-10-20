@@ -95,6 +95,8 @@ try {
     self.discardTrace = [];
     const api = { runtime: chrome.runtime, tabs: { query: query => chrome.tabs.query(query), get: id => chrome.tabs.get(id),
       discard: async id => { discardTrace.push({ id, url: (await chrome.tabs.get(id)).url }); return chrome.tabs.discard(id); } }, scripting: { executeScript: async details => {
+        if (!details.world) discardTrace.push({ documentState: await chrome.scripting.executeScript({ target: details.target,
+          func: () => ({ visibility: document.visibilityState, focused: document.hasFocus(), prepare: typeof globalThis.__arcSidebarOverlayController?.prepareDiscard }) }) });
         const result = await chrome.scripting.executeScript(details);
         discardTrace.push({ probe: details.world || 'ISOLATED', tabId: details.target.tabId, allFrames: !!details.target.allFrames, result });
         return result;

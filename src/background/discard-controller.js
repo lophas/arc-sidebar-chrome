@@ -49,11 +49,12 @@ export function createDiscardController(api, now = Date.now) {
       const origin = api.runtime.getURL('').replace(/\/$/, '');
       const top = await api.scripting.executeScript({ target: { tabId: tab.id }, world: 'MAIN', func: probeDiscardSafety, args: [origin] });
       if (!top?.[0]?.result?.safe) return top?.[0]?.result || { safe: false, reason: 'unverified' };
+      const current = await api.tabs.get(tab.id);
+      if (!discardCandidate(current, prefs.exceptions) || current.url !== tab.url || current.pendingUrl !== tab.pendingUrl) return { safe: false, reason: 'active' };
       // Destroy extension-owned child contexts BEFORE Chrome discards the host
       // renderer. A preserved editor vetoes this; focus reinjects a disposed
       // controller if a later page check prevents the actual discard.
       const prepared = await api.scripting.executeScript({ target: { tabId: tab.id }, func: () => {
-        if (document.visibilityState !== 'hidden') return false;
         const controller = globalThis.__arcSidebarOverlayController;
         return !controller || typeof controller.prepareDiscard === 'function' && controller.prepareDiscard();
       } });
