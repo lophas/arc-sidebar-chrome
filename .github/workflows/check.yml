@@ -18,7 +18,7 @@ jobs:
       - run: npm install --no-save --package-lock=false --ignore-scripts playwright-core@1.56.1
       - run: npx playwright-core install chromium --no-shell
       - run: xvfb-run -a node tests/browser-autohide-indicator.mjs
-      - run: DEBUG=pw:browser xvfb-run -a node tests/browser-auto-discard.mjs
+      - run: xvfb-run -a node tests/browser-auto-discard.mjs
       - run: xvfb-run -a node tests/browser-link-title.mjs
       - run: xvfb-run -a node tests/browser-tab-focus.mjs
       - run: xvfb-run -a node tests/browser-sidebar-history.mjs
@@ -31,7 +31,7 @@ jobs:
       - run: xvfb-run -a node tests/browser-auto-pip.mjs --regression-ref=3e33f9de7e2784175a7198c2a14d70dbff66306f
       - run: xvfb-run -a node tests/browser-auto-pip.mjs
       - run: xvfb-run -a node tests/browser-html5-pip.mjs
-      - name: Verify HTML5 PiP in current stable Chrome
+      - name: Verify HTML5 PiP and tab discard in current stable Chrome
         run: |
           python3 - <<'PYCHROME'
           import json, urllib.request, zipfile, os
@@ -44,3 +44,4 @@ jobs:
               os.chmod('/tmp/arc-stable-chrome/chrome-linux64/' + name, 0o755)
           PYCHROME
           ASOTC_CHROME_BINARY=/tmp/arc-stable-chrome/chrome-linux64/chrome xvfb-run -a node tests/browser-html5-pip.mjs
+          ASOTC_CHROME_BINARY=/tmp/arc-stable-chrome/chrome-linux64/chrome xvfb-run -a node tests/browser-auto-discard.mjs

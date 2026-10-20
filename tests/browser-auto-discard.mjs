@@ -25,7 +25,8 @@ let context;
 try {
   await cp('src', join(directory, 'src'), { recursive: true }); await cp('manifest.json', join(directory, 'manifest.json'));
   await appendFile(join(directory, 'src/background/service-worker.js'), "\nimport { createDiscardController as discardTestFactory } from './discard-controller.js'; globalThis.discardTestFactory = discardTestFactory;\n");
-  context = await chromium.launchPersistentContext('', { channel: 'chromium', headless: false, acceptDownloads: true, ignoreDefaultArgs: ['--disable-extensions'], args: ['--no-sandbox', '--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream', `--disable-extensions-except=${directory}`, `--load-extension=${directory}`] });
+  // A discarded WebContents has no view: device-size emulation can crash Chrome.
+  context = await chromium.launchPersistentContext('', { ...(process.env.ASOTC_CHROME_BINARY ? { executablePath: process.env.ASOTC_CHROME_BINARY } : { channel: 'chromium' }), viewport: null, headless: false, acceptDownloads: true, ignoreDefaultArgs: ['--disable-extensions'], args: ['--no-sandbox', '--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream', `--disable-extensions-except=${directory}`, `--load-extension=${directory}`] });
   let [worker] = context.serviceWorkers(); if (!worker) worker = await context.waitForEvent('serviceworker');
   const extensionOrigin = 'chrome-extension://' + worker.url().split('/')[2];
   context.browser().on('disconnected', () => console.log('Discard test browser disconnected'));
