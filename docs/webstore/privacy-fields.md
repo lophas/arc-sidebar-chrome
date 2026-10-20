@@ -1,10 +1,10 @@
 # Chrome Web Store Privacy practices
 
-Prepared from the 4.0.3 source. Recheck after changing permissions or data handling.
+Prepared from the 4.2.0 source. Recheck after changing permissions or data handling.
 
 ## Single purpose description
 
-Provide a Space-based tab-management workspace for Chrome. Organize and navigate saved links and open tabs through a sidebar that stays synchronized with native Chrome tab groups. Search, focus handling and an optional video mini player help users switch between tabs while keeping their working context.
+Provide a Space-based tab-management workspace for Chrome. Organize and navigate saved links and open tabs through a sidebar that stays synchronized with native Chrome tab groups. Search, focus handling, configurable automatic idle-tab discard and an optional video mini player help users switch between tabs while keeping their working context.
 
 ## tabs justification
 
@@ -14,13 +14,17 @@ Read open-tab URLs, titles, favicons, status and last-access times to display an
 
 Inject or refresh the bundled autohide sidebar and video mini player controllers in eligible webpages, including already-open tabs after an extension reload or mode change. Bundled scripts also pass the active-tab state and settings needed to open and restore Picture-in-Picture correctly. No remotely hosted scripts are executed.
 
+## alarms justification
+
+Schedule one central wake-up for the next idle-tab deadline. The background worker can sleep between checks. A delay of 0 clears the alarm; active and protected tabs are excluded.
+
 ## tabGroups justification
 
 Create and manage native Chrome groups associated with Favorites and Spaces. Keep their names, colors and order aligned with the sidebar, place project tabs in the correct group, show additional grouped tabs, close a Space’s open tabs, and expand or collapse managed groups when focus changes.
 
 ## storage justification
 
-Store the user’s Spaces, Favorites, folders, saved URLs and titles, custom icons, palettes, preferences and tab-restoration metadata. Session storage keeps temporary tab/group bindings. When the user enables Chrome Sync, synchronize the saved organization through chrome.storage.sync. Fixed/Autohide mode, timeout, edge-trigger geometry, Favorite button size and sidebar width remain local and are included in backups.
+Store the user’s Spaces, Favorites, folders, saved URLs and titles, custom icons, palettes, preferences and tab-restoration metadata. Session storage keeps temporary tab/group bindings. When the user enables Chrome Sync, synchronize the saved organization through chrome.storage.sync. Fixed/Autohide mode, timeout, edge-trigger geometry, Favorite button size, sidebar width, automatic discard delay and website exceptions remain local and are included in backups.
 
 ## sidePanel justification
 
@@ -32,11 +36,11 @@ Display recognizable website icons beside saved links, Favorites, open tabs and 
 
 ## contextMenus justification
 
-Add the “Pin to Arc Side of the Chrome” menu to webpage and link context menus. Users can save the current page or selected link directly to Favorites or one of their Spaces.
+Add the “Pin to Arc Side of the Chrome” menu to webpage and link context menus. Users can save the current page or selected link directly to Favorites or one of their Spaces. A separate checkbox lets the user keep the current webpage in memory by setting its auto-discard protection.
 
 ## Host permission justification
 
-The autohide sidebar must work on arbitrary HTTP/HTTPS sites selected by the user, so a fixed domain list is insufficient. HTTPS page access also lets bundled scripts detect playing HTML5 videos and manage the mini player when switching tabs. Host access allows the background worker to fetch a user-specified link’s page title when no matching open-tab title is available. Access supports these disclosed workspace features; it is not used for analytics or advertising.
+The autohide sidebar must work on arbitrary HTTP/HTTPS sites selected by the user, so a fixed domain list is insufficient. HTTPS page access also lets bundled scripts detect playing HTML5 videos and manage the mini player when switching tabs. Host access allows the background worker to fetch a user-specified link’s page title when no matching open-tab title is available. Idle-tab protection also uses bundled local scripts to check editing/playback state and whether camera, microphone or screen-capture tracks are live before unloading a tab. Those checks do not record or transmit form values, audio, video or screen contents. Access supports these disclosed workspace features; it is not used for analytics or advertising.
 
 ## Remote code
 

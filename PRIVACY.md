@@ -1,10 +1,10 @@
 # Privacy Policy — Arc Side of the Chrome
 
-Last updated: October 16, 2026
+Last updated: October 20, 2026
 
 Publisher: Jata (GitHub: [lophas](https://github.com/lophas)).
 
-Arc Side of the Chrome provides a Space-based workspace for organizing saved links and open Chrome tabs. It processes browsing information to provide its sidebar, native tab-group integration, search and video mini player. The extension has no developer-operated data collection server, advertising system or analytics service. Your workspace is not sent to the developer.
+Arc Side of the Chrome provides a Space-based workspace for organizing saved links and open Chrome tabs. It processes browsing information to provide its sidebar, native tab-group integration, search, video mini player and automatic idle-tab discard. The extension has no developer-operated data collection server, advertising system or analytics service. Your workspace is not sent to the developer.
 
 ## Information handled and why
 
@@ -13,6 +13,7 @@ Arc Side of the Chrome provides a Space-based workspace for organizing saved lin
 - **Tab restoration information:** The latest URL, title, tab position and update time associated with a saved link may be stored locally to reconnect it to an existing tab after a browser restart. This is not a complete record of every page visited. The extension does not use Chrome's browsing-history database.
 - **Interface activity and preferences:** The selected Space, folder expansion, sidebar scroll positions, mode, size and edge-trigger preferences. Pointer/button events, keyboard interactions with the extension, tab activation and visibility changes are processed locally to operate the interface and focus behavior. The extension does not record general webpage keystroke logs or send interaction analytics.
 - **Website content needed for features:** Page titles, URLs, favicons and HTML5 video elements/playback state. When you save or edit a link with an empty title, the extension first checks an open tab's title. If unavailable, it may fetch the specified webpage and temporarily read its HTML to extract the title. This request omits authentication credentials; the fetched page's scripts are not executed and its page body is not saved as workspace content.
+- **Automatic discard protection:** Background timestamps and protection status are kept in browser-session storage. The idle delay and website exceptions are local preferences included in backups, not Chrome Sync. Page-local checks inspect editing state, media playback and camera/microphone/screen-capture activity to avoid unloading ongoing work. Edit-comparison fingerprints exist only in page memory; form values and fingerprints are not logged, saved to extension storage, included in backups or Sync, or sent to the developer. Capture checks track whether media tracks are live; the extension does not record their audio, video or screen contents.
 - **Mini player state:** The extension detects eligible playing videos and tab changes to display and restore Picture-in-Picture. A small in-memory diagnostic event list can help troubleshoot this feature. Videos are not recorded, copied to a developer server or uploaded by the extension.
 
 The extension does not provide account registration or collect passwords, authentication cookies, payment details, health records, private message bodies or geolocation as application data. URLs, titles and names that you choose to save can themselves contain personal information; they are handled as part of your workspace.
@@ -27,7 +28,7 @@ Importing Arc Browser data, restoring a backup and preparing uploaded icon files
 
 When you enable the extension's Chrome Sync option, it uses Google's Chrome Storage Sync service to synchronize your saved Spaces, Favorites, folders, pinned links, order, palettes and custom icons between eligible Chrome installations. This includes the saved URLs and titles in that organization. Google handles this synchronization under its own Chrome/account policies and settings; the developer does not receive your cloud workspace.
 
-Live open-tab lists, tab restoration bindings, the selected Space, folder expansion, sidebar scroll positions, sidebar mode, close delay, edge-trigger geometry, sidebar width, Favorite button size and mini player preference are not included in the extension's synchronized workspace.
+Live open-tab lists, tab restoration bindings, the selected Space, folder expansion, sidebar scroll positions, sidebar mode, close delay, edge-trigger geometry, sidebar width, Favorite button size mini player preference, automatic discard delay and website exceptions are not included in the extension's synchronized workspace.
 
 In version 4.0.2, Chrome Sync also included edge-trigger geometry. From version 4.0.3, all autohide preferences remain local; the legacy synchronized trigger entry is removed without replacing the device’s current settings.
 
@@ -35,7 +36,7 @@ Turning Sync off stops further workspace synchronization by this extension. **Re
 
 ## Backups and retention
 
-Downloading a backup creates a readable JSON file containing your saved organization, custom icons, folder expansion states and supported preferences, including Favorite button size. You choose where to keep it and whether to share or delete it. Restoring a backup or importing Arc Browser data replaces the current saved organization.
+Downloading a backup creates a readable JSON file containing your saved organization, custom icons, folder expansion states and supported preferences, including Favorite button size, automatic discard delay and website exceptions. You choose where to keep it and whether to share or delete it. Restoring a backup or importing Arc Browser data replaces the current saved organization.
 
 Saved local organization remains until you change, delete or reset it, or remove the extension. Runtime-only state lasts for the relevant page/browser session. Resetting the extension does not close your existing Chrome tabs or delete backup files you have downloaded. Previously saved cloud snapshots and copies of backups require separate management as described above.
 
@@ -55,7 +56,7 @@ All executable extension code is included in the installed package. Webpage titl
 
 ## Your controls and contact
 
-You can edit or delete saved links and Spaces, turn automatic Picture-in-Picture off, disable Sync, download or restore a backup, reset local data, or uninstall the extension. At least one initial Space is recreated after a reset.
+You can edit or delete saved links and Spaces, turn automatic Picture-in-Picture off, set automatic discard to 0 to disable it, protect individual tabs or websites, disable Sync, download or restore a backup, reset local data, or uninstall the extension. At least one initial Space is recreated after a reset.
 
 For privacy questions, contact the publisher using the contact email shown on the extension's Chrome Web Store listing. General support is available through [the project repository](https://github.com/lophas/arc-sidebar-chrome/issues).
 

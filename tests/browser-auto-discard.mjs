@@ -88,17 +88,24 @@ try {
     await chrome.storage.session.set({ arcSidebarBindings: { ordinary: ids.ordinary } });
     return { ...ids, groupId };
   }, origin);
+  await options.bringToFront();
+  await options.evaluate(async () => chrome.tabs.update((await chrome.tabs.getCurrent()).id, { active: true }));
   await worker.evaluate(async () => {
     let time = Date.now(), session = {}, alarms = new Map();
     self.discardTrace = [];
     const api = { runtime: chrome.runtime, tabs: { query: query => chrome.tabs.query(query), get: id => chrome.tabs.get(id),
-      discard: async id => { discardTrace.push({ id, url: (await chrome.tabs.get(id)).url }); return chrome.tabs.discard(id); } }, scripting: chrome.scripting,
+      discard: async id => { discardTrace.push({ id, url: (await chrome.tabs.get(id)).url }); return chrome.tabs.discard(id); } }, scripting: { executeScript: async details => {
+        const result = await chrome.scripting.executeScript(details);
+        discardTrace.push({ probe: details.world || 'ISOLATED', tabId: details.target.tabId, allFrames: !!details.target.allFrames, result });
+        return result;
+      } },
       storage: { local: chrome.storage.local, session: {
         get: async key => ({ [key]: session[key] }), set: async values => Object.assign(session, structuredClone(values))
       } }, alarms: { get: async name => alarms.get(name), clear: async name => alarms.delete(name), create: async (name, info) => alarms.set(name, { scheduledTime: info.when }) } };
     self.discardTest = { controller: discardTestFactory(api, () => time), advance: ms => time += ms, session, alarms };
     await discardTest.controller.start();
   });
+  console.log('Tab state before alarm:', JSON.stringify(await worker.evaluate(async () => (await chrome.tabs.query({})).map(({id,url,active,pinned,discarded})=>({id,url,active,pinned,discarded})))));
   console.log('Discarded via real worker:', JSON.stringify(await worker.evaluate(async () => { discardTest.advance(5 * 60000); await discardTest.controller.alarm(); return discardTrace; })));
   const states = await options.evaluate(async ids => Object.fromEntries(await Promise.all(Object.entries(ids).filter(([key]) => key !== 'groupId').map(async ([key, id]) => [key, (await chrome.tabs.get(id)).discarded]))), ids);
   assert.equal(states.ordinary, true, 'The eligible idle tab must really be unloaded by Chrome');
