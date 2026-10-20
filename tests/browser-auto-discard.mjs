@@ -9,6 +9,7 @@ const video = Buffer.from(await readFile('tests/fixtures/pip-video.webm.b64', 'u
 let origin;
 const loads = new Map();
 const server = createServer((req, res) => {
+  res.setHeader('Cache-Control', 'no-store');
   if (req.url === '/video.webm') { res.setHeader('Content-Type', 'video/webm'); res.end(video); return; }
   loads.set(req.url, (loads.get(req.url) || 0) + 1);
   res.setHeader('Content-Type', 'text/html');
@@ -26,6 +27,8 @@ try {
   context = await chromium.launchPersistentContext('', { channel: 'chromium', headless: false, acceptDownloads: true, ignoreDefaultArgs: ['--disable-extensions'], args: ['--no-sandbox', '--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream', `--disable-extensions-except=${directory}`, `--load-extension=${directory}`] });
   let [worker] = context.serviceWorkers(); if (!worker) worker = await context.waitForEvent('serviceworker');
   const extensionOrigin = 'chrome-extension://' + worker.url().split('/')[2];
+  context.browser().on('disconnected', () => console.log('Discard test browser disconnected'));
+  context.on('page', page => page.on('close', () => console.log('Discard test page closed:', page.url())));
   const options = await context.newPage(); await options.goto(extensionOrigin + '/src/options/index.html');
   const poll = async (fn, message) => {
     for (let i = 0; i < 160; i++) { if (await fn()) return; await new Promise(done => setTimeout(done, 50)); }
@@ -79,17 +82,17 @@ try {
     await chrome.storage.session.set({ arcSidebarBindings: { ordinary: ids.ordinary } });
     return { ...ids, groupId };
   }, origin);
-  await options.evaluate(async () => {
-    const { createDiscardController } = await import('../background/discard-controller.js');
+  await worker.evaluate(async () => {
+    const { createDiscardController } = await import('./discard-controller.js');
     let time = Date.now(), session = {}, alarms = new Map();
     const api = { runtime: chrome.runtime, tabs: chrome.tabs, scripting: chrome.scripting,
       storage: { local: chrome.storage.local, session: {
         get: async key => ({ [key]: session[key] }), set: async values => Object.assign(session, structuredClone(values))
       } }, alarms: { get: async name => alarms.get(name), clear: async name => alarms.delete(name), create: async (name, info) => alarms.set(name, { scheduledTime: info.when }) } };
-    window.discardTest = { controller: createDiscardController(api, () => time), advance: ms => time += ms, session, alarms };
+    self.discardTest = { controller: createDiscardController(api, () => time), advance: ms => time += ms, session, alarms };
     await discardTest.controller.start();
   });
-  await options.evaluate(async () => { discardTest.advance(5 * 60000); await discardTest.controller.alarm(); });
+  await worker.evaluate(async () => { discardTest.advance(5 * 60000); await discardTest.controller.alarm(); });
   const states = await options.evaluate(async ids => Object.fromEntries(await Promise.all(Object.entries(ids).filter(([key]) => key !== 'groupId').map(async ([key, id]) => [key, (await chrome.tabs.get(id)).discarded]))), ids);
   assert.equal(states.ordinary, true, 'The eligible idle tab must really be unloaded by Chrome');
   for (const path of ['edited', 'protected', 'pinned', 'video', 'pip', 'capture', 'framed', 'legacy']) assert.equal(states[path], false, path + ' must be protected');

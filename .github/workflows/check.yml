@@ -18,7 +18,7 @@ jobs:
       - run: npm install --no-save --package-lock=false --ignore-scripts playwright-core@1.56.1
       - run: npx playwright-core install chromium --no-shell
       - run: xvfb-run -a node tests/browser-autohide-indicator.mjs
-      - run: xvfb-run -a node tests/browser-auto-discard.mjs
+      - run: DEBUG=pw:browser xvfb-run -a node tests/browser-auto-discard.mjs
       - run: xvfb-run -a node tests/browser-link-title.mjs
       - run: xvfb-run -a node tests/browser-tab-focus.mjs
       - run: xvfb-run -a node tests/browser-sidebar-history.mjs
