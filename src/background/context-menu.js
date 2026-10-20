@@ -4,6 +4,7 @@ import { commitStorage } from './state-controller.js';
 const sidebarStorage = createStorageClient({ transact: commitStorage });
 import './group-order.js';
 import './native-panel-reload.js';
+import { DISCARD_MENU, refreshDiscardMenu } from './discard-menu.js';
 
 const STORAGE_KEY = 'arcSidebarModel';
 const BINDINGS_KEY = 'arcSidebarBindings';
@@ -95,6 +96,8 @@ async function rebuildPinContextMenuNow() {
         contexts: ['page', 'link']
       });
     }
+    await createMenuItem({ id: DISCARD_MENU, title: 'Keep this tab in memory', type: 'checkbox', contexts: ['page'] });
+    await refreshDiscardMenu();
   } catch (error) {
     console.warn('Arc Side of the Chrome: context menu rebuild failed', error);
   }

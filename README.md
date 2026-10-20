@@ -14,6 +14,7 @@ Make Chrome a calmer place to work. Give every project its own Space, keep every
 
 - **Work by project, not by a growing pile of tabs.** Spaces bring your saved links, folders and live work together.
 - **Keep Chrome’s native tab bar useful.** Its groups, tabs and focus stay in step with your Spaces, whichever way you navigate.
+- **Free memory without losing your tabs.** Automatically unload idle pages after a configurable delay, while keeping active and protected work available.
 - **Save your place, then close the tab.** Favorites and pinned links remain ready for the next visit.
 - **Find the next thing with ⌥T / Alt+T.** Search saved links and open tabs together, or jump straight back to your previous tab.
 - **Keep watching while you work.** Playing videos move into an automatic floating mini player when you switch tabs.
@@ -36,6 +37,12 @@ Additional project tabs appear below the pinned links. Drag a useful one into yo
 | Saved links and project tabs | All open tabs, grouped |
 | --- | --- |
 | <img src="docs/screenshots/sidebar.png" width="360" alt="Work sidebar with global Favorites, folders, persistent pinned links and additional project tabs"> | <img src="docs/screenshots/open-tabs.png" width="360" alt="Open tabs view with Chrome pinned tabs, named groups and their close controls"> |
+
+### Keep your tabs. Give the memory back.
+
+Idle webpages unload automatically after **30 minutes** by default. They stay in the same Chrome group and sidebar position, ready to reload when selected. Active tabs in every window, native Chrome pinned tabs, playing media, mini players, detected captures and unsaved edits stay protected.
+
+Set the delay from **0–120 minutes in 5-minute steps** in Options; **0 disables automatic discard**. Add website exceptions, or right-click a webpage and choose **Keep this tab in memory**. The timeout and website exceptions stay local to this computer and travel with your backups.
 
 ### Find any tab without breaking your flow
 
@@ -85,8 +92,9 @@ Chrome Sync keeps your organization available across computers. Portable backups
 | **Automatic mini player** | Continue compatible playing videos when switching tabs; return them to the page on return. Turn automatic PiP off in Options, or follow the per-site permission guide. |
 | **Fixed or Autohide** | Switch beside search. Autohide follows Chrome’s side-panel position; choose the close delay and the edge trigger’s top, bottom and width. Click outside to hide it; unsaved editor fields are kept. |
 | **Right-click pinning** | Save the current webpage or a link directly to Favorites or a Space from Chrome’s context menu. All destination selectors list Favorites first. |
+| **Automatic tab discard** | Unload idle webpages after 0–120 minutes, with 5-minute steps and a 30-minute default. Keep protected work in memory; return to the same tab and group when you need it. |
 | **Chrome Sync** | Sync Spaces, palettes, Favorites, folders, links, icons and order. On a fresh installation, restore the existing cloud setup before uploading any new organization. |
-| **Backup and restore** | Save a portable JSON copy including custom icons, palettes, folder colors, expanded/collapsed folders, sidebar mode, timeout, trigger settings, Favorite size, width and automatic PiP preference. Older backups without color settings still restore. |
+| **Backup and restore** | Save a portable JSON copy including custom icons, palettes, folder colors, expanded/collapsed folders, sidebar mode, timeout, trigger settings, Favorite size, width, automatic discard preferences and website exceptions, and automatic PiP preference. Older backups without color settings still restore. |
 
 ### Fit the sidebar to the way you browse
 

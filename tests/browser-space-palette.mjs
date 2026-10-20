@@ -145,7 +145,7 @@ try{
  const trigger={height:35,offset:50,width:12};
  await poll(()=>page.evaluate(async expected=>JSON.stringify((await chrome.storage.local.get('arcSidebarEdgeTrigger')).arcSidebarEdgeTrigger)===JSON.stringify(expected),trigger),'Custom trigger did not save');
  await poll(async()=>await options.locator('#timeoutValue').innerText()==='400 ms','Timeout label did not follow the slider');
- if(process.env.ARC_PALETTE_SCREENSHOTS)console.log('OPTIONS_AUTOHIDE_PNG='+(await options.locator('section.card').nth(1).screenshot()).toString('base64'));
+ if(process.env.ARC_PALETTE_SCREENSHOTS)console.log('OPTIONS_AUTOHIDE_PNG='+(await options.locator('section.card').filter({has:options.locator('#autohideTimeout')}).screenshot()).toString('base64'));
  const downloadPromise=options.waitForEvent('download');await options.locator('#downloadBackup').click();const download=await downloadPromise;
  const backup=JSON.parse(await readFile(await download.path(),'utf8'));
  assert.equal(backup.settings.favoriteSizePercent,140);

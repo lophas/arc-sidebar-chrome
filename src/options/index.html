@@ -28,6 +28,25 @@
     </section>
 
     <section class="card">
+      <h2>Automatic tab discard</h2>
+      <p>Keep idle tabs open while unloading their page contents from memory. They reload when you return, keeping their place in the sidebar and Chrome groups.</p>
+      <label class="range-setting" for="autoDiscardMinutes">
+        <span>Discard after <output id="autoDiscardValue" for="autoDiscardMinutes">30 min</output></span>
+        <input id="autoDiscardMinutes" type="range" min="0" max="120" step="5" value="30" aria-label="Automatic discard idle time">
+        <small>0 = disabled · 5–120 minutes · 5-minute steps · default 30 minutes</small>
+      </label>
+      <p class="sync-note">The timer starts when a tab becomes inactive. Active tabs in every window, Chrome pinned tabs, protected tabs, playing media, Picture-in-Picture, camera/microphone/screen sharing and detected unsaved edits are skipped.</p>
+      <label class="discard-exceptions" for="autoDiscardExceptions">Keep these websites in memory
+        <textarea id="autoDiscardExceptions" rows="4" placeholder="meet.google.com&#10;docs.google.com" spellcheck="false"></textarea>
+        <small>One domain or HTTP(S) address per line. Subdomains are included.</small>
+      </label>
+      <button id="saveDiscardExceptions" class="button button-element" type="button">Save website exceptions</button>
+      <p class="sync-note">Right-click a webpage and select <strong>Keep this tab in memory</strong> to protect that tab until you close it. These settings stay on this computer and are included in backups, not Chrome Sync.</p>
+      <p class="sync-note">Returning to a discarded tab reloads it. Add important editors and call sites to the exceptions: not every application exposes unsaved state. Pages opened before this extension update stay protected until reloaded so existing capture activity cannot be interrupted.</p>
+      <div id="autoDiscardStatus" class="status" role="status"></div>
+    </section>
+
+    <section class="card">
       <h2>Autohide &amp; edge trigger</h2>
       <p>Switch between Fixed and Autohide using the icon to the left of the sidebar search bar. Autohide is the default. Click outside the sidebar to hide it immediately; dragging does not reopen it.</p>
       <div class="trigger-settings">
@@ -81,7 +100,7 @@
 
     <section class="card">
       <h2>Backup & restore</h2>
-      <p>Download a portable JSON backup of your Spaces and their palettes, Favorites, folders, pinned links, autohide timeout and edge trigger settings, Favorite button size and sidebar width, or restore one on this or another computer.</p>
+      <p>Download a portable JSON backup of your automatic discard settings and website exceptions, Spaces and their palettes, Favorites, folders, pinned links, autohide timeout and edge trigger settings, Favorite button size and sidebar width, or restore one on this or another computer.</p>
       <div class="backup-actions">
         <button id="downloadBackup" class="button button-element" type="button">Download backup</button>
         <label class="button">
@@ -105,7 +124,7 @@
         </label>
       </div>
       <p class="sync-note">On a fresh installation or after reset, Sync restores the existing cloud snapshot. The empty starting layout is never uploaded.</p>
-      <p class="sync-note">Live tab bindings, open tabs, collapsed folders, sidebar mode, overlay width, autohide timeout, edge trigger geometry and Favorite size stay local to each computer.</p>
+      <p class="sync-note">Live tab bindings, open tabs, collapsed folders, sidebar mode, overlay width, autohide timeout, edge trigger geometry, Favorite size and automatic discard settings stay local to each computer.</p>
       <p class="sync-note">Extension ID on this computer: <code id="extensionId"></code></p>
       <div class="sync-actions">
         <button id="syncNow" class="button button-element" type="button">Sync now</button>
@@ -147,6 +166,7 @@
 
   <script type="module" src="sidebar-mode.js"></script>
   <script type="module" src="auto-pip.js"></script>
+  <script type="module" src="auto-discard.js"></script>
   <script type="module" src="favorite-size.js"></script>
   <script type="module" src="index.js"></script>
 </body>

@@ -4,9 +4,9 @@ import {exportBackupSettings,restoreBackupSettings} from '../src/options/backup-
 test('backup round-trip preserves all appearance settings and fixed/autohide mode',()=>{
  for(const timeout of [0,400,500,600,700,800,900,1000,1100,1200]){
   const stored={arcSidebarAutohideTimeout:timeout,arcSidebarFavoriteSizePercent:120,arcSidebarOverlayWidth:512.5};
-  assert.deepEqual(restoreBackupSettings(exportBackupSettings(stored)),{...stored,arcSidebarEdgeTrigger:{height:100,offset:0,width:16},arcSidebarAutoPipEnabled:true,arcSidebarAutohideTimeout:timeout||800,arcSidebarMode:timeout===0?'native':'overlay'});
+  assert.deepEqual(restoreBackupSettings(exportBackupSettings(stored)),{...stored,arcSidebarAutoDiscardMinutes:30,arcSidebarAutoDiscardExceptions:[],arcSidebarEdgeTrigger:{height:100,offset:0,width:16},arcSidebarAutoPipEnabled:true,arcSidebarAutohideTimeout:timeout||800,arcSidebarMode:timeout===0?'native':'overlay'});
  }
- assert.deepEqual(exportBackupSettings({}),{edgeTrigger:{height:100,offset:0,width:16},autoPipEnabled:true,autohideTimeout:800,sidebarMode:'overlay',favoriteSizePercent:100,sidebarWidth:390});
+ assert.deepEqual(exportBackupSettings({}),{autoDiscard:{minutes:30,exceptions:[]},edgeTrigger:{height:100,offset:0,width:16},autoPipEnabled:true,autohideTimeout:800,sidebarMode:'overlay',favoriteSizePercent:100,sidebarWidth:390});
  assert.equal(exportBackupSettings({arcSidebarMode:'native'}).autohideTimeout,800);
 });
 test('old and partial backups leave absent preferences unchanged; unrelated keys cannot be restored',()=>{
@@ -36,4 +36,15 @@ test('all device-local autohide preferences remain portable through backups',()=
   const restored=restoreBackupSettings(exportBackupSettings(stored));
   for(const [key,value]of Object.entries(stored))assert.deepEqual(restored[key],value);
  }
+});
+
+test('automatic discard stays portable with exact steps, domain exceptions and older backups',()=>{
+ for(let minutes=0;minutes<=120;minutes+=5){
+  const values={arcSidebarAutoDiscardMinutes:minutes,arcSidebarAutoDiscardExceptions:['meet.google.com','docs.example.com']};
+  const restored=restoreBackupSettings(exportBackupSettings(values));
+  assert.equal(restored.arcSidebarAutoDiscardMinutes,minutes);
+  assert.deepEqual(restored.arcSidebarAutoDiscardExceptions,['docs.example.com','meet.google.com']);
+ }
+ for(const config of [null,{minutes:7,exceptions:[]},{minutes:'30',exceptions:[]},{minutes:30,exceptions:['chrome://settings']},{minutes:30,exceptions:'example.com'}])assert.throws(()=>restoreBackupSettings({autoDiscard:config}));
+ assert.deepEqual(restoreBackupSettings({}),{});
 });

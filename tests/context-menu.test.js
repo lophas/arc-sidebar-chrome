@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mockChrome } from './mock-chrome.js';
 const mock=mockChrome();
 globalThis.chrome=mock.chrome;
-const menus=[];let clicked;
+const menus=[],clickListeners=[];const clicked=(...args)=>clickListeners.forEach(fn=>fn(...args));
 chrome.runtime.onInstalled={addListener(){}};
 chrome.runtime.onStartup={addListener(){}};
 chrome.tabs.onAttached={addListener(){}};
@@ -12,13 +12,13 @@ chrome.tabGroups.onUpdated={addListener(){}};
 chrome.runtime.onConnect={addListener(){}};
 chrome.tabs.onActivated={addListener(){}};
 chrome.windows.onFocusChanged={addListener(){}};
-chrome.contextMenus={async removeAll(){menus.length=0;},create(item,callback){menus.push(item);callback();},onClicked:{addListener(fn){clicked=fn;}}};
+chrome.contextMenus={async removeAll(){menus.length=0;},create(item,callback){menus.push(item);callback();},async update(id,values){Object.assign(menus.find(menu=>menu.id===id)||{},values);},onClicked:{addListener(fn){clickListeners.push(fn);}}};
 mock.data.local.arcSidebarModel={favorites:[],spaces:[{id:'work',title:'Work',children:[]}]};
 await import('../src/background/context-menu.js');
 const settle=async predicate=>{for(let n=0;n<100;n++){if(predicate())return;await new Promise(r=>setTimeout(r,5));}assert.fail('Context menu operation did not finish');};
 test('Favorites precedes Spaces, pins current live page and links, and works without Spaces',async()=>{
- await settle(()=>menus.length===3);
- assert.deepEqual(menus.map(m=>m.id),['arc-sidebar-pin-root','arc-sidebar-pin-favorites','arc-sidebar-pin-space:work']);
+ await settle(()=>menus.length===4);
+ assert.deepEqual(menus.map(m=>m.id),['arc-sidebar-pin-root','arc-sidebar-pin-favorites','arc-sidebar-pin-space:work','arc-sidebar-keep-in-memory']);
  clicked({menuItemId:'arc-sidebar-pin-favorites',pageUrl:'https://a.test'},{id:10,url:'https://a.test',title:'Current page'});
  await settle(()=>mock.data.local.arcSidebarModel.favorites.length===1 && Object.keys(mock.data.session.arcSidebarBindings||{}).length===1);
  const first=mock.data.local.arcSidebarModel.favorites[0];
@@ -28,7 +28,7 @@ test('Favorites precedes Spaces, pins current live page and links, and works wit
  assert.equal(mock.data.local.arcSidebarModel.favorites[1].url,'https://link.test');
  assert.equal(Object.keys(mock.data.session.arcSidebarBindings).length,1);
  await chrome.storage.local.set({arcSidebarModel:{favorites:[],spaces:[]}});
- await settle(()=>menus.length===3 && menus.some(menu=>menu.id==='arc-sidebar-pin-space:__my_space__'));
+ await settle(()=>menus.length===4 && menus.some(menu=>menu.id==='arc-sidebar-pin-space:__my_space__'));
  assert.equal(menus[0].enabled,true);
  clicked({menuItemId:'arc-sidebar-pin-favorites',linkUrl:'https://no-spaces.test'},{});
  await settle(()=>mock.data.local.arcSidebarModel.favorites.length===1);
@@ -45,4 +45,16 @@ test('fresh/reset startup initializes Favorites and My Space and context menu ca
  assert.equal(favorite.title,'First Favorite');
  assert.equal(mock.data.session.arcSidebarBindings[favorite.id],10);
  await settle(()=>menus.some(menu=>menu.id==='arc-sidebar-pin-favorites'));
+});
+
+test('page context menu protects the current tab and never modifies native pinned tabs',async()=>{
+ const tab={id:300,windowId:1,url:'https://protected.test/',active:true,autoDiscardable:true,pinned:false};mock.tabs.set(tab.id,tab);
+ clicked({menuItemId:'arc-sidebar-keep-in-memory',checked:true},tab);
+ await settle(()=>tab.autoDiscardable===false);
+ clicked({menuItemId:'arc-sidebar-keep-in-memory',checked:false},tab);
+ await settle(()=>tab.autoDiscardable===true);
+ tab.pinned=true;
+ clicked({menuItemId:'arc-sidebar-keep-in-memory',checked:true},tab);
+ await new Promise(resolve=>setTimeout(resolve,10));
+ assert.equal(tab.autoDiscardable,true);
 });

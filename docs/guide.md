@@ -84,6 +84,20 @@ Enter a URL to open it, or choose a Google search. If that URL is already open, 
 
 Choosing a pinned link or its bound open tab selects its Space and expands its parent folders. Folder and Space results take you to the selected location; choosing one from the standalone popup opens the fixed sidebar.
 
+## Automatic tab discard
+
+Automatic discard unloads idle webpages from memory without closing their tabs. The tab ID, Space binding, native Chrome group and position remain in place. Selecting the tab reloads it. The existing **hollow red dot** indicates an unloaded tab.
+
+In **Extension options → Automatic tab discard**, use the **0–120 minute slider** in **5-minute steps**. The default is **30 minutes**; **0 disables** the feature without a separate switch. The idle period starts when the tab becomes inactive, rather than when you first opened it. Tabs opened in the background receive a full idle period too.
+
+Every Chrome window’s active tab stays loaded. Native Chrome pinned tabs are read-only and excluded. Playing audio/video, native or document Picture-in-Picture, tracked microphone/camera/screen capture and detected unsaved edits are protected. Ordinary Favorites and sidebar pinned links can unload while remaining saved and bound to the same tab.
+
+Add one website domain or HTTP(S) address per line under **Keep these websites in memory**, then choose **Save website exceptions**. Subdomains are included. Right-click a webpage and choose **Keep this tab in memory** for temporary protection of that browser tab; uncheck it to allow automatic discard again. Existing Chrome `autoDiscardable: false` protection is respected.
+
+Discarding reloads a page when you return. Not every editor or call application exposes its unsaved state, so add important sites to the exceptions. Pages opened before the extension update remain protected until reloaded, allowing capture protection to start before the page runs. These conservative protections can keep some idle pages loaded.
+
+The timeout and website exceptions are **local to this computer**, excluded from **Chrome Sync**, and included in **backup/restore**. Temporary protection of an individual live tab is not part of a portable backup. Older backups without discard preferences leave the current settings unchanged.
+
 ## Open tabs and close controls
 
 **Inside a Space**, additional tabs from its Chrome groups appear below the pinned links. Click to activate one; tabs in another window are marked **Other window**. Drag a tab between pinned links, into a folder or into an empty Space to save it, keeping the same live browser tab. Its right-click menu also offers pinning.

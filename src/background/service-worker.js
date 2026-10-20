@@ -1,4 +1,5 @@
 import './panel-layout.js';
+import './auto-discard.js';
 import { clearLegacyTriggerSync } from './trigger-sync.js';
 import './auto-pip.js';
 import './auto-pip-settings.js';
