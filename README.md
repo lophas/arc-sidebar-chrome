@@ -92,7 +92,7 @@ Chrome Sync keeps your organization available across computers. Portable backups
 | **Automatic mini player** | Continue compatible playing videos when switching tabs; return them to the page on return. Turn automatic PiP off in Options, or follow the per-site permission guide. |
 | **Fixed or Autohide** | Switch beside search. Autohide follows Chrome’s side-panel position; choose the close delay and the edge trigger’s top, bottom and width. Click outside to hide it; unsaved editor fields are kept. |
 | **Right-click pinning** | Save the current webpage or a link directly to Favorites or a Space from Chrome’s context menu. All destination selectors list Favorites first. |
-| **Automatic tab discard** | Unload idle webpages after 0–120 minutes, with 5-minute steps and a 30-minute default. Keep protected work in memory; return to the same tab and group when you need it. |
+| **Automatic tab discard** | Unload idle webpages after 0–120 minutes, with 5-minute steps and a 30-minute default. Start with editable exceptions for email, messaging and collaboration apps; keep protected work in memory and return to the same tab and group when you need it. |
 | **Chrome Sync** | Sync Spaces, palettes, Favorites, folders, links, icons and order. On a fresh installation, restore the existing cloud setup before uploading any new organization. |
 | **Backup and restore** | Save a portable JSON copy including custom icons, palettes, folder colors, expanded/collapsed folders, sidebar mode, timeout, trigger settings, Favorite size, width, automatic discard preferences and website exceptions, and automatic PiP preference. Older backups without color settings still restore. |
 

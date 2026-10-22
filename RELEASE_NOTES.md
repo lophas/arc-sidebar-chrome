@@ -1,15 +1,11 @@
-## Arc Side of the Chrome 4.2.0
+## Arc Side of the Chrome 4.2.1
 
 *Spaces, tabs & a little harmony.*
 
-- Free memory by automatically unloading idle webpages while keeping their tabs, native groups, sidebar bindings and positions intact.
-- Set the delay with a 0–120 minute slider in 5-minute steps. Default: 30 minutes; 0 disables automatic discard.
-- Keep active tabs in every window, native Chrome pinned tabs, manually protected tabs, playing media, PiP, tracked captures and detected unsaved edits loaded.
-- Add website exceptions or right-click a webpage and select Keep this tab in memory.
-- Keep discard settings device-local and outside Chrome Sync, while preserving them in backups.
-- Use one central scheduled alarm and small discard batches. Safety checks run at idle deadlines; no page polling timers are added. Pages opened before the update stay protected until reloaded.
+- Start with a visible, editable list of website exceptions for automatic tab discard, including Google Docs and Meet, Zoom, email services and popular messaging apps.
+- Keep Gmail, Yahoo Mail, Outlook, WhatsApp, Messenger, Telegram, Discord, Slack, Teams and other communication apps loaded by default.
+- Remove any exception or save an empty list. Restore the default list from Options whenever needed.
+- Preserve existing custom exception lists on updates and through backup/restore. New installations and data resets receive the starting list; settings remain device-local and outside Chrome Sync.
 
-Returning to a discarded tab reloads it. Add important editors and call sites to the exceptions because applications do not all expose their unsaved state.
-
-For an unpacked installation, download `arc-side-of-the-chrome-v4.2.0.zip`, replace the files in your existing folder and click **Reload** at `chrome://extensions`.
-For a Chrome Web Store upload, use `arc-side-of-the-chrome-v4.2.0-webstore.zip`.
+For an unpacked installation, download `arc-side-of-the-chrome-v4.2.1.zip`, replace the files in your existing folder and click **Reload** at `chrome://extensions`.
+For a Chrome Web Store upload, use `arc-side-of-the-chrome-v4.2.1-webstore.zip`.

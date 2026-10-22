@@ -1,12 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {DEFAULT_DISCARD_EXCEPTIONS} from '../src/shared/auto-discard.js';
 import {exportBackupSettings,restoreBackupSettings} from '../src/options/backup-settings.js';
 test('backup round-trip preserves all appearance settings and fixed/autohide mode',()=>{
  for(const timeout of [0,400,500,600,700,800,900,1000,1100,1200]){
   const stored={arcSidebarAutohideTimeout:timeout,arcSidebarFavoriteSizePercent:120,arcSidebarOverlayWidth:512.5};
-  assert.deepEqual(restoreBackupSettings(exportBackupSettings(stored)),{...stored,arcSidebarAutoDiscardMinutes:30,arcSidebarAutoDiscardExceptions:[],arcSidebarEdgeTrigger:{height:100,offset:0,width:16},arcSidebarAutoPipEnabled:true,arcSidebarAutohideTimeout:timeout||800,arcSidebarMode:timeout===0?'native':'overlay'});
+  assert.deepEqual(restoreBackupSettings(exportBackupSettings(stored)),{...stored,arcSidebarAutoDiscardMinutes:30,arcSidebarAutoDiscardExceptions:[...DEFAULT_DISCARD_EXCEPTIONS],arcSidebarEdgeTrigger:{height:100,offset:0,width:16},arcSidebarAutoPipEnabled:true,arcSidebarAutohideTimeout:timeout||800,arcSidebarMode:timeout===0?'native':'overlay'});
  }
- assert.deepEqual(exportBackupSettings({}),{autoDiscard:{minutes:30,exceptions:[]},edgeTrigger:{height:100,offset:0,width:16},autoPipEnabled:true,autohideTimeout:800,sidebarMode:'overlay',favoriteSizePercent:100,sidebarWidth:390});
+ assert.deepEqual(exportBackupSettings({}),{autoDiscard:{minutes:30,exceptions:[...DEFAULT_DISCARD_EXCEPTIONS]},edgeTrigger:{height:100,offset:0,width:16},autoPipEnabled:true,autohideTimeout:800,sidebarMode:'overlay',favoriteSizePercent:100,sidebarWidth:390});
  assert.equal(exportBackupSettings({arcSidebarMode:'native'}).autohideTimeout,800);
 });
 test('old and partial backups leave absent preferences unchanged; unrelated keys cannot be restored',()=>{
@@ -39,6 +40,8 @@ test('all device-local autohide preferences remain portable through backups',()=
 });
 
 test('automatic discard stays portable with exact steps, domain exceptions and older backups',()=>{
+ const empty=restoreBackupSettings(exportBackupSettings({arcSidebarAutoDiscardExceptions:[]}));
+ assert.deepEqual(empty.arcSidebarAutoDiscardExceptions,[], 'An intentionally empty exception list survives backup/restore');
  for(let minutes=0;minutes<=120;minutes+=5){
   const values={arcSidebarAutoDiscardMinutes:minutes,arcSidebarAutoDiscardExceptions:['meet.google.com','docs.example.com']};
   const restored=restoreBackupSettings(exportBackupSettings(values));

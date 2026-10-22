@@ -37,10 +37,11 @@
       </label>
       <p class="sync-note">The timer starts when a tab becomes inactive. Active tabs in every window, Chrome pinned tabs, protected tabs, playing media, Picture-in-Picture, camera/microphone/screen sharing and detected unsaved edits are skipped.</p>
       <label class="discard-exceptions" for="autoDiscardExceptions">Keep these websites in memory
-        <textarea id="autoDiscardExceptions" rows="4" placeholder="meet.google.com&#10;docs.google.com" spellcheck="false"></textarea>
-        <small>One domain or HTTP(S) address per line. Subdomains are included.</small>
+        <textarea id="autoDiscardExceptions" rows="6" placeholder="Add a website domain" spellcheck="false"></textarea>
+        <small>One domain or HTTP(S) address per line. Subdomains are included. Starts with common email, messaging, meeting and document apps. Edit or remove any entry, or clear the list, then save.</small>
       </label>
       <button id="saveDiscardExceptions" class="button button-element" type="button">Save website exceptions</button>
+      <button id="restoreDiscardExceptions" class="button button-element" type="button">Restore default exceptions</button>
       <p class="sync-note">Right-click a webpage and select <strong>Keep this tab in memory</strong> to protect that tab until you close it. These settings stay on this computer and are included in backups, not Chrome Sync.</p>
       <p class="sync-note">Returning to a discarded tab reloads it. Add important editors and call sites to the exceptions: not every application exposes unsaved state. Pages opened before this extension update stay protected until reloaded so existing capture activity cannot be interrupted.</p>
       <div id="autoDiscardStatus" class="status" role="status"></div>

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { discardMinutes, discardExceptions, excludedWebsite, discardCandidate } from '../src/shared/auto-discard.js';
+import { DEFAULT_DISCARD_EXCEPTIONS, discardMinutes, discardExceptions, excludedWebsite, discardCandidate } from '../src/shared/auto-discard.js';
 import { createDiscardController, DISCARD_ALARM, DISCARD_IDLE_KEY } from '../src/background/discard-controller.js';
 const MINUTE = 60000;
 function fixture(values = [{ id: 1, active: true }, { id: 2, active: false }]) {
@@ -32,6 +32,36 @@ test('exact slider values, safe defaults and hostname exception boundaries', () 
   assert.equal(excludedWebsite('https://mail.example.com/', ['example.com']), true);
   assert.equal(excludedWebsite('https://fakeexample.com/', ['example.com']), false);
   for (const input of [['chrome://settings'], ['javascript:alert(1)'], ['https://user:pass@example.com'], [null]]) assert.throws(() => discardExceptions(input));
+});
+test('initial website exceptions are stored as editable data; updates preserve custom and intentionally empty lists', async () => {
+  const f = fixture(); let controller = f.controller();
+  await controller.start();
+  assert.deepEqual(f.local.arcSidebarAutoDiscardExceptions, [...DEFAULT_DISCARD_EXCEPTIONS]);
+  for (const host of ['mail.google.com', 'mail.yahoo.com', 'web.whatsapp.com', 'messenger.com', 'docs.google.com', 'meet.google.com']) {
+    assert.ok(f.local.arcSidebarAutoDiscardExceptions.includes(host));
+  }
+  for (const saved of [[], ['my-custom-mail.example']]) {
+    f.local.arcSidebarAutoDiscardExceptions = saved;
+    await controller.configure();
+    controller = f.controller(); await controller.start();
+    f.advance(5 * MINUTE); await controller.alarm();
+    assert.deepEqual(f.local.arcSidebarAutoDiscardExceptions, saved);
+  }
+  delete f.local.arcSidebarAutoDiscardExceptions;
+  await controller.configure();
+  assert.deepEqual(f.local.arcSidebarAutoDiscardExceptions, [...DEFAULT_DISCARD_EXCEPTIONS], 'Resetting local data restores starting exceptions');
+});
+test('removing a default exception really allows that website to unload with no hidden website rules', async () => {
+  const f = fixture([{ id: 1, active: true }, { id: 2, url: 'https://mail.google.com/mail/u/0/' },
+    { id: 3, url: 'https://www.messenger.com/' }, { id: 4, url: 'https://ordinary.example/' }]);
+  const controller = f.controller(); await controller.start(); f.advance(5 * MINUTE); await controller.alarm();
+  assert.deepEqual(f.discarded, [4]);
+  f.local.arcSidebarAutoDiscardExceptions = f.local.arcSidebarAutoDiscardExceptions.filter(host => host !== 'mail.google.com');
+  await controller.configure(); await controller.alarm();
+  assert.deepEqual(f.discarded, [4, 2]);
+  f.local.arcSidebarAutoDiscardExceptions = [];
+  await controller.configure(); await controller.alarm();
+  assert.deepEqual(f.discarded, [4, 2, 3]);
 });
 test('active tabs in every window, native pinned tabs, sound, loading and manual protection are never discarded', async () => {
   const f = fixture([{ id: 1, active: true }, { id: 2, active: false }, { id: 3, active: true, windowId: 8 }, { id: 4, pinned: true },

@@ -86,11 +86,15 @@ Choosing a pinned link or its bound open tab selects its Space and expands its p
 
 ## Automatic tab discard
 
-Automatic discard unloads idle webpages from memory without closing their tabs. The tab ID, Space binding, native Chrome group and position remain in place. Selecting the tab reloads it. The existing **hollow red dot** indicates an unloaded tab.
+Automatic discard unloads idle webpages from memory without closing their tabs. The Space binding, native Chrome group and position remain in place. Selecting the tab reloads it. The existing **hollow red dot** indicates an unloaded tab.
 
 In **Extension options → Automatic tab discard**, use the **0–120 minute slider** in **5-minute steps**. The default is **30 minutes**; **0 disables** the feature without a separate switch. The idle period starts when the tab becomes inactive, rather than when you first opened it. Tabs opened in the background receive a full idle period too.
 
 Every Chrome window’s active tab stays loaded. Native Chrome pinned tabs are read-only and excluded. Playing audio/video, native or document Picture-in-Picture, tracked microphone/camera/screen capture and detected unsaved edits are protected. Ordinary Favorites and sidebar pinned links can unload while remaining saved and bound to the same tab.
+
+The website exception list starts with Google Docs and Meet, Zoom, and common email and messaging apps, including Gmail, Yahoo Mail, Outlook, iCloud Mail, Proton Mail, Fastmail, Tuta, Zoho Mail, Yandex Mail, WhatsApp, Messenger, Telegram, Discord, Slack, Teams, Google Chat and Messages, Element, Wire and WeChat. Every entry is visible and editable. Remove entries or save an empty list to allow those sites to unload; no hidden website exceptions are added back. The `facebook.com` entry covers all Facebook pages, including Messenger.
+
+Choose **Restore default exceptions** to load the starting list into the editor, then **Save website exceptions** to apply it. Existing saved lists, including empty lists and lists restored from backups, are kept on updates. A fresh installation or data reset starts with the defaults.
 
 Add one website domain or HTTP(S) address per line under **Keep these websites in memory**, then choose **Save website exceptions**. Subdomains are included. Right-click a webpage and choose **Keep this tab in memory** for temporary protection of that browser tab; uncheck it to allow automatic discard again. Existing Chrome `autoDiscardable: false` protection is respected.
 

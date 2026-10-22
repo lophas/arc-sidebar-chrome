@@ -1,5 +1,5 @@
 import { createStorageClient } from '../shared/storage-client.js';
-import { DISCARD_MINUTES_KEY, DISCARD_EXCEPTIONS_KEY, discardMinutes, discardExceptions, discardPreferences } from '../shared/auto-discard.js';
+import { DISCARD_MINUTES_KEY, DISCARD_EXCEPTIONS_KEY, DEFAULT_DISCARD_EXCEPTIONS, discardMinutes, discardExceptions, discardPreferences } from '../shared/auto-discard.js';
 const storage = createStorageClient();
 const slider = document.querySelector('#autoDiscardMinutes'), output = document.querySelector('#autoDiscardValue');
 const exceptions = document.querySelector('#autoDiscardExceptions'), save = document.querySelector('#saveDiscardExceptions');
@@ -31,6 +31,11 @@ function enqueue(values, savedRevision) {
 slider.addEventListener('input', () => { revision++; sliderDirty = true; paint(); });
 slider.addEventListener('change', () => { const minutes = paint(); sliderDirty = false; enqueue({ [DISCARD_MINUTES_KEY]: minutes }, ++revision); });
 exceptions.addEventListener('input', () => { revision++; exceptionsDirty = true; exceptions.setCustomValidity(''); });
+document.querySelector('#restoreDiscardExceptions').addEventListener('click', () => {
+  revision++; exceptionsDirty = true; exceptions.setCustomValidity('');
+  exceptions.value = DEFAULT_DISCARD_EXCEPTIONS.join('\n');
+  status.textContent = 'Default website exceptions loaded. Choose Save website exceptions to apply.';
+});
 save.addEventListener('click', () => {
   try {
     const hosts = discardExceptions(exceptions.value.split(/\r?\n/).map(value => value.trim()).filter(Boolean));

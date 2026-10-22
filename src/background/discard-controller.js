@@ -1,4 +1,4 @@
-import { DISCARD_MINUTES_KEY, DISCARD_EXCEPTIONS_KEY, discardPreferences, discardCandidate } from '../shared/auto-discard.js';
+import { DISCARD_MINUTES_KEY, DISCARD_EXCEPTIONS_KEY, discardPreferences, loadDiscardPreferences, discardCandidate } from '../shared/auto-discard.js';
 import { probeDiscardSafety } from './discard-probe.js';
 export const DISCARD_ALARM = 'arc-sidebar-auto-discard';
 export const DISCARD_IDLE_KEY = 'arcSidebarDiscardIdle';
@@ -40,7 +40,7 @@ export function createDiscardController(api, now = Date.now) {
   }
   async function configure() {
     const previous = prefs;
-    prefs = discardPreferences(await api.storage.local.get([DISCARD_MINUTES_KEY, DISCARD_EXCEPTIONS_KEY]));
+    prefs = await loadDiscardPreferences(api.storage.local);
     if (!prefs.minutes || !previous.minutes) idle = {};
     await readTabs(); await save(); await schedule();
   }
@@ -68,7 +68,7 @@ export function createDiscardController(api, now = Date.now) {
     start: () => serial(async () => {
       const stored = (await api.storage.session.get(DISCARD_IDLE_KEY))[DISCARD_IDLE_KEY];
       idle = stored && typeof stored === 'object' && !Array.isArray(stored) ? stored : {};
-      prefs = discardPreferences(await api.storage.local.get([DISCARD_MINUTES_KEY, DISCARD_EXCEPTIONS_KEY]));
+      prefs = await loadDiscardPreferences(api.storage.local);
       alarmAt = (await api.alarms.get(DISCARD_ALARM))?.scheduledTime || 0;
       await readTabs(); await save(); await schedule();
     }),
@@ -100,7 +100,7 @@ export function createDiscardController(api, now = Date.now) {
     resetSession: () => serial(async () => { idle = {}; await readTabs(); await save(); await schedule(); }),
     alarm: () => serial(async () => {
       alarmAt = 0;
-      prefs = discardPreferences(await api.storage.local.get([DISCARD_MINUTES_KEY, DISCARD_EXCEPTIONS_KEY]));
+      prefs = await loadDiscardPreferences(api.storage.local);
       if (!prefs.minutes) { await schedule(); return; }
       await readTabs();
       const due = [...tabs.values()].filter(tab => {

@@ -1,6 +1,19 @@
 export const DISCARD_MINUTES_KEY = 'arcSidebarAutoDiscardMinutes';
 export const DISCARD_EXCEPTIONS_KEY = 'arcSidebarAutoDiscardExceptions';
 export const DEFAULT_DISCARD_MINUTES = 30;
+// Initial editable data only. Saved lists (including []) fully replace it.
+export const DEFAULT_DISCARD_EXCEPTIONS = Object.freeze(discardExceptions([
+  'docs.google.com', 'meet.google.com', 'zoom.us',
+  'mail.google.com', 'mail.yahoo.com', 'outlook.live.com', 'outlook.office.com',
+  'outlook.office365.com', 'outlook.cloud.microsoft', 'mail.aol.com', 'icloud.com',
+  'mail.proton.me', 'mail.protonmail.com', 'app.fastmail.com', 'app.tuta.com',
+  'mail.zoho.com', 'mail.yandex.com', 'mail.yandex.ru',
+  'web.whatsapp.com', 'messenger.com', 'facebook.com', 'web.telegram.org',
+  'discord.com', 'slack.com', 'teams.microsoft.com', 'teams.live.com',
+  'teams.cloud.microsoft', 'teams.office.com', 'chat.google.com',
+  'messages.google.com', 'app.element.io', 'app.wire.com',
+  'web.wechat.com', 'web.wechatapp.com', 'wx.qq.com'
+]));
 export const isDiscardMinutes = value => Number.isInteger(value) && value >= 0 && value <= 120 && value % 5 === 0;
 export const discardMinutes = value => ['number', 'string'].includes(typeof value) && isDiscardMinutes(Number(value)) && value !== ''
   ? Number(value) : DEFAULT_DISCARD_MINUTES;
@@ -21,9 +34,19 @@ export function discardExceptions(values = []) {
   return [...new Set(hosts.map(exceptionHost))].sort();
 }
 export function discardPreferences(stored) {
-  let exceptions = [];
+  let exceptions = [...DEFAULT_DISCARD_EXCEPTIONS];
+  if (stored[DISCARD_EXCEPTIONS_KEY] === undefined) return { minutes: discardMinutes(stored[DISCARD_MINUTES_KEY]), exceptions };
+  exceptions = [];
   try { exceptions = discardExceptions(stored[DISCARD_EXCEPTIONS_KEY]); } catch {}
   return { minutes: discardMinutes(stored[DISCARD_MINUTES_KEY]), exceptions };
+}
+export async function loadDiscardPreferences(storage) {
+  const stored = await storage.get([DISCARD_MINUTES_KEY, DISCARD_EXCEPTIONS_KEY]);
+  if (stored[DISCARD_EXCEPTIONS_KEY] === undefined) {
+    stored[DISCARD_EXCEPTIONS_KEY] = [...DEFAULT_DISCARD_EXCEPTIONS];
+    await storage.set({ [DISCARD_EXCEPTIONS_KEY]: stored[DISCARD_EXCEPTIONS_KEY] });
+  }
+  return discardPreferences(stored);
 }
 export function excludedWebsite(url, exceptions) {
   try {
