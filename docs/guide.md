@@ -100,7 +100,7 @@ Add one website domain or HTTP(S) address per line under **Keep these websites i
 
 Discarding reloads a page when you return. Not every editor or call application exposes its unsaved state, so add important sites to the exceptions. Pages opened before the extension update remain protected until reloaded, allowing capture protection to start before the page runs. These conservative protections can keep some idle pages loaded.
 
-The timeout and website exceptions are **local to this computer**, excluded from **Chrome Sync**, and included in **backup/restore**. Temporary protection of an individual live tab is not part of a portable backup. Older backups without discard preferences leave the current settings unchanged.
+The timeout and website exceptions are **local to this computer**, excluded from **Chrome Sync**, and included in **backup/restore**. Temporary protection of an individual live tab is not part of a portable backup. Older backups without discard preferences leave the current settings unchanged. An empty exception list from an older backup also keeps the current website exceptions. New backups explicitly preserve a list you have intentionally cleared. Non-empty exception lists in older backups restore normally.
 
 ## Open tabs and close controls
 

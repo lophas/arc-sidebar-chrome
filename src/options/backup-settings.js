@@ -6,7 +6,7 @@ export const BACKUP_SETTING_KEYS = ['arcSidebarAutohideTimeout', 'arcSidebarMode
 const timeouts = new Set([0, ...AUTOHIDE_TIMEOUTS]);
 export function exportBackupSettings(stored) {
   return {
-    autoDiscard: discardPreferences(stored),
+    autoDiscard: { ...discardPreferences(stored), exceptionsVersion: 1 },
     edgeTrigger: edgeTrigger(stored[EDGE_TRIGGER_KEY]),
     autoPipEnabled: stored.arcSidebarAutoPipEnabled !== false,
     autohideTimeout: sidebarPreferences(stored).timeout,
@@ -22,8 +22,13 @@ export function restoreBackupSettings(settings) {
   if (Object.hasOwn(settings, 'autoDiscard')) {
     const config = settings.autoDiscard;
     if (!config || !isDiscardMinutes(config.minutes) || !Array.isArray(config.exceptions)) throw new Error('Invalid backup automatic discard settings.');
+    if (Object.hasOwn(config, 'exceptionsVersion') && config.exceptionsVersion !== 1) throw new Error('Unsupported backup website exception version.');
+    const exceptions = discardExceptions(config.exceptions);
     values[DISCARD_MINUTES_KEY] = config.minutes;
-    values[DISCARD_EXCEPTIONS_KEY] = discardExceptions(config.exceptions);
+    // Older exports wrote [] even before an editable starting list existed.
+    // Treat that ambiguous empty value like an absent preference. New exports
+    // explicitly identify the list so an intentional empty list can round-trip.
+    if (exceptions.length || config.exceptionsVersion === 1) values[DISCARD_EXCEPTIONS_KEY] = exceptions;
   }
   if (Object.hasOwn(settings, 'edgeTrigger')) {
     if (!isEdgeTrigger(settings.edgeTrigger)) throw new Error('Invalid backup edge trigger.');

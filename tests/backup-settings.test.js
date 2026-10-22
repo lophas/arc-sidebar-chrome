@@ -7,7 +7,7 @@ test('backup round-trip preserves all appearance settings and fixed/autohide mod
   const stored={arcSidebarAutohideTimeout:timeout,arcSidebarFavoriteSizePercent:120,arcSidebarOverlayWidth:512.5};
   assert.deepEqual(restoreBackupSettings(exportBackupSettings(stored)),{...stored,arcSidebarAutoDiscardMinutes:30,arcSidebarAutoDiscardExceptions:[...DEFAULT_DISCARD_EXCEPTIONS],arcSidebarEdgeTrigger:{height:100,offset:0,width:16},arcSidebarAutoPipEnabled:true,arcSidebarAutohideTimeout:timeout||800,arcSidebarMode:timeout===0?'native':'overlay'});
  }
- assert.deepEqual(exportBackupSettings({}),{autoDiscard:{minutes:30,exceptions:[...DEFAULT_DISCARD_EXCEPTIONS]},edgeTrigger:{height:100,offset:0,width:16},autoPipEnabled:true,autohideTimeout:800,sidebarMode:'overlay',favoriteSizePercent:100,sidebarWidth:390});
+ assert.deepEqual(exportBackupSettings({}),{autoDiscard:{minutes:30,exceptions:[...DEFAULT_DISCARD_EXCEPTIONS],exceptionsVersion:1},edgeTrigger:{height:100,offset:0,width:16},autoPipEnabled:true,autohideTimeout:800,sidebarMode:'overlay',favoriteSizePercent:100,sidebarWidth:390});
  assert.equal(exportBackupSettings({arcSidebarMode:'native'}).autohideTimeout,800);
 });
 test('old and partial backups leave absent preferences unchanged; unrelated keys cannot be restored',()=>{
@@ -50,4 +50,23 @@ test('automatic discard stays portable with exact steps, domain exceptions and o
  }
  for(const config of [null,{minutes:7,exceptions:[]},{minutes:'30',exceptions:[]},{minutes:30,exceptions:['chrome://settings']},{minutes:30,exceptions:'example.com'}])assert.throws(()=>restoreBackupSettings({autoDiscard:config}));
  assert.deepEqual(restoreBackupSettings({}),{});
+});
+
+test('legacy empty exception lists preserve current defaults or custom lists; explicit modern empty lists restore exactly',()=>{
+ const legacy={autoDiscard:{minutes:15,exceptions:[]},favoriteSizePercent:90};
+ const restored=restoreBackupSettings(JSON.parse(JSON.stringify(legacy)));
+ assert.deepEqual(restored,{arcSidebarAutoDiscardMinutes:15,arcSidebarFavoriteSizePercent:90});
+ for(const exceptions of [[...DEFAULT_DISCARD_EXCEPTIONS],['private-mail.example'],[]]){
+  const current={arcSidebarAutoDiscardExceptions:exceptions};
+  assert.deepEqual({...current,...restored}.arcSidebarAutoDiscardExceptions,exceptions);
+ }
+ assert.deepEqual(restoreBackupSettings({autoDiscard:{minutes:15,exceptions:['MAIL.Example.com']}}),{
+  arcSidebarAutoDiscardMinutes:15,arcSidebarAutoDiscardExceptions:['mail.example.com']
+ });
+ const modern=JSON.parse(JSON.stringify(exportBackupSettings({arcSidebarAutoDiscardExceptions:[]})));
+ assert.equal(modern.autoDiscard.exceptionsVersion,1);
+ assert.deepEqual(restoreBackupSettings(modern).arcSidebarAutoDiscardExceptions,[]);
+ for(const exceptionsVersion of [null,false,0,'1',2]){
+  assert.throws(()=>restoreBackupSettings({autoDiscard:{minutes:15,exceptions:[],exceptionsVersion}}));
+ }
 });

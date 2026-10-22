@@ -148,7 +148,7 @@ try {
   await options.bringToFront();
   const downloadPromise = options.waitForEvent('download'); await options.locator('#downloadBackup').click();
   const backup = JSON.parse(await readFile(await (await downloadPromise).path(), 'utf8'));
-  assert.deepEqual(backup.settings.autoDiscard, { minutes: 5, exceptions: ['docs.example.com', 'meet.example.com'] });
+  assert.deepEqual(backup.settings.autoDiscard, { minutes: 5, exceptions: ['docs.example.com', 'meet.example.com'], exceptionsVersion: 1 });
   await options.evaluate(() => chrome.storage.local.set({ arcSidebarAutoDiscardMinutes: 0, arcSidebarAutoDiscardExceptions: [] }));
   await options.locator('#restoreBackup').setInputFiles({ name: 'discard-backup.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(backup)) });
   await poll(() => options.evaluate(async () => (await chrome.storage.local.get('arcSidebarAutoDiscardMinutes')).arcSidebarAutoDiscardMinutes === 5), 'Backup must restore the discard timeout');
@@ -156,6 +156,23 @@ try {
   const synced = await options.evaluate(() => chrome.storage.sync.get(null));
   assert.equal(Object.keys(synced).some(key => /AutoDiscard/.test(key)), false);
   console.log('PASS real extension: discard settings and website exceptions round-trip through backup and remain outside Chrome Sync');
+  const legacyBackup = structuredClone(backup);
+  legacyBackup.settings.autoDiscard = { minutes: 15, exceptions: [] };
+  await options.evaluate(() => chrome.storage.local.set({ arcSidebarAutoDiscardExceptions: ['custom.example', 'mail.google.com'] }));
+  await options.locator('#restoreBackup').setInputFiles({ name: 'legacy-empty-exceptions.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(legacyBackup)) });
+  await poll(() => options.evaluate(async () => (await chrome.storage.local.get('arcSidebarAutoDiscardMinutes')).arcSidebarAutoDiscardMinutes === 15), 'Legacy backup restores the timeout');
+  assert.deepEqual(await options.evaluate(async () => (await chrome.storage.local.get('arcSidebarAutoDiscardExceptions')).arcSidebarAutoDiscardExceptions), ['custom.example', 'mail.google.com'], 'A legacy empty list must preserve existing exceptions');
+  await poll(async () => await exceptionEditor.inputValue() === 'custom.example\nmail.google.com', 'The Options editor keeps current exceptions after a legacy restore');
+  await exceptionEditor.fill(''); await options.locator('#saveDiscardExceptions').click();
+  await poll(() => options.evaluate(async () => (await chrome.storage.local.get('arcSidebarAutoDiscardExceptions')).arcSidebarAutoDiscardExceptions?.length === 0), 'Save an intentional empty exception list');
+  const emptyDownload = options.waitForEvent('download'); await options.locator('#downloadBackup').click();
+  const emptyBackup = JSON.parse(await readFile(await (await emptyDownload).path(), 'utf8'));
+  assert.deepEqual(emptyBackup.settings.autoDiscard, { minutes: 15, exceptions: [], exceptionsVersion: 1 });
+  await options.evaluate(() => chrome.storage.local.set({ arcSidebarAutoDiscardExceptions: ['custom.example'] }));
+  await options.locator('#restoreBackup').setInputFiles({ name: 'intentional-empty-exceptions.json', mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(emptyBackup)) });
+  await poll(() => options.evaluate(async () => (await chrome.storage.local.get('arcSidebarAutoDiscardExceptions')).arcSidebarAutoDiscardExceptions?.length === 0), 'A modern backup must restore an intentionally empty list');
+  await options.reload(); await poll(async () => await exceptionEditor.inputValue() === '', 'The restored empty list survives reload');
+  console.log('PASS real extension: legacy empty backup keeps current exceptions while a newly exported intentional empty list restores exactly');
 } finally {
   await context?.close(); await new Promise(done => server.close(done)); await rm(directory, { recursive: true, force: true });
 }
